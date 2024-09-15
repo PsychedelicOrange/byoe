@@ -3,10 +3,9 @@
 
 #include <stdint.h>
 
-#define MAX_OBJECTS 100
+#include "../scripting/scripting.h"
 
-typedef void (*StartFunction)(void*);
-typedef void (*UpdateFunction)(void*, float);
+#define MAX_OBJECTS 100
 
 typedef struct GameObject
 {
@@ -18,7 +17,12 @@ typedef struct GameObject
 } GameObject;
 
 
-GameObject gGameRegistry[MAX_OBJECTS];
-uint32_t gNumObjects = 0;
+static GameObject gGameRegistry[MAX_OBJECTS];
+static uint32_t gNumObjects = 0;
+
+/*******************************/
+// GameObjects Registry
+/*******************************/
+void registerGameObjectType(const char* typeName, StartFunction start, UpdateFunction update);
 
 #endif
