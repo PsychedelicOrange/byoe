@@ -1,4 +1,0 @@
-/Users/phanisrikar/byoe/build/CMakeFiles/byoe_ghost_asteroids.dir
-/Users/phanisrikar/byoe/build/CMakeFiles/run.dir
-/Users/phanisrikar/byoe/build/CMakeFiles/edit_cache.dir
-/Users/phanisrikar/byoe/build/CMakeFiles/rebuild_cache.dir
