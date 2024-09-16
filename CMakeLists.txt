@@ -21,7 +21,7 @@ add_custom_target(run
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY ADDITIONAL_MAKE_CLEAN_FILES byoe_ghost_asteroids)
 
 target_compile_options(byoe_ghost_asteroids PRIVATE -Wall )
-target_include_directories(byoe_ghost_asteroids PRIVATE src)
+target_include_directories(byoe_ghost_asteroids PRIVATE src engine/external/cglm)
 
 find_package(glm CONFIG REQUIRED)
 target_link_libraries(
@@ -30,5 +30,5 @@ target_link_libraries(
 	glfw3
 	X11 # for glfw3 linux
 	m # math
-	cglm
 	)
+
