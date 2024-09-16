@@ -10,6 +10,7 @@ char* readFileToString(const char* filename) {
     FILE *file = fopen(filename, "r");
     if (!file) {
         printf("Could not open file %s\n", filename);
+		fflush(stdout);
         return NULL;
     }
 
@@ -176,20 +177,20 @@ GLuint setup_debug_cube(){
         0, 4, 5, 5, 1, 0
     };
 
-	GLuint *VAO,*VBO,*EBO;
-    glGenVertexArrays(1, VAO);
-    glGenBuffers(1, VBO);
-    glGenBuffers(1, EBO);
+	GLuint VAO,VBO,EBO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
 
     // Bind VAO
-    glBindVertexArray(*VAO);
+    glBindVertexArray(VAO);
 
     // Bind and set VBO
-    glBindBuffer(GL_ARRAY_BUFFER, *VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
     // Bind and set EBO
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, *EBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
     // Set vertex attribute pointers
@@ -198,7 +199,7 @@ GLuint setup_debug_cube(){
 
     // Unbind VAO (NOT EBO) to prevent accidental modification
     glBindVertexArray(0);
-return *VAO;
+	return VAO;
 }
 // -- -- -- -- -- -- Math functions -- -- -- -- - -
 //
