@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include <cglm/cglm.h>   /* for inline */
+#include <cglm/struct.h> /* struct api */
 
 char* readFileToString(const char* filename) {
     // Open the file in read mode ("r")
@@ -36,13 +37,13 @@ char* readFileToString(const char* filename) {
     return content;
 }
 
-vec3 up = {0,1,0};
 typedef struct Camera{
-	mat4 lookAt;
-	vec3 position;
-	vec3 right;
-	vec3 front;
+	mat4s lookAt;
+	vec3s position;
+	vec3s right;
+	vec3s front;
 }Camera;
+Camera camera;
 
 // -- -- -- -- -- -- Function declare -- -- -- -- -- --- --
 
@@ -58,12 +59,15 @@ unsigned int compile_shader(const char* source, int shaderType);
 unsigned int create_program(unsigned int vertexShader,unsigned int fragmentShader);
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
-void processInput(GLFWwindow *window);
+void processInput(GLFWwindow* window);
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
+
 // -- -- -- -- -- -- Contants -- -- -- -- -- --- --
 // settings
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
+vec3s up = {{0,1,0}};
+float speed = 0.1;
 
 // -- -- -- -- -- -- GLFW Functions -- -- -- -- -- --- --
 void init_glfw(){
@@ -87,7 +91,7 @@ GLFWwindow* create_glfw_window(){
     }
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-	glfwSetKeyCallback(window,key_callback);
+	//glfwSetKeyCallback(window,key_callback);
 	return window;
 }
 
@@ -201,6 +205,21 @@ GLuint setup_debug_cube(){
     glBindVertexArray(0);
 	return VAO;
 }
+
+void init_camera(){
+	camera.position.x = 0;
+	camera.position.y = 0;
+	camera.position.z = 3;
+
+	camera.front.x = 0;
+	camera.front.y = 0;
+	camera.front.z = -3;
+
+	camera.right.x = 1;
+	camera.right.y = 0;
+	camera.right.z = 0;
+}
+
 // -- -- -- -- -- -- Math functions -- -- -- -- - -
 //
 int main()
@@ -216,15 +235,30 @@ int main()
 		shaderProgram = create_program(vertexShader,fragShader);
 	}
 
-	Camera camera;
-
 	GLuint vao = setup_debug_cube();
+
+	{
+		mat4s projection = glms_perspective(glm_rad(45.0f), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+		glUseProgram(shaderProgram);
+		int loc = glGetUniformLocation(shaderProgram, "projection");
+		glUniformMatrix4fv(loc,1,GL_FALSE,&projection.col[0].raw[0]);	
+	}
+
+	{
+		mat4s model = GLMS_MAT4_IDENTITY_INIT;
+		glUseProgram(shaderProgram);
+		int loc = glGetUniformLocation(shaderProgram, "model");
+		glUniformMatrix4fv(loc,1,GL_FALSE,&model.col[0].raw[0]);	
+	}
+
+	init_camera();
 
     // render loop
     // -----------
     while (!glfwWindowShouldClose(window))
     {
-		glm_lookat(camera.position,camera.front,up,camera.lookAt);
+		processInput(window);
+		glm_lookat(camera.position.raw,camera.front.raw,up.raw,camera.lookAt.raw);
         // render
         // ------
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
@@ -232,6 +266,9 @@ int main()
 
 		// draw cube
 		glUseProgram(shaderProgram);
+		int look_at_loc = glGetUniformLocation(shaderProgram, "view");
+		glUniformMatrix4fv(look_at_loc,1,GL_FALSE,&camera.lookAt.col[0].raw[0]);	
+
 		glBindVertexArray(vao);
 		glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
 
@@ -265,11 +302,16 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height)
     glViewport(0, 0, width, height);
 }
 
-// ig we can just set this from the script
+void processInput(GLFWwindow *window)
+{
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+		camera.position = glms_vec3_add(camera.position,glms_vec3_scale_as(camera.position,speed));
+}
+// ig we can just define this function from script and set callback from the script
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
     if (key == GLFW_KEY_W && action == GLFW_PRESS)
 	{
-		
+		camera.position = glms_vec3_add(camera.position,glms_vec3_scale_as(camera.position,speed));
 	}
 }
