@@ -10,4 +10,6 @@ unsigned int create_program(unsigned int vertexShader, unsigned int fragmentShad
 
 void setUniformMat4(unsigned int shaderProgram,mat4s matrix, char* location);
 
+char* readFileToString(const char* filename);
+
 #endif

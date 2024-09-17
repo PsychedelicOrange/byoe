@@ -34,34 +34,4 @@ void init_glad(){
 	fflush(stdout);
 }
 
-char *readFileToString(const char *filename) {
-  // Open the file in read mode ("r")
-  FILE *file = fopen(filename, "r");
-  if (!file) {
-    printf("Could not open file %s\n", filename);
-    fflush(stdout);
-    return NULL;
-  }
-
-  // Move the file pointer to the end of the file to determine file size
-  fseek(file, 0, SEEK_END);
-  long fileSize = ftell(file);
-  rewind(file); // Move file pointer back to the beginning
-
-  // Allocate memory for the file content (+1 for the null terminator)
-  char *content = (char *)malloc((fileSize + 1) * sizeof(char));
-  if (!content) {
-    printf("Memory allocation failed\n");
-    fclose(file);
-    return NULL;
-  }
-
-  // Read file contents into the string
-  fread(content, sizeof(char), fileSize, file);
-  content[fileSize] = '\0'; // Null-terminate the string
-
-  // Close the file and return the content
-  fclose(file);
-  return content;
-}
 

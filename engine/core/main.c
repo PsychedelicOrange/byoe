@@ -160,8 +160,8 @@ int main()
 	gl_settings();
 	unsigned int shaderProgram;
 	{
-		unsigned int vertexShader  = compile_shader(readFileToString("engine/shaders/vertex"),GL_VERTEX_SHADER);
-		unsigned int fragShader  = compile_shader(readFileToString("engine/shaders/frag"),GL_FRAGMENT_SHADER);
+		unsigned int vertexShader  = compile_shader("engine/shaders/vertex",GL_VERTEX_SHADER);
+		unsigned int fragShader  = compile_shader("engine/shaders/frag",GL_FRAGMENT_SHADER);
 		shaderProgram = create_program(vertexShader,fragShader);
 	}
 

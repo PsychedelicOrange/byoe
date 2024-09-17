@@ -3,5 +3,5 @@
 	void crash_game(char* msg);
 	void init_glfw();
 	void init_glad();
-	char *readFileToString(const char *filename);
+	
 #endif
