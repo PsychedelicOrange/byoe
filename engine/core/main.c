@@ -5,37 +5,16 @@
 #include <stddef.h>
 #include <cglm/cglm.h>   /* for inline */
 #include <cglm/struct.h> /* struct api */
+#include "shader.h"
+#include "utils.h"
 
-char* readFileToString(const char* filename) {
-    // Open the file in read mode ("r")
-    FILE *file = fopen(filename, "r");
-    if (!file) {
-        printf("Could not open file %s\n", filename);
-		fflush(stdout);
-        return NULL;
-    }
+// -- -- -- -- -- -- Contants -- -- -- -- -- --- --
+// settings
+const unsigned int SCR_WIDTH = 800;
+const unsigned int SCR_HEIGHT = 600;
+vec3s up = {{0,1,0}};
+float speed = 0.1;
 
-    // Move the file pointer to the end of the file to determine file size
-    fseek(file, 0, SEEK_END);
-    long fileSize = ftell(file);
-    rewind(file);  // Move file pointer back to the beginning
-
-    // Allocate memory for the file content (+1 for the null terminator)
-    char *content = (char*)malloc((fileSize + 1) * sizeof(char));
-    if (!content) {
-        printf("Memory allocation failed\n");
-        fclose(file);
-        return NULL;
-    }
-
-    // Read file contents into the string
-    fread(content, sizeof(char), fileSize, file);
-    content[fileSize] = '\0';  // Null-terminate the string
-
-    // Close the file and return the content
-    fclose(file);
-    return content;
-}
 
 typedef struct Camera{
 	mat4s lookAt;
@@ -45,43 +24,17 @@ typedef struct Camera{
 }Camera;
 Camera camera;
 
-// -- -- -- -- -- -- Function declare -- -- -- -- -- --- --
 
-
-
-void crash_game(char* msg);
-
-void init_glfw();
+// -- -- function declare
+//
 GLFWwindow* create_glfw_window();
-void init_glad();
-
-unsigned int compile_shader(const char* source, int shaderType);
-unsigned int create_program(unsigned int vertexShader,unsigned int fragmentShader);
-
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void processInput(GLFWwindow* window);
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 
-// -- -- -- -- -- -- Contants -- -- -- -- -- --- --
-// settings
-const unsigned int SCR_WIDTH = 800;
-const unsigned int SCR_HEIGHT = 600;
-vec3s up = {{0,1,0}};
-float speed = 0.1;
 
-// -- -- -- -- -- -- GLFW Functions -- -- -- -- -- --- --
-void init_glfw(){
-    glfwInit();
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-#ifdef __APPLE__
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-#endif
-
-}
-
+// -- -- function define
+// 
 GLFWwindow* create_glfw_window(){
     GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "psychspiration", NULL, NULL);
     if (window == NULL)
@@ -95,61 +48,40 @@ GLFWwindow* create_glfw_window(){
 	return window;
 }
 
-void init_glad(){
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
-    {
-		crash_game("failed to initialize glad");
-    }
-	const GLubyte* vendor = glGetString(GL_VENDOR); // Returns the vendor
-	const GLubyte* renderer = glGetString(GL_RENDERER); // Returns a hint to the model
-	printf("\nVendor: %s",vendor);
-	printf("\nRenderer: %s",renderer);
-	fflush(stdout);
+void gl_settings(){
+	glEnable(GL_DEPTH_TEST);
 }
-// -- -- -- -- -- -- Shader functions -- -- -- -- -- --- --
-//
-unsigned int compile_shader(const char * shaderCode, int shaderType){
-	unsigned int shader = glCreateShader(shaderType);
-	glShaderSource(shader, 1, &shaderCode, NULL);
-	glCompileShader(shader);
-	// check for shader compile errors
-	int success;
-	char infoLog[512];
-	glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-	if (!success)
+
+// glfw: whenever the window size changed (by OS or user resize) this callback function executes
+void framebuffer_size_callback(GLFWwindow *window, int width, int height)
+{
+    // make sure the viewport matches the new window dimensions; note that width and 
+    // height will be significantly larger than specified on retina displays.
+    glViewport(0, 0, width, height);
+}
+
+void processInput(GLFWwindow *window)
+{
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+		camera.position = glms_vec3_add(camera.position,glms_vec3_scale_as(camera.front,speed));
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+		camera.position = glms_vec3_add(camera.position,glms_vec3_scale_as(camera.right,-speed));
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+		camera.position = glms_vec3_add(camera.position,glms_vec3_scale_as(camera.front,-speed));
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+		camera.position = glms_vec3_add(camera.position,glms_vec3_scale_as(camera.right,speed));
+}
+
+// ig we can just define this function from script and set callback from the script
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    if (key == GLFW_KEY_W && action == GLFW_PRESS)
 	{
-		glGetShaderInfoLog(shader, 512, NULL, infoLog);
-		printf("failed to compile shader: %s", infoLog);
-		return -1;
+		camera.position.x -= speed;
 	}
-	return shader;
 }
+// -- -- -- -- -- -- -- -- --
 
-unsigned int create_program(unsigned int vertexShader, unsigned int fragmentShader){
-    unsigned int shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glLinkProgram(shaderProgram);
-    // check for linking errors
-	int success;
-	char infoLog[512];
-    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-    if (!success) {
-        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
-		printf("failed to link shaders: %s",infoLog);
-		return -1;
-    }
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
-	return shaderProgram;
-}
-
-// -- -- -- -- -- -- Engine Helpers Functions -- -- -- -- -- --- --
-void crash_game(char* msg){
-	printf("\nGame crashed: %s\n",msg);
-	fflush(stdout);
-	exit(1);
-}
 GLuint setup_debug_cube(){
 	    GLfloat vertices[] = {
         // Front face
@@ -213,21 +145,19 @@ void init_camera(){
 
 	camera.front.x = 0;
 	camera.front.y = 0;
-	camera.front.z = -3;
+	camera.front.z = -1;
 
 	camera.right.x = 1;
 	camera.right.y = 0;
 	camera.right.z = 0;
 }
 
-// -- -- -- -- -- -- Math functions -- -- -- -- - -
-//
 int main()
 {
 	init_glfw();
 	GLFWwindow* window = create_glfw_window();
 	init_glad();
-	
+	gl_settings();
 	unsigned int shaderProgram;
 	{
 		unsigned int vertexShader  = compile_shader(readFileToString("engine/shaders/vertex"),GL_VERTEX_SHADER);
@@ -237,18 +167,12 @@ int main()
 
 	GLuint vao = setup_debug_cube();
 
+	// set uniforms
 	{
 		mat4s projection = glms_perspective(glm_rad(45.0f), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
-		glUseProgram(shaderProgram);
-		int loc = glGetUniformLocation(shaderProgram, "projection");
-		glUniformMatrix4fv(loc,1,GL_FALSE,&projection.col[0].raw[0]);	
-	}
-
-	{
+		setUniformMat4(shaderProgram,projection,"projection");
 		mat4s model = GLMS_MAT4_IDENTITY_INIT;
-		glUseProgram(shaderProgram);
-		int loc = glGetUniformLocation(shaderProgram, "model");
-		glUniformMatrix4fv(loc,1,GL_FALSE,&model.col[0].raw[0]);	
+		setUniformMat4(shaderProgram,model,"model");
 	}
 
 	init_camera();
@@ -258,16 +182,15 @@ int main()
     while (!glfwWindowShouldClose(window))
     {
 		processInput(window);
-		glm_lookat(camera.position.raw,camera.front.raw,up.raw,camera.lookAt.raw);
+		glm_look(camera.position.raw,camera.front.raw,up.raw,camera.lookAt.raw);
         // render
         // ------
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		// draw cube
 		glUseProgram(shaderProgram);
-		int look_at_loc = glGetUniformLocation(shaderProgram, "view");
-		glUniformMatrix4fv(look_at_loc,1,GL_FALSE,&camera.lookAt.col[0].raw[0]);	
+		setUniformMat4(shaderProgram,camera.lookAt,"view");
 
 		glBindVertexArray(vao);
 		glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
@@ -293,25 +216,3 @@ int main()
 }
 
 
-// glfw: whenever the window size changed (by OS or user resize) this callback function executes
-// ---------------------------------------------------------------------------------------------
-void framebuffer_size_callback(GLFWwindow *window, int width, int height)
-{
-    // make sure the viewport matches the new window dimensions; note that width and 
-    // height will be significantly larger than specified on retina displays.
-    glViewport(0, 0, width, height);
-}
-
-void processInput(GLFWwindow *window)
-{
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-		camera.position = glms_vec3_add(camera.position,glms_vec3_scale_as(camera.position,speed));
-}
-// ig we can just define this function from script and set callback from the script
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
-{
-    if (key == GLFW_KEY_W && action == GLFW_PRESS)
-	{
-		camera.position = glms_vec3_add(camera.position,glms_vec3_scale_as(camera.position,speed));
-	}
-}
