@@ -36,7 +36,7 @@ set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY ADDITIONAL_MAKE_CLEA
 target_compile_options(byoe_ghost_asteroids PRIVATE -Wall )
 target_include_directories(byoe_ghost_asteroids PRIVATE engine/core engine/external )
 
-if(unix)
+if(UNIX)
 target_link_libraries(
 	byoe_ghost_asteroids
 	PRIVATE
