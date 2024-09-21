@@ -1,9 +1,8 @@
 #include <glad/glad.h>
 #include <stdio.h>
 #include <stddef.h>
-#include <shader.h>
+#include "shader.h"
 // -- -- -- -- -- -- Shader functions -- -- -- -- -- --- --
-//
 unsigned int compile_shader(char * filePath, int shaderType){
 	char* shaderCode = readFileToString(filePath);
 	unsigned int shader = glCreateShader(shaderType);
@@ -53,7 +52,7 @@ void setUniformMat4(unsigned int shaderProgram,mat4s matrix, char* location){
 	glUniformMatrix4fv(loc,1,GL_FALSE,&matrix.col[0].raw[0]);	
 }
 
-static char* readFileToString(const char* filename) {
+char* readFileToString(const char* filename) {
 	// Open the file in read mode ("r")
 	FILE* file = fopen(filename, "r");
 	if (!file) {
