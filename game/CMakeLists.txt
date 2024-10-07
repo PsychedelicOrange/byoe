@@ -28,3 +28,10 @@ elseif(APPLE)
 elseif(UNIX)
     target_link_libraries(byoe_ghost_asteroids PRIVATE m X11)
 endif()
+
+target_include_directories(byoe_ghost_asteroids PUBLIC
+    ../engine
+    ../
+    $<TARGET_PROPERTY:cglm,INTERFACE_INCLUDE_DIRECTORIES>  # Automatically includes cglm headers
+    $<TARGET_PROPERTY:glfw,INTERFACE_INCLUDE_DIRECTORIES>   # Automatically includes GLFW headers
+)
