@@ -5,6 +5,8 @@
 
 #include "../scripting/scripting.h"
 
+#include <cglm/cglm.h>
+
 #define MAX_OBJECTS 100
 
 typedef struct GameObject
@@ -16,6 +18,7 @@ typedef struct GameObject
     UpdateFunction update;
 } GameObject;
 
+vec3 position = {1.0f, 2.0f, 3.0f};
 
 static GameObject gGameRegistry[MAX_OBJECTS];
 static uint32_t gNumObjects = 0;
