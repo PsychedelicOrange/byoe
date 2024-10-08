@@ -122,11 +122,10 @@ void unRegisterGameObjectType(const uuid_t uuid);
     static void register_##TypeName() { \
         UUID = registerGameObjectType(#TypeName, sizeof(DataType), StartFn, UpdateFn); \
     } \
-    static void autoRegister_##TypeName() { \
-        if (gAutoRegisterCount < MAX_OBJECTS) { \
-            autoRegisterFunctions[gAutoRegisterCount++] = register_##TypeName; \
-        } \
+    __attribute__((constructor)) static void autoRegister_##TypeName() { \
+        registerAutoRegisterFunction(register_##TypeName); \
     }
+    
 
 #define UNREGISTER_GAME_OBJECT(uuid) \
     unregisterGameObject(uuid)

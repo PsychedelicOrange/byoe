@@ -8,17 +8,9 @@
 typedef void (*AutoRegisterFn)(); // Function pointer type for auto-register functions
 
 AutoRegisterFn autoRegisterFunctions[MAX_OBJECTS];
-static int gAutoRegisterCount;
+extern int gAutoRegisterCount;
 
-static void autoRegisterGameObjects()
-{
-    printf("autoregister count : %d", gAutoRegisterCount);
-
-    // Call all auto-register functions
-    for (int i = 0; i < gAutoRegisterCount; i++) {
-        autoRegisterFunctions[i](); // Call the registered auto-register function
-    }
-
-}
+void registerAutoRegisterFunction(AutoRegisterFn func);
+void autoRegisterGameObjects();
 
 #endif // GAME_REGISTRY_H
