@@ -1,0 +1,21 @@
+Movement
+------------------------
+[x] basic movement
+[x] add rolling to the ball
+
+Graphics
+------------------------
+[x] pipeline setup
+[x] model loading
+[x] texture loading/ materials
+
+Gameplay
+------------------------
+[x] ant eating logic
+[ ] Meters ! health display
+[x] enemies shooting logic
+[ ] bullet shooting logic
+
+Misc
+------------------------
+[ ] Image loading 

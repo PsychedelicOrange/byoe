@@ -81,8 +81,8 @@ Sphere generateSphere(float radius, int subdivisions) {
     // Generate sphere vertices and indices
 	for (int i = 0; i <= subdivisions; ++i) {
 		for (int j = 0; j <= subdivisions; ++j) {
-			float theta = i * M_PI / subdivisions;
-			float phi = j * 2 * M_PI / subdivisions;
+			float theta = i * 3.14f / subdivisions;
+			float phi = j * 2 * 3.14f / subdivisions;
 
 			float x = radius * sin(theta) * cos(phi);
 			float y = radius * sin(theta) * sin(phi);
