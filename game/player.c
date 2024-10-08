@@ -9,9 +9,6 @@ typedef struct PlayerData
     uint32_t health;
 } PlayerData;
 
-// Init some data
-PlayerData playerData = {};
-
 void Player_Start(void* gameState, void* gameObjData)
 {
     PlayerData* data = (PlayerData*)gameObjData;
@@ -23,5 +20,9 @@ void Player_Update(void* gameState, void* gameObjData, float dt)
 
 }
 
+uuid_t playerUUID;
 
-REGISTER_GAME_OBJECT(Player, playerData, Player_Start, Player_Update);
+void init()
+{
+    playerUUID = registerGameObjectType("Player", sizeof(PlayerData), Player_Start, Player_Update);
+}
