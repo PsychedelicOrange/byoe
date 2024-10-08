@@ -15,3 +15,6 @@
         #define BYOE_API
     #endif
 #endif
+
+// Manimum number of game Object Instances in the game world at any moment
+#define MAX_OBJECTS 1024

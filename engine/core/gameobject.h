@@ -8,11 +8,11 @@
 #include <cglm/cglm.h>
 
 // proj
+#include "common.h"
 #include "../scripting/scripting.h"
 #include "uuid/uuid.h"
 
-// Manimum number og game Object Instances in the game world at any moment
-#define MAX_OBJECTS 1024
+#include "game_registry.h"
 
 typedef struct GameObject
 {
@@ -118,7 +118,15 @@ void unRegisterGameObjectType(const uuid_t uuid);
 /*******************************/
 
 // Macro for quick game object registration and spawning in the game world
-#define REGISTER_GAME_OBJECT(TypeName, DataTypeSize, StartFn, UpdateFn) 
+#define REGISTER_GAME_OBJECT(UUID, TypeName, DataType, StartFn, UpdateFn) \
+    static void register_##TypeName() { \
+        UUID = registerGameObjectType(#TypeName, sizeof(DataType), StartFn, UpdateFn); \
+    } \
+    static void autoRegister_##TypeName() { \
+        if (gAutoRegisterCount < MAX_OBJECTS) { \
+            autoRegisterFunctions[gAutoRegisterCount++] = register_##TypeName; \
+        } \
+    }
 
 #define UNREGISTER_GAME_OBJECT(uuid) \
     unregisterGameObject(uuid)

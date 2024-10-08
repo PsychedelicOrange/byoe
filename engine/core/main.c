@@ -8,6 +8,9 @@
 #include "shader.h"
 #include "utils.h"
 
+#include "game_registry.h"
+#include "game_state.h"
+
 // -- -- -- -- -- -- Contants -- -- -- -- -- --- --
 // settings
 const unsigned int SCR_WIDTH = 800;
@@ -186,23 +189,45 @@ int main()
 
 	init_camera();
 
+    ////////////////////////////////////////////////////////
+    // AUTO REGISTER GAME OBJECTS
+    autoRegisterGameObjects();
+
+    startGameObjects();
+
+    ////////////////////////////////////////////////////////
+
     // render loop
     // -----------
+    float deltaTime; // Time between current frame and last frame
+    float lastFrame = 0.0f; // Time of the last frame
+
     while (!glfwWindowShouldClose(window))
     {
-		processInput(window);
-		glm_look(camera.position.raw,camera.front.raw,up.raw,camera.lookAt.raw);
-        // render
+        // Get current time
+        float currentFrame = glfwGetTime();
+        deltaTime = currentFrame - lastFrame; // Calculate delta time
+        lastFrame = currentFrame; // Update last frame time
+
+        processInput(window);
+
+        // TODO: Update Game State here with input polling
+        // TESTING UPDATE LOOP
+        updateGameObjects(deltaTime);
+
+        glm_look(camera.position.raw, camera.front.raw, up.raw, camera.lookAt.raw);
+
+        // Render
         // ------
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		// draw cube
-		glUseProgram(shaderProgram);
-		setUniformMat4(shaderProgram,camera.lookAt,"view");
+        // Draw cube
+        glUseProgram(shaderProgram);
+        setUniformMat4(shaderProgram, camera.lookAt, "view");
 
-		glBindVertexArray(vao);
-		glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+        glBindVertexArray(vao);
+        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------

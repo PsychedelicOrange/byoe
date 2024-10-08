@@ -17,12 +17,8 @@ void Player_Start(void* gameState, void* gameObjData)
 
 void Player_Update(void* gameState, void* gameObjData, float dt)
 {
-
+    printf("deltaTime : %f", dt);
 }
 
 uuid_t playerUUID;
-
-void init()
-{
-    playerUUID = registerGameObjectType("Player", sizeof(PlayerData), Player_Start, Player_Update);
-}
+REGISTER_GAME_OBJECT(playerUUID, Player, PlayerData, Player_Start, Player_Update);
