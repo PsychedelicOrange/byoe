@@ -32,8 +32,8 @@ typedef struct HashMapNode {
     bool occupied;             // Is this slot occupied?
 } HashMapNode;
 
-static HashMapNode* gGameRegistry = NULL;
-static uint32_t gNumObjects = 0;
+HashMapNode gGameRegistry[MAX_OBJECTS];
+uint32_t gNumObjects;
 
 /*******************************/
 // HashMap Helpers
@@ -89,7 +89,6 @@ static int findNodeIndex(const char* key) {
 
 // Initialize the game object registry
 static void initGameRegistry() {
-    gGameRegistry = (HashMapNode*)calloc(MAX_OBJECTS, sizeof(HashMapNode));
     gNumObjects = 0;
 }
 
@@ -100,8 +99,6 @@ static void cleanupGameRegistry() {
             free(gGameRegistry[i].value.gameObjectData);  // Free allocated game object data
         }
     }
-    free(gGameRegistry);
-    gGameRegistry = NULL;
     gNumObjects = 0;
 }
 

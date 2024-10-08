@@ -8,5 +8,5 @@ void Player_Start(void* gameState, void* gameObjData)
 
 void Player_Update(void* gameState, void* gameObjData, float dt)
 {
-    printf("deltaTime : %f", dt);
+    printf("[Player Script] deltaTime : %f \n", dt);
 }
