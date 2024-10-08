@@ -12,8 +12,6 @@
 #include "../scripting/scripting.h"
 #include "uuid/uuid.h"
 
-#include "game_registry.h"
-
 typedef struct GameObject
 {
     uuid_t uuid;
@@ -119,12 +117,7 @@ void unRegisterGameObjectType(const uuid_t uuid);
 
 // Macro for quick game object registration and spawning in the game world
 #define REGISTER_GAME_OBJECT(UUID, TypeName, DataType, StartFn, UpdateFn) \
-    static void register_##TypeName() { \
-        UUID = registerGameObjectType(#TypeName, sizeof(DataType), StartFn, UpdateFn); \
-    } \
-    __attribute__((constructor)) static void autoRegister_##TypeName() { \
-        registerAutoRegisterFunction(register_##TypeName); \
-    }
+        UUID = registerGameObjectType(#TypeName, sizeof(DataType), StartFn, UpdateFn);
     
 
 #define UNREGISTER_GAME_OBJECT(uuid) \

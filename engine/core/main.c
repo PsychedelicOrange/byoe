@@ -8,8 +8,9 @@
 #include "shader.h"
 #include "utils.h"
 
-#include "game_registry.h"
 #include "game_state.h"
+
+extern int game_main_register_gameobjects();
 
 // -- -- -- -- -- -- Contants -- -- -- -- -- --- --
 // settings
@@ -189,12 +190,11 @@ int main()
 
 	init_camera();
 
-    ////////////////////////////////////////////////////////
-    // AUTO REGISTER GAME OBJECTS
-    autoRegisterGameObjects();
+    //////////////////////////////////////////////////////// 
+    // START GAME RUNTIME
+    game_main_register_gameobjects();
 
     startGameObjects();
-
     ////////////////////////////////////////////////////////
 
     // render loop
