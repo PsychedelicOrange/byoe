@@ -1,5 +1,7 @@
 #include "camera_controller.h"
 
+uuid_t cameraUUID;
+
 void Camera_Start(void* gameState, void* gameObjData)
 {
     

@@ -1,5 +1,7 @@
 #include "player.h"
 
+uuid_t playerUUID;
+
 void Player_Start(void* gameState, void* gameObjData)
 {
     PlayerData* data = (PlayerData*)gameObjData;

@@ -11,7 +11,7 @@ typedef struct PlayerData
     uint32_t health;
 } PlayerData;
 
-uuid_t playerUUID;
+extern uuid_t playerUUID;
 
 void Player_Start(void* gameState, void* gameObjData);
 void Player_Update(void* gameState, void* gameObjData, float dt);

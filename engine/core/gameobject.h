@@ -32,8 +32,8 @@ typedef struct HashMapNode {
     bool occupied;             // Is this slot occupied?
 } HashMapNode;
 
-HashMapNode gGameRegistry[MAX_OBJECTS];
-uint32_t gNumObjects;
+extern HashMapNode gGameRegistry[MAX_OBJECTS];
+extern uint32_t gNumObjects;
 
 /*******************************/
 // HashMap Helpers
