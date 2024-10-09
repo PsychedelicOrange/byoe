@@ -5,7 +5,7 @@ uint32_t gNumObjects = 0;
 
 uuid_t registerGameObjectType(const char* typeName, uint32_t gameObjectDataSize, StartFunction StartFn, UpdateFunction UpdateFn)
 {
-    uuid_t uuid;
+    uuid_t uuid = {0, 0, 0, 0};
 
     if (gNumObjects >= MAX_OBJECTS) return uuid;  // Registry is full
 

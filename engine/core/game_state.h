@@ -12,7 +12,7 @@ GameState gGlobalGameState;
 static void startGameObjects()
 {
     // Call start functions for all registered game objects
-    for (int i = 0; i < gNumObjects; i++) {
+    for (uint32_t i = 0; i < gNumObjects; i++) {
         gGameRegistry[i].value.startFn(&gGlobalGameState, gGameRegistry[i].value.gameObjectData); // Pass game state and game object data as needed
     }
 }
@@ -20,7 +20,7 @@ static void startGameObjects()
 static void updateGameObjects(float dt)
 {
     // Call start functions for all registered game objects
-    for (int i = 0; i < gNumObjects; i++) {
+    for (uint32_t i = 0; i < gNumObjects; i++) {
         gGameRegistry[i].value.updateFn(&gGlobalGameState, gGameRegistry[i].value.gameObjectData, dt);
     }
 }

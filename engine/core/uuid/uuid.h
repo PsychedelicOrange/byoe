@@ -6,7 +6,7 @@
 #include <string.h>
 #include <time.h>
 
-typedef struct {
+typedef struct uuid_t {
     uint32_t data[4]; // 32 bits * 4 = 128 bits
 } uuid_t;
 

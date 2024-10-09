@@ -35,3 +35,9 @@ target_include_directories(byoe_ghost_asteroids PUBLIC
     $<TARGET_PROPERTY:cglm,INTERFACE_INCLUDE_DIRECTORIES>  # Automatically includes cglm headers
     $<TARGET_PROPERTY:glfw,INTERFACE_INCLUDE_DIRECTORIES>   # Automatically includes GLFW headers
 )
+
+if(MSVC)
+  target_compile_options(byoe_ghost_asteroids PRIVATE /W4 /WX)
+else()
+  target_compile_options(byoe_ghost_asteroids PRIVATE -Wall -Wextra -Wpedantic -Werror -Wno-strict-prototypes -Wno-newline-eof -Wno-unused-function)
+endif()

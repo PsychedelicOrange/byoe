@@ -41,3 +41,9 @@ if(WIN32 AND BUILD_SHARED_ENGINE)
         WINDOWS_EXPORT_ALL_SYMBOLS ON
     )
 endif()
+
+if(MSVC)
+  target_compile_options(engine PRIVATE /W4 /WX)
+else()
+  target_compile_options(engine PRIVATE -Wall -Wextra -Wpedantic -Werror -Wno-strict-prototypes -Wno-newline-eof -Wno-unused-function)
+endif()

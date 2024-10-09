@@ -68,6 +68,7 @@ void gl_settings(){
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
 void framebuffer_size_callback(GLFWwindow *window, int width, int height)
 {
+    (void)window;
     // make sure the viewport matches the new window dimensions; note that width and 
     // height will be significantly larger than specified on retina displays.
     glViewport(0, 0, width, height);
@@ -88,6 +89,10 @@ void processInput(GLFWwindow *window)
 // ig we can just define this function from script and set callback from the script
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
+    (void)window;
+    (void) scancode;
+    (void) mods;
+
     if (key == GLFW_KEY_W && action == GLFW_PRESS)
 	{
 		camera.position.x -= speed;

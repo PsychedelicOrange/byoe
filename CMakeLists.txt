@@ -6,6 +6,9 @@ project(byoe_ghost_asteroids C)
 # Options to build the engine as DLL or static library
 option(BUILD_SHARED_ENGINE "Build engine as shared library (DLL)" OFF)
 ####################################################################
+## GLOBAL COMPILATION SETTINGS
+set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
+####################################################################
 ## SOURCES
 # Add subdirectories for engine and game
 add_subdirectory(engine)
@@ -44,3 +47,6 @@ add_custom_target(run
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     COMMENT "Running the byoe_ghost_asteroids executable"
 )
+
+add_compile_options(-Wno-newline-eof)
+add_compile_options(-Wno-strict-prototypes)
