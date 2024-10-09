@@ -8,6 +8,10 @@
 #include "shader.h"
 #include "utils.h"
 
+#include "game_state.h"
+
+extern int game_main_register_gameobjects();
+
 // -- -- -- -- -- -- Contants -- -- -- -- -- --- --
 // settings
 const unsigned int SCR_WIDTH = 800;
@@ -36,6 +40,15 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 // -- -- function define
 // 
 GLFWwindow* create_glfw_window(){
+    
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    
+#ifdef __APPLE__
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+#endif
+    
     GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "psychspiration", NULL, NULL);
     if (window == NULL)
     {
@@ -55,6 +68,7 @@ void gl_settings(){
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
 void framebuffer_size_callback(GLFWwindow *window, int width, int height)
 {
+    (void)window;
     // make sure the viewport matches the new window dimensions; note that width and 
     // height will be significantly larger than specified on retina displays.
     glViewport(0, 0, width, height);
@@ -75,6 +89,10 @@ void processInput(GLFWwindow *window)
 // ig we can just define this function from script and set callback from the script
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
+    (void)window;
+    (void) scancode;
+    (void) mods;
+
     if (key == GLFW_KEY_W && action == GLFW_PRESS)
 	{
 		camera.position.x -= speed;
@@ -177,23 +195,44 @@ int main()
 
 	init_camera();
 
+    //////////////////////////////////////////////////////// 
+    // START GAME RUNTIME
+    game_main_register_gameobjects();
+
+    startGameObjects();
+    ////////////////////////////////////////////////////////
+
     // render loop
     // -----------
+    float deltaTime; // Time between current frame and last frame
+    float lastFrame = 0.0f; // Time of the last frame
+
     while (!glfwWindowShouldClose(window))
     {
-		processInput(window);
-		glm_look(camera.position.raw,camera.front.raw,up.raw,camera.lookAt.raw);
-        // render
+        // Get current time
+        float currentFrame = glfwGetTime();
+        deltaTime = currentFrame - lastFrame; // Calculate delta time
+        lastFrame = currentFrame; // Update last frame time
+
+        processInput(window);
+
+        // TODO: Update Game State here with input polling
+        // TESTING UPDATE LOOP
+        updateGameObjects(deltaTime);
+
+        glm_look(camera.position.raw, camera.front.raw, up.raw, camera.lookAt.raw);
+
+        // Render
         // ------
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		// draw cube
-		glUseProgram(shaderProgram);
-		setUniformMat4(shaderProgram,camera.lookAt,"view");
+        // Draw cube
+        glUseProgram(shaderProgram);
+        setUniformMat4(shaderProgram, camera.lookAt, "view");
 
-		glBindVertexArray(vao);
-		glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+        glBindVertexArray(vao);
+        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------

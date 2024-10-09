@@ -11,7 +11,6 @@ unsigned int compile_shader(char * filePath, int shaderType){
 	glCompileShader(shader);
 	// check for shader compile errors
 	int success;
-	char infoLog[512];
 	glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
 	if (!success)
 	{
@@ -74,7 +73,7 @@ static char* readFileToString(const char* filename) {
 		fclose(file);
 		return NULL;
 	}
-	for (int i = 0; i < fileSize + 1; i++) {
+	for (size_t i = 0; i < fileSize + 1; i++) {
 		content[i] = '\0';
 	}
 	// Read file contents into the string
