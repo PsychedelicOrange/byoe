@@ -12,6 +12,8 @@ file(GLOB_RECURSE engine_headers
     "external/*.h"
 )
 
+SOURCE_GROUP(engine FILES ${engine_sources} ${engine_headers})
+
 # Set the C standard for this project
 set(CMAKE_C_STANDARD 99)   # Set C standard (11, 99, 90, etc.)
 set(CMAKE_C_STANDARD_REQUIRED ON)  # Ensure the standard is required
@@ -49,7 +51,7 @@ if(WIN32 AND BUILD_SHARED_ENGINE)
 endif()
 
 if(MSVC)
-  target_compile_options(engine PRIVATE /W4 /WX)
+  target_compile_options(engine PRIVATE /W4 /WX /wd4996)
 else()
   target_compile_options(engine PRIVATE -Wall -Wextra -Wpedantic -Werror -Wno-newline-eof)
 endif()

@@ -7,24 +7,21 @@
 void gameobjects_start(void)
 {
     hash_map_iterator_t it = hash_map_iterator_begin(gGameRegistry);
-    for (size_t i = 0; i < gGameRegistry->length; i++)
+    while (hash_map_parse_next(&it))
     {
-        hash_map_parse_next(&it);
-        GameObject* gameobject = hash_map_get_value(gGameRegistry,  it.current_pair->key);
-        if(gameobject)
-            gameobject->startFn(&gGlobalGameState, gameobject->gameObjectData);
+        GameObject* go = (GameObject*)it.current_pair.value;
+        if (go)
+            go->startFn(&gGlobalGameState, go->gameObjectData);
     }
 }
 
 void gameobjects_update(float dt)
 {
     hash_map_iterator_t it = hash_map_iterator_begin(gGameRegistry);
-    printf("game registry size: %zu\n", gGameRegistry->length);
-    for (size_t i = 0; i < gGameRegistry->length; i++)
+    while (hash_map_parse_next(&it))
     {
-        hash_map_parse_next(&it);
-        GameObject* gameobject = hash_map_get_value(gGameRegistry,  it.current_pair->key);
-        if(gameobject)
-            gameobject->updateFn(&gGlobalGameState, gameobject->gameObjectData, dt);
+        GameObject* go = (GameObject*)it.current_pair.value;
+        if (go)
+            go->updateFn(&gGlobalGameState, go->gameObjectData, dt);
     }
 }

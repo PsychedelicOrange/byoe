@@ -19,7 +19,7 @@ extern int game_main(void);
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 vec3s up = {{0,1,0}};
-float speed = 0.1;
+float speed = 0.1f;
 
 
 typedef struct Camera{
@@ -217,7 +217,7 @@ int main(int argc, char** argv)
     while (!glfwWindowShouldClose(window))
     {
         // Get current time
-        float currentFrame = glfwGetTime();
+        float currentFrame = (float)glfwGetTime();
         deltaTime = currentFrame - lastFrame; // Calculate delta time
         lastFrame = currentFrame; // Update last frame time
 

@@ -45,7 +45,7 @@ target_include_directories(byoe_ghost_asteroids PUBLIC
 )
 
 if(MSVC)
-  target_compile_options(byoe_ghost_asteroids PRIVATE /W4 /WX)
+  target_compile_options(byoe_ghost_asteroids PRIVATE /W4 /WX /wd4996)
 else()
   target_compile_options(byoe_ghost_asteroids PRIVATE -Wall -Wextra -Wpedantic -Werror -Wno-newline-eof)
 endif()

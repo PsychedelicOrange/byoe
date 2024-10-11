@@ -39,7 +39,7 @@ unsigned int create_program(unsigned int vertexShader, unsigned int fragmentShad
     if (!success) {
         glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
 		printf("\nfailed to link shaders: %s",infoLog);
-		return -1;
+		return (unsigned int) - 1;
     }
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);

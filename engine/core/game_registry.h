@@ -37,7 +37,7 @@ void unregister_gameobject_type(const uuid_t uuid);
 
 // Macro for quick game object registration and spawning in the game world
 #define REGISTER_GAME_OBJECT(UUID, TypeName, DataType, StartFn, UpdateFn) \
-        UUID = register_gameobject_type(#TypeName, sizeof(DataType), StartFn, UpdateFn);
+        UUID = register_gameobject_type(TypeName, sizeof(DataType), StartFn, UpdateFn);
     
 
 #define UNREGISTER_GAME_OBJECT(uuid) \

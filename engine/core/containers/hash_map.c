@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h> // strcmp
 
+#include "uuid/uuid.h"
+
 // [source]: Hash hash_map Hash Function: FNV-1a
 // https://en.wikipedia.org/wiki/Fowler–Noll–Vo_hash_function#FNV-1a_hash
 // https://benhoyt.com/writings/hash-hash_map-in-c/
@@ -17,25 +19,24 @@
 static uint64_t fnv1a_hash(uint8_t* key)
 {
     uint64_t hash = FNV_offset_basis;
-    while(*key){
+    while (*key) {
         hash ^= (uint64_t)(unsigned char*)(key); // bitwise XOR
         hash *= FNV_prime;                       // multiply
         key++;
     }
-    // printf("FNV-1a hash of '%s': %llu\n", key, hash);
     return hash;
 }
 
 static void hash_map_set_entry(hash_map_pair_t* hash_map_entries, size_t capacity, const char* key, void* value, size_t* plength)
 {
-    // first comupte the hash for the key
+    // first compute the hash for the key
     uint64_t hash = fnv1a_hash((uint8_t*)key);
     // wrap it around capacity
     size_t index = (size_t)(hash & (uint64_t)(capacity - 1));
 
     while (hash_map_entries[index].key != NULL)
     {
-        if(strcmp(key, hash_map_entries[index].key) == 0) {
+        if (strcmp(key, hash_map_entries[index].key) == 0) {
             // entry found update it (empty/existing)
             hash_map_entries[index].value = value;
             return;
@@ -43,7 +44,7 @@ static void hash_map_set_entry(hash_map_pair_t* hash_map_entries, size_t capacit
 
         // linear probing
         index++;
-        if(index >= capacity)
+        if (index >= capacity)
             index = 0;
     }
 
@@ -105,7 +106,11 @@ hash_map_t* hash_map_create(size_t initial_capacity)
 void hash_map_destroy(hash_map_t* hash_map)
 {
     for (size_t i = 0; i < hash_map->capacity; i++) {
-        free((void*)hash_map->entries[i].key);
+        if (hash_map->entries[i].key)
+            free((void*)hash_map->entries[i].key);
+        if (hash_map->entries[i].value)
+            free((void*)hash_map->entries[i].value);
+
     }
     free(hash_map->entries);
     free(hash_map);
@@ -124,13 +129,13 @@ void* hash_map_get_value(const hash_map_t* hash_map, const char* key)
     while (hash_map->entries[index].key != NULL)
     {
         // if empty key found
-        if(strcmp(key, hash_map->entries[index].key) == 0){
+        if (strcmp(key, hash_map->entries[index].key) == 0) {
             return hash_map->entries[index].value;
         }
 
         // linear probing
         index++;
-        if(index >= hash_map->capacity)
+        if (index >= hash_map->capacity)
             index = 0;
     }
     return NULL;
@@ -146,7 +151,6 @@ void hash_map_set_key_value(hash_map_t* hash_map, const char* key, void* value)
     }
 
     hash_map_set_entry(hash_map->entries, hash_map->capacity, key, value, &hash_map->length);
-
 }
 
 void hash_map_set_key_value_pair(hash_map_t* hash_map, hash_map_pair_t* pair)
@@ -157,13 +161,15 @@ void hash_map_set_key_value_pair(hash_map_t* hash_map, hash_map_pair_t* pair)
 void hash_map_remove_entry(hash_map_t* hash_map, const char* key)
 {
     hash_map_iterator_t it = hash_map_iterator(hash_map, key);
-    free(it.current_pair);
+    if (it.current_pair.key)
+        free(it.current_pair.key);
+    if (it.current_pair.value)
+        free(it.current_pair.value);
 }
 
 hash_map_iterator_t hash_map_iterator_begin(hash_map_t* hash_map)
 {
     hash_map_iterator_t it;
-    it.current_pair = &hash_map->entries[0];
     it.hash_map_ref = hash_map;
     it.index = 0;
     return it;
@@ -171,10 +177,10 @@ hash_map_iterator_t hash_map_iterator_begin(hash_map_t* hash_map)
 
 hash_map_iterator_t hash_map_iterator(hash_map_t* hash_map, const char* key)
 {
-    hash_map_iterator_t it;
+    hash_map_iterator_t it = {};
     it.hash_map_ref = hash_map;
 
-    // first comupte the hash for the key
+    // first compute the hash for the key
     uint64_t hash = fnv1a_hash((uint8_t*)key);
     // wrap it around capacity
     it.index = (size_t)(hash & (uint64_t)(hash_map->capacity - 1));
@@ -182,14 +188,13 @@ hash_map_iterator_t hash_map_iterator(hash_map_t* hash_map, const char* key)
     while (hash_map->entries[it.index].key != NULL)
     {
         // if empty key found
-        if(strcmp(key, hash_map->entries[it.index].key) == 0){
-           it.current_pair->value = hash_map->entries[it.index].value;
-           it.current_pair->key = hash_map->entries[it.index].key;
+        if (strcmp(key, hash_map->entries[it.index].key) == 0) {
+            it.current_pair = hash_map->entries[it.index];
         }
 
         // linear probing
         it.index++;
-        if(it.index >= hash_map->capacity)
+        if (it.index >= hash_map->capacity)
             it.index = 0;
     }
 
@@ -206,8 +211,8 @@ bool hash_map_parse_next(hash_map_iterator_t* iterator)
         if (hash_map->entries[i].key != NULL) {
             // Found next non-empty item, update iterator key and value.
             hash_map_pair_t entry = hash_map->entries[i];
-            iterator->current_pair->key = entry.key;
-            iterator->current_pair->value = entry.value;
+            iterator->current_pair.key = entry.key;
+            iterator->current_pair.value = entry.value;
             return true;
         }
     }
