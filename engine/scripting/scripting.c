@@ -19,6 +19,7 @@ void gameobjects_start(void)
 void gameobjects_update(float dt)
 {
     hash_map_iterator_t it = hash_map_iterator_begin(gGameRegistry);
+    printf("game registry size: %zu\n", gGameRegistry->length);
     for (size_t i = 0; i < gGameRegistry->length; i++)
     {
         hash_map_parse_next(&it);

@@ -1,6 +1,6 @@
 #include "game_registry.h"
 
-#include "log/log.h"
+#include "logging/log.h"
 
 #include "gameobject.h"
 

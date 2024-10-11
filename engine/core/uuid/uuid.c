@@ -2,7 +2,7 @@
 
 void uuid_generate(uuid_t* out) {
     // Seed the random number generator with the current time
-    srand((unsigned int)time(NULL));
+    //srand((unsigned int)time(NULL));
 
     // Generate random 32-bit values for each part of the UUID
     for (int i = 0; i < 4; i++) {
