@@ -4,6 +4,12 @@ file(GLOB_RECURSE game_sources
     "*.c"
     "*.h"
 )
+
+# Set the C standard for this project
+set(CMAKE_C_STANDARD 99)   # Set C standard (11, 99, 90, etc.)
+set(CMAKE_C_STANDARD_REQUIRED ON)  # Ensure the standard is required
+set(CMAKE_C_EXTENSIONS OFF)  # Disable compiler-specific extensions
+
 ####################################################################
 # Add executable
 add_executable(byoe_ghost_asteroids ${game_sources})
@@ -24,6 +30,8 @@ elseif(APPLE)
         "-framework CoreVideo"
         "-framework OpenGL"
     )
+
+set_target_properties(engine PROPERTIES C_STANDARD 11)
 
 elseif(UNIX)
     target_link_libraries(byoe_ghost_asteroids PRIVATE m X11)

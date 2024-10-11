@@ -12,6 +12,11 @@ file(GLOB_RECURSE engine_headers
     "external/*.h"
 )
 
+# Set the C standard for this project
+set(CMAKE_C_STANDARD 99)   # Set C standard (11, 99, 90, etc.)
+set(CMAKE_C_STANDARD_REQUIRED ON)  # Ensure the standard is required
+set(CMAKE_C_EXTENSIONS OFF)  # Disable compiler-specific extensions
+
 # Add library based on the BUILD_SHARED_ENGINE option
 if(BUILD_SHARED_ENGINE)
     add_library(engine SHARED ${engine_sources} ${engine_headers})
@@ -25,6 +30,7 @@ target_link_libraries(engine PRIVATE glfw cglm)
 
 # Set output name for the library
 set_target_properties(engine PROPERTIES OUTPUT_NAME "engine")
+set_target_properties(engine PROPERTIES C_STANDARD 11)
 
 # include directories
 target_include_directories(engine PUBLIC
