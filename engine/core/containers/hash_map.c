@@ -177,7 +177,7 @@ hash_map_iterator_t hash_map_iterator_begin(hash_map_t* hash_map)
 
 hash_map_iterator_t hash_map_iterator(hash_map_t* hash_map, const char* key)
 {
-    hash_map_iterator_t it = {};
+    hash_map_iterator_t it;
     it.hash_map_ref = hash_map;
 
     // first compute the hash for the key

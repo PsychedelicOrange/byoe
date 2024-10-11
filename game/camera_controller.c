@@ -14,5 +14,5 @@ void Camera_Update(void* gameState, void* gameObjData, float dt)
     (void) gameObjData;
     (void) dt;
     
-    printf("[Camera Script] deltaTime : %f \n", dt);
+    printf("[Camera Script] deltaTime : %fms \n", dt * 1000);
 }
