@@ -29,8 +29,8 @@ void init_glad(void){
     }
 	const GLubyte* vendor = glGetString(GL_VENDOR); // Returns the vendor
 	const GLubyte* renderer = glGetString(GL_RENDERER); // Returns a hint to the model
-	printf("\nVendor: %s",vendor);
-	printf("\nRenderer: %s",renderer);
+	printf("\nVendor: %s \n",vendor);
+	printf("\nRenderer: %s \n",renderer);
 	fflush(stdout);
 }
 

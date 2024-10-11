@@ -10,6 +10,7 @@
 #include "utils.h"
 #include "game_state.h"
 #include "scripting.h"
+#include "game_registry.h"
 
 extern int game_main(void);
 
@@ -201,6 +202,8 @@ int main(int argc, char** argv)
 
     //////////////////////////////////////////////////////// 
     // START GAME RUNTIME
+    init_game_registry();
+
     game_main();
 
     gameobjects_start();
@@ -243,6 +246,9 @@ int main(int argc, char** argv)
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
+
+    cleanup_game_registry();
+    
 
     // optional: de-allocate all resources once they've outlived their purpose:
     // ------------------------------------------------------------------------

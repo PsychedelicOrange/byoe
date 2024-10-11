@@ -7,17 +7,23 @@
 void gameobjects_start(void)
 {
     hash_map_iterator_t it = hash_map_iterator_begin(gGameRegistry);
-    while(hash_map_parse_next(&it)){
+    for (size_t i = 0; i < gGameRegistry->length; i++)
+    {
+        hash_map_parse_next(&it);
         GameObject* gameobject = hash_map_get_value(gGameRegistry,  it.current_pair->key);
-        gameobject->startFn(&gGlobalGameState, gameobject->gameObjectData);
+        if(gameobject)
+            gameobject->startFn(&gGlobalGameState, gameobject->gameObjectData);
     }
 }
 
 void gameobjects_update(float dt)
 {
     hash_map_iterator_t it = hash_map_iterator_begin(gGameRegistry);
-    while(hash_map_parse_next(&it)){
+    for (size_t i = 0; i < gGameRegistry->length; i++)
+    {
+        hash_map_parse_next(&it);
         GameObject* gameobject = hash_map_get_value(gGameRegistry,  it.current_pair->key);
-        gameobject->updateFn(&gGlobalGameState, gameobject->gameObjectData, dt);
+        if(gameobject)
+            gameobject->updateFn(&gGlobalGameState, gameobject->gameObjectData, dt);
     }
 }

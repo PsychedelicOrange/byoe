@@ -22,7 +22,7 @@ static uint64_t fnv1a_hash(uint8_t* key)
         hash *= FNV_prime;                       // multiply
         key++;
     }
-    printf("FNV-1a hash of '%s': %llu\n", key, hash);
+    // printf("FNV-1a hash of '%s': %llu\n", key, hash);
     return hash;
 }
 
