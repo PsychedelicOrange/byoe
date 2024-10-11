@@ -10,7 +10,7 @@ void crash_game(char* msg){
 	exit(1);
 }
 
-void init_glfw(){
+void init_glfw(void){
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -22,7 +22,7 @@ void init_glfw(){
 
 }
 
-void init_glad(){
+void init_glad(void){
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
 		crash_game("failed to initialize glad");

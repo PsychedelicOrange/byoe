@@ -5,22 +5,25 @@
 #include <stdint.h>
 
 #include "common.h"
-#include "../scripting/scripting.h"
-#include "uuid/uuid.h"
+
 #include "containers/hash_map.h"
+#include "uuid/uuid.h"
+
+#include "../scripting/scripting.h"
+
 
 /*******************************/
 // GameObjects Registry
 /*******************************/
 
-extern hash_map_t gGameRegistry[MAX_OBJECTS];
+extern hash_map_t* gGameRegistry;
 extern uint32_t gNumObjects;
 
 // Initialize the game object registry
-void init_game_registry();
+void init_game_registry(void);
 
 // Cleanup the game object registry
-void cleanup_game_registry();
+void cleanup_game_registry(void);
 
 // Private methods to create game objects in the game world
 uuid_t register_gameobject_type(const char* typeName, uint32_t gameObjectDataSize, StartFunction StartFn, UpdateFunction UpdateFn);

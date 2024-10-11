@@ -5,12 +5,13 @@
 #include <stddef.h>
 #include <cglm/cglm.h>   /* for inline */
 #include <cglm/struct.h> /* struct api */
+
 #include "shader.h"
 #include "utils.h"
-
 #include "game_state.h"
+#include "scripting.h"
 
-extern int game_main_register_gameobjects();
+extern int game_main(void);
 
 // -- -- -- -- -- -- Contants -- -- -- -- -- --- --
 // settings
@@ -31,7 +32,7 @@ Camera camera;
 
 // -- -- function declare
 //
-GLFWwindow* create_glfw_window();
+GLFWwindow* create_glfw_window(void);
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void processInput(GLFWwindow* window);
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
@@ -39,7 +40,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 
 // -- -- function define
 // 
-GLFWwindow* create_glfw_window(){
+GLFWwindow* create_glfw_window(void){
     
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
@@ -61,7 +62,7 @@ GLFWwindow* create_glfw_window(){
 	return window;
 }
 
-void gl_settings(){
+void gl_settings(void){
 	glEnable(GL_DEPTH_TEST);
 }
 
@@ -100,7 +101,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 }
 // -- -- -- -- -- -- -- -- --
 
-GLuint setup_debug_cube(){
+GLuint setup_debug_cube(void){
 	    GLfloat vertices[] = {
         // Front face
         -0.5f, -0.5f,  0.5f,  // Bottom-left
@@ -156,7 +157,7 @@ GLuint setup_debug_cube(){
 	return VAO;
 }
 
-void init_camera(){
+void init_camera(void){
 	camera.position.x = 0;
 	camera.position.y = 0;
 	camera.position.z = 3;
@@ -170,8 +171,11 @@ void init_camera(){
 	camera.right.z = 0;
 }
 
-int main()
+int main(int argc, char** argv)
 {
+    (void) argc;
+    (void) argv;
+
 	init_glfw();
 	GLFWwindow* window = create_glfw_window();
 	init_glad();
@@ -197,9 +201,9 @@ int main()
 
     //////////////////////////////////////////////////////// 
     // START GAME RUNTIME
-    game_main_register_gameobjects();
+    game_main();
 
-    startGameObjects();
+    gameobjects_start();
     ////////////////////////////////////////////////////////
 
     // render loop
@@ -218,7 +222,7 @@ int main()
 
         // TODO: Update Game State here with input polling
         // TESTING UPDATE LOOP
-        updateGameObjects(deltaTime);
+        gameobjects_update(deltaTime);
 
         glm_look(camera.position.raw, camera.front.raw, up.raw, camera.lookAt.raw);
 

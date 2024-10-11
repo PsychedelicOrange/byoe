@@ -11,6 +11,7 @@ typedef struct uuid_t {
     uint32_t data[4]; // 32 bits * 4 = 128 bits
 } uuid_t;
 
+// TODO: Refactor this to return uuid_t instead
 void uuid_generate(uuid_t* out);
 
 void uuid_copy(const uuid_t* src, uuid_t* dest);
