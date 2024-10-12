@@ -204,8 +204,10 @@ int main(int argc, char** argv)
     // START GAME RUNTIME
     init_game_registry();
 
+    // register game objects on run-time side
     game_main();
 
+    // game scripting start function
     gameobjects_start();
     ////////////////////////////////////////////////////////
 
@@ -219,12 +221,10 @@ int main(int argc, char** argv)
         // Get current time
         float currentFrame = (float)glfwGetTime();
         deltaTime = currentFrame - lastFrame; // Calculate delta time
-        lastFrame = currentFrame; // Update last frame time
 
         processInput(window);
 
-        // TODO: Update Game State here with input polling
-        // TESTING UPDATE LOOP
+        // Game scripts update loop
         gameobjects_update(deltaTime);
 
         glm_look(camera.position.raw, camera.front.raw, up.raw, camera.lookAt.raw);
@@ -245,6 +245,8 @@ int main(int argc, char** argv)
         // -------------------------------------------------------------------------------
         glfwSwapBuffers(window);
         glfwPollEvents();
+
+        lastFrame = currentFrame; // Update last frame time
     }
 
     cleanup_game_registry();

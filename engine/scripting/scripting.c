@@ -6,22 +6,24 @@
 
 void gameobjects_start(void)
 {
-    hash_map_iterator_t it = hash_map_iterator_begin(gGameRegistry);
-    while (hash_map_parse_next(&it))
+    for (size_t i = 0; i < gGameRegistry->capacity; i++)
     {
-        GameObject* go = (GameObject*)it.current_pair.value;
-        if (go)
+       hash_map_pair_t pair = gGameRegistry->entries[i];
+       if(pair.key && pair.value) {
+            GameObject* go = (GameObject*)pair.value;
             go->startFn(&gGlobalGameState, go->gameObjectData);
+       }
     }
 }
 
 void gameobjects_update(float dt)
 {
-    hash_map_iterator_t it = hash_map_iterator_begin(gGameRegistry);
-    while (hash_map_parse_next(&it))
+    for (size_t i = 0; i < gGameRegistry->capacity; i++)
     {
-        GameObject* go = (GameObject*)it.current_pair.value;
-        if (go)
+       hash_map_pair_t pair = gGameRegistry->entries[i];
+       if(pair.key && pair.value) {
+            GameObject* go = (GameObject*)pair.value;
             go->updateFn(&gGlobalGameState, go->gameObjectData, dt);
+       }
     }
 }
