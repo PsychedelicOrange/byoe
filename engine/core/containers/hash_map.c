@@ -106,31 +106,37 @@ hash_map_t* hash_map_create(size_t initial_capacity)
 void hash_map_destroy(hash_map_t* hash_map)
 {
     for (size_t i = 0; i < hash_map->capacity; i++) {
-        if (hash_map->entries[i].key)
+        if (hash_map->entries[i].key) {
             free((void*)hash_map->entries[i].key);
-        if (hash_map->entries[i].value)
-            free((void*)hash_map->entries[i].value);
+            hash_map->entries[i].key = NULL;
+        }
+        //if (hash_map->entries[i].value)
+        //    free((void*)hash_map->entries[i].value);
 
     }
     free(hash_map->entries);
+    hash_map->entries = NULL;
     free(hash_map);
+    hash_map = NULL;
 }
 
 void* hash_map_get_value(const hash_map_t* hash_map, const char* key)
 {
-    // first comupte the hash for the key
+    // first compute the hash for the key
     uint64_t hash = fnv1a_hash((uint8_t*)key);
     // wrap it around capacity
     size_t index = (size_t)(hash & (uint64_t)(hash_map->capacity - 1));
 
     // TODO: move this to a function bool hash_map_linear_probe(hash_map, key);
-    // we use linear probing, if the index is unavailabel we linearly move forward
+    // we use linear probing, if the index is unavailable we linearly move forward
     // and wrapping the hash_map from start index until we find one
-    while (hash_map->entries[index].key != NULL)
+    while (index < hash_map->capacity)
     {
-        // if empty key found
-        if (strcmp(key, hash_map->entries[index].key) == 0) {
-            return hash_map->entries[index].value;
+        if (hash_map->entries[index].key != NULL) {
+            // if empty key found
+            if (strcmp(key, hash_map->entries[index].key) == 0) {
+                return hash_map->entries[index].value;
+            }
         }
 
         // linear probing
@@ -161,10 +167,16 @@ void hash_map_set_key_value_pair(hash_map_t* hash_map, hash_map_pair_t* pair)
 void hash_map_remove_entry(hash_map_t* hash_map, const char* key)
 {
     hash_map_iterator_t it = hash_map_iterator(hash_map, key);
-    if (it.current_pair.key)
+    if (it.current_pair.key != NULL) {
         free(it.current_pair.key);
-    if (it.current_pair.value)
-        free(it.current_pair.value);
+        it.current_pair.key = NULL;
+        hash_map->entries[it.index].key = NULL;
+    }
+    if (it.current_pair.value != NULL) {
+        it.current_pair.value = NULL;
+        //free(hash_map->entries[it.index].value);
+        hash_map->entries[it.index].value = NULL;
+    }
 }
 
 hash_map_iterator_t hash_map_iterator_begin(hash_map_t* hash_map)
@@ -180,24 +192,44 @@ hash_map_iterator_t hash_map_iterator(hash_map_t* hash_map, const char* key)
     hash_map_iterator_t it;
     it.hash_map_ref = hash_map;
 
-    // first compute the hash for the key
+    // First compute the hash for the key
     uint64_t hash = fnv1a_hash((uint8_t*)key);
-    // wrap it around capacity
+    // Wrap it around capacity
     it.index = (size_t)(hash & (uint64_t)(hash_map->capacity - 1));
 
-    while (hash_map->entries[it.index].key != NULL)
+    size_t ogIndex = it.index;  // Original index to detect wrap-around
+    bool wrapped = false;
+
+    // Start probing for the key
+    while (true)
     {
-        // if empty key found
-        if (strcmp(key, hash_map->entries[it.index].key) == 0) {
-            it.current_pair = hash_map->entries[it.index];
+        // If we find an empty entry (NULL key), the key is not present
+        if (hash_map->entries[it.index].key != NULL) {
+            // If the key matches, set the iterator's current pair and return
+            if (strcmp(key, hash_map->entries[it.index].key) == 0) {
+                it.current_pair.key = hash_map->entries[it.index].key;
+                it.current_pair.value = hash_map->entries[it.index].value;
+                hash_map->length--;
+                return it;
+            }
         }
 
-        // linear probing
+        // Linear probing to the next index
         it.index++;
-        if (it.index >= hash_map->capacity)
-            it.index = 0;
+        if (it.index >= hash_map->capacity) {
+            it.index = 0;  // Wrap around to the beginning
+            wrapped = true;
+        }
+
+        // If we have come full circle and didn't find the key, exit
+        if (it.index == ogIndex && wrapped == true) {
+            break;
+        }
     }
 
+    // If not found, return an invalid iterator
+    it.current_pair.key = NULL;
+    it.current_pair.value = NULL;
     return it;
 }
 

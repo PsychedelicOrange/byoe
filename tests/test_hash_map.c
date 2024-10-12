@@ -7,10 +7,13 @@
 
 // Helper function for displaying key-value pairs
 void print_map(hash_map_t* map) {
-    hash_map_iterator_t iter = hash_map_iterator_begin(map);
     printf(COLOR_BLUE "Hash Map Contents:\n" COLOR_RESET);
-    while (hash_map_parse_next(&iter)) {
-        printf("Key: %s, Value: %s\n", iter.current_pair.key, (char*)iter.current_pair.value);
+    if (!map)
+        return;
+    for (size_t i = 0; i < map->capacity; i++)
+    {
+        if (map->entries && map->entries[i].key && map->entries[i].value)
+            printf("Key: %s, Value: %s\n", map->entries[i].key, (char*)map->entries[i].value);
     }
     printf("\n");
 }
@@ -26,7 +29,7 @@ void test_hash_map(void) {
         TEST_START();
         map = hash_map_create(5);
         TEST_END();
-        ASSERT_EQ(0, hash_map_get_length(map), test_case, "Map should be empty upon creation.");
+        ASSERT_EQ((size_t)0, hash_map_get_length(map), "%zu", test_case, "Map should be empty upon creation.");
     }
 
     // Test inserting some key-value pairs
@@ -37,56 +40,54 @@ void test_hash_map(void) {
         hash_map_set_key_value(map, "pear", "fruit");
         hash_map_set_key_value(map, "broccoli", "vegetable");
         TEST_END();
-        ASSERT_EQ(4, hash_map_get_length(map), test_case, "Map should have 4 elements after insertion.");
+        ASSERT_EQ((size_t)4, hash_map_get_length(map), "%zu", test_case, "Map should have 4 elements after insertion.");
     }
 
     // Test retrieval
     {
-    TEST_START();
-    const char* apple_val = (const char*)hash_map_get_value(map, "apple");
-    TEST_END();
-    ASSERT_STR_EQ("fruit", apple_val, test_case, "'apple' should map to 'fruit'.");
+        TEST_START();
+        const char* apple_val = (const char*)hash_map_get_value(map, "apple");
+        TEST_END();
+        ASSERT_STR_EQ("fruit", apple_val, test_case, "'apple' should map to 'fruit'.");
     }
 
     {
-    TEST_START();
-    const char* broccoli_val = (const char*)hash_map_get_value(map, "broccoli");
-    TEST_END();
-    ASSERT_STR_EQ("vegetable", broccoli_val, test_case, "'broccoli' should map to 'vegetable'.");
+        TEST_START();
+        const char* broccoli_val = (const char*)hash_map_get_value(map, "broccoli");
+        TEST_END();
+        ASSERT_STR_EQ("vegetable", broccoli_val, test_case, "'broccoli' should map to 'vegetable'.");
     }
 
-    // Display contents before removal
-    print_map(map);
-    
     // Test removing an entry
     {
-    TEST_START();
-    hash_map_remove_entry(map, "carrot");
-    TEST_END();
-    ASSERT_EQ(3, hash_map_get_length(map), test_case, "'carrot' should be removed, reducing length to 3.");
+        TEST_START();
+        hash_map_remove_entry(map, "carrot");
+        TEST_END();
+        ASSERT_EQ((size_t)3, hash_map_get_length(map), "%zu", test_case, "'carrot' should be removed, reducing length to 3.");
     }
 
     // Iterate over the hash map using the iterator and compare with entries,
     // to make sure hash_map_parse_next works properly as intended
     {
-    TEST_START();
-    hash_map_iterator_t iter = hash_map_iterator_begin(map);
-    size_t iter_count = 0;
-    while (hash_map_parse_next(&iter)) {
-        iter_count++;
-    }
-    TEST_END();
-    ASSERT_EQ(3, iter_count, test_case, "Iterator should find exactly 3 elements.");
+        TEST_START();
+        hash_map_iterator_t iter = hash_map_iterator_begin(map);
+        size_t iter_count = 0;
+        while (hash_map_parse_next(&iter)) {
+            iter_count++;
+        }
+        TEST_END();
+        ASSERT_EQ((size_t)3, iter_count, "%zu", test_case, "Iterator should find exactly 3 elements.");
     }
 
     // Clean up
     hash_map_destroy(map);
+    map = NULL;
 }
 
 int main(int argc, char** argv) {
-    (void) argc;
-    (void) argv;
+    (void)argc;
+    (void)argv;
 
     test_hash_map();
-    return 0;
+    return EXIT_SUCCESS;
 }
