@@ -11,7 +11,7 @@ void gameobjects_start(void)
        hash_map_pair_t pair = gGameRegistry->entries[i];
        if(pair.key && pair.value) {
             GameObject* go = (GameObject*)pair.value;
-            go->startFn(go->uuid, &gGlobalGameState, go->gameObjectData);
+            go->startFn(&gGlobalGameState, go->gameObjectData);
        }
     }
 }
@@ -23,7 +23,7 @@ void gameobjects_update(float dt)
        hash_map_pair_t pair = gGameRegistry->entries[i];
        if(pair.key && pair.value) {
             GameObject* go = (GameObject*)pair.value;
-            go->updateFn(go->uuid, &gGlobalGameState, go->gameObjectData, dt);
+            go->updateFn(&gGlobalGameState, go->gameObjectData, dt);
        }
     }
 }

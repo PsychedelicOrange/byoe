@@ -13,5 +13,5 @@ typedef struct PlayerData
 
 extern uuid_t playerUUID;
 
-void Player_Start(uuid_t uuid, void* gameState, void* gameObjData);
-void Player_Update(uuid_t uuid, void* gameState, void* gameObjData, float dt);
+void Player_Start(void* gameState, void* gameObjData);
+void Player_Update(void* gameState, void* gameObjData, float dt);

@@ -14,12 +14,12 @@
 
 #include "game_registry.h"
 
-// Q. How to solve sending/updating transaform, we don't gave transform component and mesh data
+// Q. How to solve sending/updating transform, we don't have transform component and mesh data
 // sol.1: we can manually link mesh to GameObject via registration or util functions in start itself, like game_object_set_mesh
 // game_object_set_transform etc. we still need to pass it GameObject reference tho
 // so we can replace the scripting functions to take the GameObject itself instead of limited data from this struct, kinda like
 // emulating this pointer like behaviour. We can hardcode stuff like Transform as it makes sense similar to uuid
-// or pass an additional argument of UUID to the scription functions for easy accession the above mentioned public API
+// or we already have the UUID of the scriptibg functions for easy access of the below gameobject public API
 
 typedef struct Transform
 {
@@ -41,8 +41,6 @@ typedef struct GameObject
     UpdateFunction updateFn;    // Update function for the object
     // TODO: Add collision callback functions here if needed
 } GameObject;
-
-static vec3 gOrigin = {0.0f, 0.0f, 9.0f};
 
 void gameobject_set_mesh(uuid_t goUUID, uuid_t meshUUID);
 void gameobject_set_material(uuid_t goUUID, uuid_t materialUUID);
