@@ -30,6 +30,4 @@
     printf("\033[0m\n"); \
 } while(0)
 
-
-
 #endif

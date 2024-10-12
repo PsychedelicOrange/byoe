@@ -9,5 +9,5 @@ typedef struct CamData
 
 extern uuid_t cameraUUID;
 
-void Camera_Start(void* gameState, void* gameObjData);
-void Camera_Update(void* gameState, void* gameObjData, float dt);
+void Camera_Start(uuid_t uuid, void* gameState, void* gameObjData);
+void Camera_Update(uuid_t uuid, void* gameState, void* gameObjData, float dt);

@@ -40,7 +40,9 @@ void hash_map_remove_entry(hash_map_t* hash_map, const char* key);
 
 hash_map_iterator_t hash_map_iterator_begin(hash_map_t* hash_map);
 hash_map_iterator_t hash_map_iterator(hash_map_t* hash_map, const char* key);
-// This is used to find the next free available key in the hash_map, don't use it for iterating over items 
+// This is used to find the next free available key in the hash_map
+// don't use it for iterating over items, Only use it while accessing single element
+// Use array like accessing while iterating over the entire list. 
 bool hash_map_parse_next(hash_map_iterator_t* iterator);
 
 // utils
