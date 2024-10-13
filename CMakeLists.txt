@@ -14,6 +14,7 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 # Add subdirectories for engine and game
 add_subdirectory(engine)
 add_subdirectory(game)
+add_subdirectory(tests)
 ####################################################################
 ## VENDOR
 # Fetch dependencies

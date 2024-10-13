@@ -42,15 +42,23 @@ typedef struct GameObject
     // TODO: Add collision callback functions here if needed
 } GameObject;
 
+// TODO
 void gameobject_set_mesh(uuid_t goUUID, uuid_t meshUUID);
+// TODO
 void gameobject_set_material(uuid_t goUUID, uuid_t materialUUID);
+// TODO
 void gameobject_set_renderable(uuid_t goUUID, uuid_t meshUUID, uuid_t materialUUID);
 
 // Transform Utils
+// TODO
 void gameobject_set_transform(uuid_t goUUID, Transform transform);
+// TODO
 void gameobject_set_position(uuid_t goUUID, vec3 position);
+// TODO
 void gameobject_set_rotation(uuid_t goUUID, versor rorationQuad);
+// TODO
 void gameobject_set_rotation_euler(uuid_t goUUID, vec3 rotationEuler);
+// TODO
 void gameobject_set_scale(uuid_t goUUID, vec3 scale);
 
 #endif
