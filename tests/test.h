@@ -28,6 +28,16 @@
     clock_t end_time = clock(); \
     double time_spent = (double)(end_time - start_time) / CLOCKS_PER_SEC;
 
+// Generic assert for conditions
+#define ASSERT_CON(condition, test_case, msg) \
+    if (condition) { \
+        printf(COLOR_RED "[Test Case] Failed %s : %s : " COLOR_RESET " | REASON: %s\n", \
+               UNICODE_CROSS, test_case, msg); \
+    } else { \
+        printf(COLOR_GREEN "[Test Case] Passed %s : %s : STATS: (speed: %.3f ms) : %s\n" COLOR_RESET, \
+               UNICODE_CHECKMARK, test_case, time_spent * 1000, msg); \
+    }
+
 // Generic assert for non-string types, passing format specifier
 #define ASSERT_EQ(expected, actual, fmt, test_case, msg) \
     if ((expected) != (actual)) { \

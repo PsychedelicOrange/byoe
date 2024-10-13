@@ -90,11 +90,3 @@ void test_hash_map(void) {
     hash_map_destroy(map);
     map = NULL;
 }
-
-int main(int argc, char** argv) {
-    (void)argc;
-    (void)argv;
-
-    test_hash_map();
-    return EXIT_SUCCESS;
-}
