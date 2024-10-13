@@ -66,6 +66,13 @@ void test_hash_map(void) {
         ASSERT_EQ((size_t)3, hash_map_get_length(map), "%zu", test_case, "'carrot' should be removed, reducing length to 3.");
     }
 
+        {
+        TEST_START();
+        hash_map_remove_entry(map, "apple");
+        TEST_END();
+        ASSERT_EQ((size_t)2, hash_map_get_length(map), "%zu", test_case, "'apple' should be removed, reducing length to 3.");
+    }
+
     // Iterate over the hash map using the iterator and compare with entries,
     // to make sure hash_map_parse_next works properly as intended
     {
@@ -76,7 +83,7 @@ void test_hash_map(void) {
             iter_count++;
         }
         TEST_END();
-        ASSERT_EQ((size_t)3, iter_count, "%zu", test_case, "Iterator should find exactly 3 elements.");
+        ASSERT_EQ((size_t)2, iter_count, "%zu", test_case, "Iterator should find exactly 3 elements.");
     }
 
     // Clean up
