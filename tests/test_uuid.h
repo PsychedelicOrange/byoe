@@ -9,7 +9,6 @@
 void test_uuid(void) {
     const char* test_case = "test_uuid";
 
-
     // Generate a valid UUID
     {
         TEST_START();

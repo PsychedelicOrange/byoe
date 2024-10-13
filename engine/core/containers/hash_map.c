@@ -110,9 +110,6 @@ void hash_map_destroy(hash_map_t* hash_map)
             free((void*)hash_map->entries[i].key);
             hash_map->entries[i].key = NULL;
         }
-        //if (hash_map->entries[i].value)
-        //    free((void*)hash_map->entries[i].value);
-
     }
     free(hash_map->entries);
     hash_map->entries = NULL;
@@ -174,7 +171,6 @@ void hash_map_remove_entry(hash_map_t* hash_map, const char* key)
     }
     if (it.current_pair.value != NULL) {
         it.current_pair.value = NULL;
-        //free(hash_map->entries[it.index].value);
         hash_map->entries[it.index].value = NULL;
     }
 }

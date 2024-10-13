@@ -7,27 +7,27 @@
 // TODO: Add custom stream to write (ex. file, network, etc.)
 
 #define LOG_SUCCESS(...) do { \
-    printf("\033[1;32m[BYOE] - SUCCESS: "); \
+    printf(COLOR_GREEN "[BYOE] - SUCCESS: "); \
     printf(__VA_ARGS__); \
-    printf("\033[0m\n"); \
+    printf(COLOR_RESET); \
 } while(0)
 
 #define LOG_INFO(...) do { \
-    printf("\033[1;37m[BYOE] - INFO: "); \
+    printf(COLOR_BLUE"[BYOE] - INFO: "); \
     printf(__VA_ARGS__); \
-    printf("\033[0m\n"); \
+    printf(COLOR_RESET); \
 } while(0)
 
 #define LOG_WARN(...) do { \
-    printf("\033[1;33m[BYOE] - WARNING: "); \
+    printf(COLOR_YELLOW "[BYOE] - WARNING: "); \
     printf(__VA_ARGS__); \
     printf("\033[0m\n"); \
 } while(0)
 
 #define LOG_ERROR(...) do { \
-    printf("\033[1;31m[BYOE] - ERROR: "); \
+    printf(COLOR_RED "[BYOE] - ERROR: "); \
     printf(__VA_ARGS__); \
-    printf("\033[0m\n"); \
+    printf(COLOR_RESET); \
 } while(0)
 
 #endif

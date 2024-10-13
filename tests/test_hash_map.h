@@ -66,7 +66,7 @@ void test_hash_map(void) {
         ASSERT_EQ((size_t)3, hash_map_get_length(map), "%zu", test_case, "'carrot' should be removed, reducing length to 3.");
     }
 
-        {
+    {
         TEST_START();
         hash_map_remove_entry(map, "apple");
         TEST_END();
