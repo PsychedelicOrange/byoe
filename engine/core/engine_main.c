@@ -60,6 +60,8 @@ GLFWwindow* create_glfw_window(void){
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 	//glfwSetKeyCallback(window,key_callback);
+    // Disable V-Sync
+    glfwSwapInterval(0);
 	return window;
 }
 
