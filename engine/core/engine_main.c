@@ -18,18 +18,6 @@ extern int game_main(void);
 // settings
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
-vec3s up = {{0,1,0}};
-float speed = 0.1f;
-
-
-typedef struct Camera{
-	mat4s lookAt;
-	vec3s position;
-	vec3s right;
-	vec3s front;
-}Camera;
-Camera camera;
-
 
 // -- -- function declare
 //
@@ -80,27 +68,17 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height)
 
 void processInput(GLFWwindow *window)
 {
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-		camera.position = glms_vec3_add(camera.position,glms_vec3_scale_as(camera.front,speed));
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-		camera.position = glms_vec3_add(camera.position,glms_vec3_scale_as(camera.right,-speed));
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-		camera.position = glms_vec3_add(camera.position,glms_vec3_scale_as(camera.front,-speed));
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-		camera.position = glms_vec3_add(camera.position,glms_vec3_scale_as(camera.right,speed));
+    (void)window;
 }
 
 // ig we can just define this function from script and set callback from the script
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
     (void)window;
+    (void) key;
     (void) scancode;
+    (void) action;
     (void) mods;
-
-    if (key == GLFW_KEY_W && action == GLFW_PRESS)
-	{
-		camera.position.x -= speed;
-	}
 }
 // -- -- -- -- -- -- -- -- --
 
@@ -160,20 +138,6 @@ GLuint setup_debug_cube(void){
 	return VAO;
 }
 
-void init_camera(void){
-	camera.position.x = 0;
-	camera.position.y = 0;
-	camera.position.z = 3;
-
-	camera.front.x = 0;
-	camera.front.y = 0;
-	camera.front.z = -1;
-
-	camera.right.x = 1;
-	camera.right.y = 0;
-	camera.right.z = 0;
-}
-
 int main(int argc, char** argv)
 {
     (void) argc;
@@ -200,8 +164,6 @@ int main(int argc, char** argv)
 		setUniformMat4(shaderProgram,model,"model");
 	}
 
-	init_camera();
-
     //////////////////////////////////////////////////////// 
     // START GAME RUNTIME
     init_game_registry();
@@ -226,10 +188,11 @@ int main(int argc, char** argv)
 
         processInput(window);
 
+        // Update the global game state
+        update_game_state(window);
+
         // Game scripts update loop
         gameobjects_update(deltaTime);
-
-        glm_look(camera.position.raw, camera.front.raw, up.raw, camera.lookAt.raw);
 
         // Render
         // ------
@@ -238,7 +201,7 @@ int main(int argc, char** argv)
 
         // Draw cube
         glUseProgram(shaderProgram);
-        setUniformMat4(shaderProgram, camera.lookAt, "view");
+        setUniformMat4(shaderProgram, gGlobalGameState.camera.lookAt, "view");
 
         glBindVertexArray(vao);
         glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);

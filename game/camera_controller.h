@@ -1,11 +1,6 @@
 #pragma once
-#include <engine/core/gameobject.h>
-#include<cglm/cglm.h>
 
-typedef struct CamData
-{
-    vec3 camUp;
-}CamData;
+#include <engine/core/gameobject.h>
 
 extern uuid_t cameraUUID;
 

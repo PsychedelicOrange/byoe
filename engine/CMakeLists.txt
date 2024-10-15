@@ -15,7 +15,7 @@ file(GLOB_RECURSE engine_headers
 SOURCE_GROUP(engine FILES ${engine_sources} ${engine_headers})
 
 # Set the C standard for this project
-set(CMAKE_C_STANDARD 99)   # Set C standard (11, 99, 90, etc.)
+set(CMAKE_C_STANDARD 11)   # Set C standard (11, 99, 90, etc.)
 set(CMAKE_C_STANDARD_REQUIRED ON)  # Ensure the standard is required
 set(CMAKE_C_EXTENSIONS OFF)  # Disable compiler-specific extensions
 
