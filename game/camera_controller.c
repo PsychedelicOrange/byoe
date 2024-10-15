@@ -32,20 +32,17 @@ void Camera_Update(void* gameState, void* gameObjData, float dt)
     (void) gameObjData;
     (void) dt;
     
-    printf("[Camera Script] deltaTime : %fms \n", dt * 1000);
-
     Camera* camera = &((GameState*) gameState)->camera;
-
     GameState* gameStatePtr = (GameState*)gameState;
 
     if (gameStatePtr->keycodes[GLFW_KEY_W])
-		camera->position = glms_vec3_add(camera->position,glms_vec3_scale_as(camera->front,speed));
+		camera->position = glms_vec3_add(camera->position,glms_vec3_scale_as(camera->front,speed * dt));
     if (gameStatePtr->keycodes[GLFW_KEY_A])
-		camera->position = glms_vec3_add(camera->position,glms_vec3_scale_as(camera->right,-speed));
+		camera->position = glms_vec3_add(camera->position,glms_vec3_scale_as(camera->right,-speed * dt));
     if (gameStatePtr->keycodes[GLFW_KEY_S])
-		camera->position = glms_vec3_add(camera->position,glms_vec3_scale_as(camera->front,-speed));
+		camera->position = glms_vec3_add(camera->position,glms_vec3_scale_as(camera->front,-speed * dt));
     if (gameStatePtr->keycodes[GLFW_KEY_D])
-		camera->position = glms_vec3_add(camera->position,glms_vec3_scale_as(camera->right,speed));
+		camera->position = glms_vec3_add(camera->position,glms_vec3_scale_as(camera->right,speed * dt));
 
     glm_look(camera->position.raw,camera->front.raw,up.raw,camera->lookAt.raw);
 }

@@ -19,5 +19,4 @@ void Player_Update(void* gameState, void* gameObjData, float dt)
     (void) gameObjData;
 
     LOG_WARN("[Player Script] deltaTime: %fms", dt * 1000.0f);
-    printf("[Player Script] deltaTime : %fms \n", dt * 1000.0f);
 }
