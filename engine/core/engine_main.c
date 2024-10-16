@@ -145,9 +145,6 @@ int main(int argc, char** argv)
     (void)argc;
     (void)argv;
 
-    // seed 
-    srand ( time(NULL) );
-
     init_glfw();
     GLFWwindow* window = create_glfw_window();
     init_glad();
@@ -228,8 +225,9 @@ int main(int argc, char** argv)
                     // Render
                     glUseProgram(shaderProgram);
                     setUniformMat4(shaderProgram, gamestate_get_global_instance()->camera.lookAt, "view");
-                    mat4s model = GLMS_MAT4_IDENTITY_INIT;
-                    glm_translate_make(model.raw, go->transform.position);
+                    mat4s model;
+                    model = gameobject_ptr_get_transform(go);
+
                     setUniformMat4(shaderProgram, model, "model");
 
                     glBindVertexArray(vao);

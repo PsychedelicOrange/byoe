@@ -19,8 +19,8 @@
 // sol.1: we can manually link mesh to GameObject via registration or util functions in start itself, like game_object_set_mesh
 // game_object_set_transform etc. we still need to pass it GameObject reference tho
 // so we can replace the scripting functions to take the GameObject itself instead of limited data from this struct, kinda like
-// emulating this pointer like behaviour. We can hardcode stuff like Transform as it makes sense similar to uuid
-// or we already have the UUID of the scriptibg functions for easy access of the below gameobject public API
+// emulating this pointer like behavior. We can hardcore stuff like Transform as it makes sense similar to uuid
+// or we already have the UUID of the scripting functions for easy access of the below game object public API
 
 typedef struct Transform
 {
@@ -55,6 +55,7 @@ void gameobject_set_renderable(uuid_t goUUID, uuid_t meshUUID, uuid_t materialUU
 void gameobject_mark_as_renderable(uuid_t goUUID, bool value);
 
 mat4s gameobject_get_transform(uuid_t goUUID);
+mat4s gameobject_ptr_get_transform(GameObject* obj);
 void gameobject_get_position(uuid_t goUUID, vec3* position);
 void gameobject_get_rotation(uuid_t goUUID, versor* rorationQuad);
 void gameobject_get_rotation_euler(uuid_t goUUID, vec3* rotationEuler);

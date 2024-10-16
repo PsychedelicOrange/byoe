@@ -29,10 +29,18 @@ uuid_t register_gameobject_type(const char* typeName, uint32_t gameObjectDataSiz
     }
 
     uuid_generate(&uuid);
-    uuid_print(&uuid);
 
     GameObject* game_object = malloc(sizeof(GameObject));
     uuid_copy(&uuid, &game_object->uuid);
+
+    // Init transform to 0
+    vec3 pos = { 0, 0, 0 };
+    glm_vec3_copy(pos, game_object->transform.position);
+    vec3 scale = { 1, 1, 1 };
+    glm_vec3_copy(scale, game_object->transform.scale);
+    versor rotquat = { 0, 0, 0, 0 };
+    glm_quat_copy(rotquat, game_object->transform.rotation);
+
     strcpy(game_object->typeName, typeName);
     if (gameObjectDataSize > 0)
         game_object->gameObjectData = malloc(gameObjectDataSize);
@@ -56,7 +64,7 @@ void unregister_gameobject_type(const uuid_t uuid)
 GameObject* get_gameobject_by_uuid(uuid_t goUUID)
 {
     GameObject* go = (GameObject*)hash_map_get_value(gGameRegistry, (const char*)&goUUID);
-    if(go != NULL) {
+    if (go != NULL) {
         return go;
     }
     else {

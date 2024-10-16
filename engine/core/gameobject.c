@@ -46,6 +46,22 @@ mat4s gameobject_get_transform(uuid_t goUUID) {
     return result;
 }
 
+mat4s gameobject_ptr_get_transform(GameObject* obj)
+{
+    if (!obj) {
+        mat4s i;
+        memset(i.raw, 0, sizeof(mat4s));
+        return i;
+    }
+
+    Transform* transform = &obj->transform;
+
+    mat4s result;
+    create_transform_matrix(&result, transform->position, transform->rotation, transform->scale);
+
+    return result;
+}
+
 void gameobject_get_position(uuid_t goUUID, vec3* position)
 {
     GameObject* obj = get_gameobject_by_uuid(goUUID);
