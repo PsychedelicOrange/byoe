@@ -11,7 +11,6 @@ unsigned int compile_shader(char * filePath, int shaderType){
 	glCompileShader(shader);
 	// check for shader compile errors
 	int success;
-	char infoLog[512];
 	glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
 	if (!success)
 	{
@@ -40,7 +39,7 @@ unsigned int create_program(unsigned int vertexShader, unsigned int fragmentShad
     if (!success) {
         glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
 		printf("\nfailed to link shaders: %s",infoLog);
-		return -1;
+		return (unsigned int) - 1;
     }
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
@@ -53,7 +52,7 @@ void setUniformMat4(unsigned int shaderProgram,mat4s matrix, char* location){
 	glUniformMatrix4fv(loc,1,GL_FALSE,&matrix.col[0].raw[0]);	
 }
 
-static char* readFileToString(const char* filename) {
+char* readFileToString(const char* filename) {
 	// Open the file in read mode ("r")
 	FILE* file = fopen(filename, "r");
 	if (!file) {
@@ -74,7 +73,7 @@ static char* readFileToString(const char* filename) {
 		fclose(file);
 		return NULL;
 	}
-	for (int i = 0; i < fileSize + 1; i++) {
+	for (size_t i = 0; i < fileSize + 1; i++) {
 		content[i] = '\0';
 	}
 	// Read file contents into the string

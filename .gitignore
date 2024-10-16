@@ -12,8 +12,25 @@ build/
 *.userosscache
 *.sln.docstates
 
+# Ignore Visual Studio Code settings
+.vscode/
+*.code-workspace
+
+# Ignore extensions installed by VSCode
+.vscode/extensions.json
+.vscode/settings.json
+
+# Ignore workspace storage
+.vscode/workspaceStorage/
+.vscode/tasks.json
+
+# Ignore user-specific settings
+*.code-workspace
+
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
+
+.DS_Store
 
 # Mono auto generated files
 mono_crash.*
