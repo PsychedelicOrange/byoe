@@ -21,7 +21,7 @@ void cleanup_game_registry(void)
 
 uuid_t register_gameobject_type(const char* typeName, uint32_t gameObjectDataSize, StartFunction StartFn, UpdateFunction UpdateFn)
 {
-    uuid_t uuid = { 0, 0, 0, 0 };
+    uuid_t uuid = {{ 0, 0, 0, 0 }};
 
     if (gNumObjects >= MAX_OBJECTS) {
         LOG_ERROR("Registry FULL cannot create new game objects!");

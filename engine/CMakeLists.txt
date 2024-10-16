@@ -9,7 +9,19 @@ file(GLOB_RECURSE engine_sources
 file(GLOB_RECURSE engine_headers 
     "core/*.h"
     "scripting/*.h"
+)
+file(GLOB_RECURSE external_headers
     "external/*.h"
+)
+file(GLOB_RECURSE external_sources
+    "external/*.c"
+)
+
+set_source_files_properties(
+  ${external_headers}
+  ${external_sources}
+  PROPERTIES
+  COMPILE_FLAGS "-w"
 )
 
 SOURCE_GROUP(engine FILES ${engine_sources} ${engine_headers})
@@ -21,11 +33,11 @@ set(CMAKE_C_EXTENSIONS OFF)  # Disable compiler-specific extensions
 
 # Add library based on the BUILD_SHARED_ENGINE option
 if(BUILD_SHARED_ENGINE)
-    add_library(engine SHARED ${engine_sources} ${engine_headers})
+	add_library(engine SHARED ${engine_sources} ${engine_headers} ${external_headers} ${external_sources})
     # Define export settings for the DLL
     target_compile_definitions(engine PRIVATE BUILD_SHARED_ENGINE)
 else()
-    add_library(engine STATIC ${engine_sources} ${engine_headers})
+    add_library(engine STATIC ${engine_sources} ${engine_headers} ${external_headers} ${external_sources})
 endif()
 
 target_link_libraries(engine PRIVATE glfw cglm)

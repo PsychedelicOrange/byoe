@@ -53,10 +53,12 @@ static void hash_map_set_entry(hash_map_pair_t* hash_map_entries, size_t capacit
 
 
     if (plength != NULL) {
-        key = strdup(key);
-        if (key == NULL) {
-            return;
-        }
+		{
+			char* tmp = malloc(sizeof(char) * (strlen(key) + 1));
+			if(tmp == NULL)return;
+			memcpy(tmp,key,sizeof(char) * (strlen(key) + 1));
+			key = tmp;
+		}
         (*plength)++;
     }
     hash_map_entries[index].key = (char*)key;

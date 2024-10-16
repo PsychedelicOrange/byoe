@@ -7,9 +7,6 @@ struct GLFWwindow;
 
 // Note:- keep everything aligned to /16 bytes
 
-static vec3s up = {{0,1,0}};
-static float speed = 2.5f;
-
 typedef struct Camera{
 	mat4s lookAt;
 	vec3s position;
