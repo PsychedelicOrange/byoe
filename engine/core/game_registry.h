@@ -17,9 +17,6 @@ typedef struct GameObject GameObject;
 // GameObjects Registry
 /*******************************/
 
-extern hash_map_t* gGameRegistry;
-extern uint32_t gNumObjects;
-
 // Initialize the game object registry
 void init_game_registry(void);
 
@@ -32,6 +29,10 @@ uuid_t register_gameobject_type(const char* typeName, uint32_t gameObjectDataSiz
 // Unregister and remove it from the game registry
 void unregister_gameobject_type(const uuid_t uuid);
 
+hash_map_t* game_registry_get_instance(void);
+
+uint32_t game_registry_get_num_objects(void);
+
 // Returns the game object ptr stored in the registry 
 GameObject* get_gameobject_by_uuid(uuid_t goUUID);
 
@@ -40,8 +41,8 @@ GameObject* get_gameobject_by_uuid(uuid_t goUUID);
 /*******************************/
 
 // Macro for quick game object registration and spawning in the game world
-#define REGISTER_GAME_OBJECT(UUID, TypeName, DataType, StartFn, UpdateFn) \
-        UUID = register_gameobject_type(TypeName, sizeof(DataType), StartFn, UpdateFn);
+#define REGISTER_GAME_OBJECT(TypeName, DataType, StartFn, UpdateFn) \
+        register_gameobject_type(TypeName, sizeof(DataType), StartFn, UpdateFn);
 
 
 #define UNREGISTER_GAME_OBJECT(uuid) \

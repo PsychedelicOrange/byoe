@@ -2,7 +2,5 @@
 
 #include <engine/core/gameobject.h>
 
-extern uuid_t cameraUUID;
-
-void Camera_Start(void* gameState, void* gameObjData);
-void Camera_Update(void* gameState, void* gameObjData, float dt);
+void Camera_Start(uuid_t uuid);
+void Camera_Update(uuid_t uuid, float dt);

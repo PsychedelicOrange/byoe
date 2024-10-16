@@ -30,6 +30,5 @@ typedef struct GameState
     // TBD...
 } GameState;
 
-extern GameState gGlobalGameState;
-
-void update_game_state(struct GLFWwindow* window);
+void gamestate_update(struct GLFWwindow* window);
+void* gamestate_get_global_instance(void);

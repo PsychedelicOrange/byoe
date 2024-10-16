@@ -6,14 +6,11 @@
 
 #include <GLFW/glfw3.h>
 
-uuid_t cameraUUID;
-
-void Camera_Start(void* gameState, void* gameObjData)
+void Camera_Start(uuid_t uuid)
 {
-    (void)gameState;
-    (void)gameObjData;
+    (void)uuid;
 
-    Camera* camera = &((GameState*)gameState)->camera;
+    Camera* camera = &((GameState*)gamestate_get_global_instance())->camera;
 
     camera->position.x = 0;
     camera->position.y = 0;
@@ -28,14 +25,13 @@ void Camera_Start(void* gameState, void* gameObjData)
     camera->right.z = 0;
 }
 
-void Camera_Update(void* gameState, void* gameObjData, float dt)
+void Camera_Update(uuid_t uuid, float dt)
 {
-    (void)gameState;
-    (void)gameObjData;
+    (void)uuid;
     (void)dt;
 
-    Camera* camera = &((GameState*)gameState)->camera;
-    GameState* gameStatePtr = (GameState*)gameState;
+    Camera* camera = &((GameState*)gamestate_get_global_instance())->camera;
+    GameState* gameStatePtr = (GameState*)gamestate_get_global_instance();
 
     if (gameStatePtr->keycodes[GLFW_KEY_W])
         camera->position = glms_vec3_add(camera->position, glms_vec3_scale_as(camera->front, speed * dt));

@@ -6,24 +6,24 @@
 
 void gameobjects_start(void)
 {
-    for (size_t i = 0; i < gGameRegistry->capacity; i++)
+    for (size_t i = 0; i < game_registry_get_instance()->capacity; i++)
     {
-       hash_map_pair_t pair = gGameRegistry->entries[i];
+       hash_map_pair_t pair = game_registry_get_instance()->entries[i];
        if(pair.key && pair.value) {
             GameObject* go = (GameObject*)pair.value;
-            go->startFn(&gGlobalGameState, go->gameObjectData);
+            go->startFn(go->uuid);
        }
     }
 }
 
 void gameobjects_update(float dt)
 {
-    for (size_t i = 0; i < gGameRegistry->capacity; i++)
+    for (size_t i = 0; i < game_registry_get_instance()->capacity; i++)
     {
-       hash_map_pair_t pair = gGameRegistry->entries[i];
+       hash_map_pair_t pair = game_registry_get_instance()->entries[i];
        if(pair.key && pair.value) {
             GameObject* go = (GameObject*)pair.value;
-            go->updateFn(&gGlobalGameState, go->gameObjectData, dt);
+            go->updateFn(go->uuid, dt);
        }
     }
 }

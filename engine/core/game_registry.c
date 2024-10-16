@@ -57,3 +57,13 @@ GameObject* get_gameobject_by_uuid(uuid_t goUUID)
 {
     return (GameObject*)hash_map_get_value(gGameRegistry, (const char*)&goUUID);
 }
+
+hash_map_t* game_registry_get_instance(void)
+{
+    return gGameRegistry;
+}
+
+uint32_t game_registry_get_num_objects(void)
+{
+    return gNumObjects;
+}

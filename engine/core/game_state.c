@@ -2,9 +2,9 @@
 
 #include <GLFW/glfw3.h>
 
-GameState gGlobalGameState;
+static GameState gGlobalGameState;
 
-void update_game_state(struct GLFWwindow* window)
+void gamestate_update(struct GLFWwindow* window)
 {
     // Update mouse position
     double mouseX, mouseY;
@@ -27,4 +27,9 @@ void update_game_state(struct GLFWwindow* window)
             gGlobalGameState.isKeyDown = true;  // At least one key is down
         }
     }
+}
+
+void* gamestate_get_global_instance(void)
+{
+    return &gGlobalGameState;
 }

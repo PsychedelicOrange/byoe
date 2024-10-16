@@ -2,14 +2,11 @@
 
 #include <logging/log.h>
 
-uuid_t playerUUID;
-
-void Player_Start(void* gameState, void* gameObjData)
+void Player_Start(uuid_t uuid)
 {
-    (void)gameState;
-    (void)gameObjData;
+    (void)uuid;
 
-    gameobject_mark_as_renderable(playerUUID, true);
+    gameobject_mark_as_renderable(uuid, true);
 
     // Generate random movement offsets for x, y, z
     float offsetX = ((rand() % 200) - 100) / 10.0f;
@@ -23,17 +20,16 @@ void Player_Start(void* gameState, void* gameObjData)
         0
     };
 
-    gameobject_set_position(playerUUID, newPosition);
+    gameobject_set_position(uuid, newPosition);
 }
 
-void Player_Update(void* gameState, void* gameObjData, float dt)
+void Player_Update(uuid_t uuid, float dt)
 {
-    (void)gameState;
-    (void)gameObjData;
+    (void)uuid;
     (void)dt;
 
     vec3 position;
-    gameobject_get_position(playerUUID, &position);
+    gameobject_get_position(uuid, &position);
 
     LOG_WARN("[Player Script] position: (%f, %f, %f)", position[0], position[1], position[2]);
 }

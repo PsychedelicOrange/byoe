@@ -190,16 +190,14 @@ int main(int argc, char** argv)
         deltaTime = currentFrame - lastFrame; // Calculate delta time
         // calculate FPS
         FPS = (int)(1.0f / deltaTime);
-#ifdef _DEBUG
         char windowTitle[250];
         sprintf(windowTitle, "BYOE Game: byoe_ghost_asteroids | FPS: %d", FPS);
         glfwSetWindowTitle(window, windowTitle);
-#endif
 
         processInput(window);
 
         // Update the global game state
-        update_game_state(window);
+        gamestate_update(window);
 
         // Game scripts update loop
         gameobjects_update(deltaTime);
@@ -211,9 +209,9 @@ int main(int argc, char** argv)
 
         // Draw cubes
         {
-            for (size_t i = 0; i < gGameRegistry->capacity; i++)
+            for (size_t i = 0; i < game_registry_get_instance()->capacity; i++)
             {
-                hash_map_pair_t pair = gGameRegistry->entries[i];
+                hash_map_pair_t pair = game_registry_get_instance()->entries[i];
                 if (pair.key && pair.value) {
                     GameObject* go = (GameObject*)pair.value;
                     if (strcmp(go->typeName, "Camera") == 0)
@@ -221,7 +219,8 @@ int main(int argc, char** argv)
 
                     // Render
                     glUseProgram(shaderProgram);
-                    setUniformMat4(shaderProgram, gGlobalGameState.camera.lookAt, "view");
+                    GameState* gameStatePtr = gamestate_get_global_instance();
+                    setUniformMat4(shaderProgram, gameStatePtr->camera.lookAt, "view");
                     mat4s model = GLMS_MAT4_IDENTITY_INIT;
                     //glm_translate_make(model.raw, go->transform.position);
                     setUniformMat4(shaderProgram, model, "model");
