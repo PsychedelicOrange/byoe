@@ -1,10 +1,12 @@
 #include "uuid.h"
 
+#include "../rng/rng.h"
+
 void uuid_generate(uuid_t* out)
 {
     // Generate random 32-bit values for each part of the UUID
     for (int i = 0; i < 4; i++) {
-        out->data[i] = rand(); // Random 32-bit value
+        out->data[i] = rng_generate(); // Random 32-bit value
     }
 }
 

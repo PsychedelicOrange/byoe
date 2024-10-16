@@ -1,6 +1,7 @@
 #include "player.h"
 
 #include <logging/log.h>
+#include <core/rng/rng.h>
 
 void Player_Start(uuid_t* uuid)
 {
@@ -9,8 +10,8 @@ void Player_Start(uuid_t* uuid)
     gameobject_mark_as_renderable(*uuid, true);
 
     // Generate random movement offsets for x, y, z
-    float offsetX = ((rand() % 200) - 100) / 10.0f;
-    float offsetY = ((rand() % 200) - 100) / 10.0f;
+    float offsetX = (float)((int32_t)rng_range(0, 50) * 2 - 50) / 10.0f ;
+    float offsetY = (float)((int32_t)rng_range(0, 70) * 2 - 70) / 10.0f;
     //float offsetZ = ((rand() % 200) - 100) / 100.0f;
 
     // Calculate new chaotic position based on offsets and dt

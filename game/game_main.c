@@ -2,6 +2,7 @@
 #include "camera_controller.h"
 
 #include <logging/log.h>
+#include <rng/rng.h>
 
 int game_main(void)
 {
