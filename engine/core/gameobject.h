@@ -6,6 +6,7 @@
 
 // external
 #include <cglm/cglm.h>
+#include <cglm/struct.h>
 
 // proj
 #include "common.h"
@@ -36,7 +37,7 @@ typedef struct GameObject
     Transform transform;
     uuid_t meshID;
     bool isRenderable;
-    const char* typeName;       // Type of the game object (class/type)
+    char typeName[255];         // Type of the game object (class/type)
     void* gameState;            // Global game state such as Input, world info, scene data etc. 
     void* gameObjectData;       // Object-specific data that can be serialized/reflected
     StartFunction startFn;      // Start function for the object
@@ -51,16 +52,19 @@ void gameobject_set_material(uuid_t goUUID, uuid_t materialUUID);
 // TODO
 void gameobject_set_renderable(uuid_t goUUID, uuid_t meshUUID, uuid_t materialUUID);
 
+void gameobject_mark_as_renderable(uuid_t goUUID, bool value);
+
+mat4s gameobject_get_transform(uuid_t goUUID);
+void gameobject_get_position(uuid_t goUUID, vec3* position);
+void gameobject_get_rotation(uuid_t goUUID, versor* rorationQuad);
+void gameobject_get_rotation_euler(uuid_t goUUID, vec3* rotationEuler);
+void gameobject_get_scale(uuid_t goUUID, vec3* scale);
+
 // Transform Utils
-// TODO
 void gameobject_set_transform(uuid_t goUUID, Transform transform);
-// TODO
 void gameobject_set_position(uuid_t goUUID, vec3 position);
-// TODO
 void gameobject_set_rotation(uuid_t goUUID, versor rorationQuad);
-// TODO
 void gameobject_set_rotation_euler(uuid_t goUUID, vec3 rotationEuler);
-// TODO
 void gameobject_set_scale(uuid_t goUUID, vec3 scale);
 
 #endif

@@ -11,54 +11,55 @@
 #include "game_state.h"
 #include "scripting.h"
 #include "game_registry.h"
+#include "gameobject.h"
 
 extern int game_main(void);
 
-// -- -- -- -- -- -- Contants -- -- -- -- -- --- --
+// -- -- -- -- -- -- Constants -- -- -- -- -- --- --
 // settings
-const unsigned int SCR_WIDTH = 800;
-const unsigned int SCR_HEIGHT = 600;
+const unsigned int SCR_WIDTH = 1280;
+const unsigned int SCR_HEIGHT = 720;
 
 // -- -- function declare
 //
 GLFWwindow* create_glfw_window(void);
-void framebuffer_size_callback(GLFWwindow *window, int width, int height);
+void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow* window);
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 
 
 // -- -- function define
 // 
-GLFWwindow* create_glfw_window(void){
-    
+GLFWwindow* create_glfw_window(void) {
+
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    
+
 #ifdef __APPLE__
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
-    
+
     GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "psychspiration", NULL, NULL);
     if (window == NULL)
     {
-		crash_game("Unable to create glfw window");
+        crash_game("Unable to create glfw window");
         glfwTerminate();
     }
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-	//glfwSetKeyCallback(window,key_callback);
+    //glfwSetKeyCallback(window,key_callback);
     // Disable V-Sync
     glfwSwapInterval(0);
-	return window;
+    return window;
 }
 
-void gl_settings(void){
-	glEnable(GL_DEPTH_TEST);
+void gl_settings(void) {
+    glEnable(GL_DEPTH_TEST);
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
-void framebuffer_size_callback(GLFWwindow *window, int width, int height)
+void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
     (void)window;
     // make sure the viewport matches the new window dimensions; note that width and 
@@ -66,7 +67,7 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height)
     glViewport(0, 0, width, height);
 }
 
-void processInput(GLFWwindow *window)
+void processInput(GLFWwindow* window)
 {
     (void)window;
 }
@@ -75,15 +76,15 @@ void processInput(GLFWwindow *window)
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
     (void)window;
-    (void) key;
-    (void) scancode;
-    (void) action;
-    (void) mods;
+    (void)key;
+    (void)scancode;
+    (void)action;
+    (void)mods;
 }
 // -- -- -- -- -- -- -- -- --
 
-GLuint setup_debug_cube(void){
-	    GLfloat vertices[] = {
+GLuint setup_debug_cube(void) {
+    GLfloat vertices[] = {
         // Front face
         -0.5f, -0.5f,  0.5f,  // Bottom-left
          0.5f, -0.5f,  0.5f,  // Bottom-right
@@ -113,7 +114,7 @@ GLuint setup_debug_cube(void){
         0, 4, 5, 5, 1, 0
     };
 
-	GLuint VAO,VBO,EBO;
+    GLuint VAO, VBO, EBO;
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
     glGenBuffers(1, &EBO);
@@ -135,34 +136,34 @@ GLuint setup_debug_cube(void){
 
     // Unbind VAO (NOT EBO) to prevent accidental modification
     glBindVertexArray(0);
-	return VAO;
+    return VAO;
 }
 
 int main(int argc, char** argv)
 {
-    (void) argc;
-    (void) argv;
+    (void)argc;
+    (void)argv;
 
-	init_glfw();
-	GLFWwindow* window = create_glfw_window();
-	init_glad();
-	gl_settings();
-	unsigned int shaderProgram;
-	{
-		unsigned int vertexShader  = compile_shader("engine/shaders/vertex",GL_VERTEX_SHADER);
-		unsigned int fragShader  = compile_shader("engine/shaders/frag",GL_FRAGMENT_SHADER);
-		shaderProgram = create_program(vertexShader,fragShader);
-	}
+    init_glfw();
+    GLFWwindow* window = create_glfw_window();
+    init_glad();
+    gl_settings();
+    unsigned int shaderProgram;
+    {
+        unsigned int vertexShader = compile_shader("engine/shaders/vertex", GL_VERTEX_SHADER);
+        unsigned int fragShader = compile_shader("engine/shaders/frag", GL_FRAGMENT_SHADER);
+        shaderProgram = create_program(vertexShader, fragShader);
+    }
 
-	GLuint vao = setup_debug_cube();
+    GLuint vao = setup_debug_cube();
 
-	// set uniforms
-	{
-		mat4s projection = glms_perspective(glm_rad(45.0f), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
-		setUniformMat4(shaderProgram,projection,"projection");
-		mat4s model = GLMS_MAT4_IDENTITY_INIT;
-		setUniformMat4(shaderProgram,model,"model");
-	}
+    // set uniforms
+    {
+        mat4s projection = glms_perspective(glm_rad(45.0f), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 1000.0f);
+        setUniformMat4(shaderProgram, projection, "projection");
+        mat4s model = GLMS_MAT4_IDENTITY_INIT;
+        setUniformMat4(shaderProgram, model, "model");
+    }
 
     //////////////////////////////////////////////////////// 
     // START GAME RUNTIME
@@ -180,11 +181,20 @@ int main(int argc, char** argv)
     float deltaTime; // Time between current frame and last frame
     float lastFrame = 0.0f; // Time of the last frame
 
+    int FPS = 0;
+
     while (!glfwWindowShouldClose(window))
     {
         // Get current time
         float currentFrame = (float)glfwGetTime();
         deltaTime = currentFrame - lastFrame; // Calculate delta time
+        // calculate FPS
+        FPS = (int)(1.0f / deltaTime);
+#ifdef _DEBUG
+        char windowTitle[250];
+        sprintf(windowTitle, "BYOE Game: byoe_ghost_asteroids | FPS: %d", FPS);
+        glfwSetWindowTitle(window, windowTitle);
+#endif
 
         processInput(window);
 
@@ -199,12 +209,29 @@ int main(int argc, char** argv)
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // Draw cube
-        glUseProgram(shaderProgram);
-        setUniformMat4(shaderProgram, gGlobalGameState.camera.lookAt, "view");
+        // Draw cubes
+        {
+            for (size_t i = 0; i < gGameRegistry->capacity; i++)
+            {
+                hash_map_pair_t pair = gGameRegistry->entries[i];
+                if (pair.key && pair.value) {
+                    GameObject* go = (GameObject*)pair.value;
+                    if (strcmp(go->typeName, "Camera") == 0)
+                        continue;
 
-        glBindVertexArray(vao);
-        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+                    // Render
+                    glUseProgram(shaderProgram);
+                    setUniformMat4(shaderProgram, gGlobalGameState.camera.lookAt, "view");
+                    mat4s model = GLMS_MAT4_IDENTITY_INIT;
+                    //glm_translate_make(model.raw, go->transform.position);
+                    setUniformMat4(shaderProgram, model, "model");
+
+                    glBindVertexArray(vao);
+                    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+                    glBindVertexArray(0);
+                }
+            }
+        }
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
@@ -215,7 +242,7 @@ int main(int argc, char** argv)
     }
 
     cleanup_game_registry();
-    
+
 
     // optional: de-allocate all resources once they've outlived their purpose:
     // ------------------------------------------------------------------------
@@ -227,7 +254,7 @@ int main(int argc, char** argv)
     // glfw: terminate, clearing all previously allocated GLFW resources.
     // ------------------------------------------------------------------
     glfwTerminate();
-	printf("\nbye!\n");
+    printf("\nbye!\n");
     return 0;
 }
 

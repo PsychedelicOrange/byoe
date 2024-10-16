@@ -28,12 +28,14 @@ uuid_t register_gameobject_type(const char* typeName, uint32_t gameObjectDataSiz
         return uuid;
     }
 
-    uuid_generate(&uuid);  // Generate a UUID key
+    uuid_generate(&uuid);
     uuid_print(&uuid);
 
     GameObject* game_object = malloc(sizeof(GameObject));
-    game_object->typeName = typeName;
-    game_object->gameObjectData = malloc(gameObjectDataSize);
+    uuid_copy(&uuid, &game_object->uuid);
+    strcpy(game_object->typeName, typeName);
+    if (gameObjectDataSize > 0)
+        game_object->gameObjectData = malloc(gameObjectDataSize);
     game_object->startFn = StartFn;
     game_object->updateFn = UpdateFn;
 
@@ -43,9 +45,15 @@ uuid_t register_gameobject_type(const char* typeName, uint32_t gameObjectDataSiz
     return uuid;  // Return the UUID of the registered object
 }
 
-void unregister_gameobject_type(const uuid_t uuid) {
+void unregister_gameobject_type(const uuid_t uuid)
+{
     GameObject* game_object = hash_map_get_value(gGameRegistry, (const char*)&uuid);
     if (game_object->gameObjectData)
         free(game_object->gameObjectData);
     hash_map_remove_entry(gGameRegistry, (const char*)&game_object->uuid);
+}
+
+GameObject* get_gameobject_by_uuid(uuid_t goUUID)
+{
+    return (GameObject*)hash_map_get_value(gGameRegistry, (const char*)&goUUID);
 }
