@@ -170,8 +170,6 @@ int main(int argc, char** argv)
     // START GAME RUNTIME
     init_game_registry();
 
-    LOG_ERROR("%s, %d\n", __FILE__, __LINE__);
-
     // register game objects on run-time side
     game_main();
 

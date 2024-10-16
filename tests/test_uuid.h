@@ -15,7 +15,7 @@ void test_uuid(void) {
         uuid_t uuid = {0, 0, 0, 0};
         uuid_generate(&uuid);
         TEST_END();
-        ASSERT_CON(uuid_is_null(&uuid), test_case, "UUID should not be null upon generation.");
+        ASSERT_CON(uuid_is_null(&uuid) == false, test_case, "UUID should not be null upon generation.");
     }
 
     // Subsequent generations should be unique
@@ -26,7 +26,7 @@ void test_uuid(void) {
         uuid_generate(&uuid_1);
         uuid_generate(&uuid_2);
         TEST_END();
-        ASSERT_CON(uuid_compare(&uuid_1, &uuid_2) == 1, test_case, "UUIDs generated should not be same.");
+        ASSERT_CON(uuid_compare(&uuid_1, &uuid_2) == 0, test_case, "UUIDs generated should not be same.");
     }
 
     // Testing copy + comparision
@@ -37,6 +37,6 @@ void test_uuid(void) {
         uuid_generate(&uuid_1);
         uuid_copy(&uuid_1, &uuid_2);
         TEST_END();
-        ASSERT_CON(uuid_compare(&uuid_1, &uuid_2) == 0, test_case, "UUIDs copied should be same.");
+        ASSERT_CON(uuid_compare(&uuid_1, &uuid_2) == 1, test_case, "UUIDs copied should be same.");
     }
 }
