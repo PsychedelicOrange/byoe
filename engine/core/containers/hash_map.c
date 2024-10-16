@@ -4,7 +4,10 @@
 #include <stdlib.h>
 #include <string.h> // strcmp
 
+#include "common.h"
+
 #include "uuid/uuid.h"
+#include "logging/log.h"
 
 // [source]: Hash hash_map Hash Function: FNV-1a
 // https://en.wikipedia.org/wiki/Fowler–Noll–Vo_hash_function#FNV-1a_hash
@@ -124,6 +127,9 @@ void* hash_map_get_value(const hash_map_t* hash_map, const char* key)
     // wrap it around capacity
     size_t index = (size_t)(hash & (uint64_t)(hash_map->capacity - 1));
 
+    size_t ogIndex = index;  // Original index to detect wrap-around
+    bool wrapped = false;
+
     // TODO: move this to a function bool hash_map_linear_probe(hash_map, key);
     // we use linear probing, if the index is unavailable we linearly move forward
     // and wrapping the hash_map from start index until we find one
@@ -136,11 +142,19 @@ void* hash_map_get_value(const hash_map_t* hash_map, const char* key)
             }
         }
 
-        // linear probing
+        // Linear probing to the next index
         index++;
-        if (index >= hash_map->capacity)
-            index = 0;
+        if (index >= hash_map->capacity) {
+            index = 0;  // Wrap around to the beginning
+            wrapped = true;
+        }
+
+        // If we have come full circle and didn't find the key, exit
+        if (index == ogIndex && wrapped == true) {
+            break;
+        }
     }
+    // LOG_ERROR("hash_map value not found! KEY: %zu\n", index);
     return NULL;
 }
 

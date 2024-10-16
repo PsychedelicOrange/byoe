@@ -55,8 +55,15 @@ void unregister_gameobject_type(const uuid_t uuid)
 
 GameObject* get_gameobject_by_uuid(uuid_t goUUID)
 {
-    return (GameObject*)hash_map_get_value(gGameRegistry, (const char*)&goUUID);
+    GameObject* go = (GameObject*)hash_map_get_value(gGameRegistry, (const char*)&goUUID);
+    if(go != NULL) {
+        return go;
+    }
+    else {
+        return NULL;
+    }
 }
+
 
 hash_map_t* game_registry_get_instance(void)
 {

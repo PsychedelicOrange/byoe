@@ -4,26 +4,34 @@
 #include "game_registry.h"
 #include "game_state.h"
 
+#include "logging/log.h"
+
 void gameobjects_start(void)
 {
-    for (size_t i = 0; i < game_registry_get_instance()->capacity; i++)
+    hash_map_t* registry = game_registry_get_instance();
+
+    for (size_t i = 0; i < registry->capacity; i++)
     {
-       hash_map_pair_t pair = game_registry_get_instance()->entries[i];
+       hash_map_pair_t pair = registry->entries[i];
        if(pair.key && pair.value) {
             GameObject* go = (GameObject*)pair.value;
-            go->startFn(go->uuid);
+            go->startFn(&go->uuid);
        }
     }
 }
 
 void gameobjects_update(float dt)
 {
-    for (size_t i = 0; i < game_registry_get_instance()->capacity; i++)
+    (void) dt;
+    hash_map_t* registry = game_registry_get_instance();
+
+    for (size_t i = 0; i < registry->capacity; i++)
     {
-       hash_map_pair_t pair = game_registry_get_instance()->entries[i];
+       hash_map_pair_t pair = registry->entries[i];
        if(pair.key && pair.value) {
             GameObject* go = (GameObject*)pair.value;
-            go->updateFn(go->uuid, dt);
+            if(go->updateFn)
+                go->updateFn(&go->uuid, dt);
        }
     }
 }

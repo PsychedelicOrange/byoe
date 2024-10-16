@@ -29,12 +29,12 @@ uuid_t register_gameobject_type(const char* typeName, uint32_t gameObjectDataSiz
 // Unregister and remove it from the game registry
 void unregister_gameobject_type(const uuid_t uuid);
 
+// Returns the game object ptr stored in the registry 
+GameObject* get_gameobject_by_uuid(uuid_t goUUID);
+
 hash_map_t* game_registry_get_instance(void);
 
 uint32_t game_registry_get_num_objects(void);
-
-// Returns the game object ptr stored in the registry 
-GameObject* get_gameobject_by_uuid(uuid_t goUUID);
 
 /*******************************/
 // Macros for Registration & Instantiation

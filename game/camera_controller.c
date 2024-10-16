@@ -6,12 +6,13 @@
 
 #include <GLFW/glfw3.h>
 
-void Camera_Start(uuid_t uuid)
+void Camera_Start(uuid_t* uuid)
 {
     (void)uuid;
 
-    Camera* camera = &((GameState*)gamestate_get_global_instance())->camera;
-
+    GameState* gameState = gamestate_get_global_instance();
+    Camera* camera = &gameState->camera;
+    
     camera->position.x = 0;
     camera->position.y = 0;
     camera->position.z = 3;
@@ -25,24 +26,22 @@ void Camera_Start(uuid_t uuid)
     camera->right.z = 0;
 }
 
-void Camera_Update(uuid_t uuid, float dt)
+void Camera_Update(uuid_t* uuid, float dt)
 {
     (void)uuid;
     (void)dt;
 
-    Camera* camera = &((GameState*)gamestate_get_global_instance())->camera;
-    GameState* gameStatePtr = (GameState*)gamestate_get_global_instance();
+    GameState* gameState = gamestate_get_global_instance();
+    Camera* camera = &gameState->camera;
 
-    if (gameStatePtr->keycodes[GLFW_KEY_W])
+    if (gameState->keycodes[GLFW_KEY_W])
         camera->position = glms_vec3_add(camera->position, glms_vec3_scale_as(camera->front, speed * dt));
-    if (gameStatePtr->keycodes[GLFW_KEY_A])
+    if (gameState->keycodes[GLFW_KEY_A])
         camera->position = glms_vec3_add(camera->position, glms_vec3_scale_as(camera->right, -speed * dt));
-    if (gameStatePtr->keycodes[GLFW_KEY_S])
+    if (gameState->keycodes[GLFW_KEY_S])
         camera->position = glms_vec3_add(camera->position, glms_vec3_scale_as(camera->front, -speed * dt));
-    if (gameStatePtr->keycodes[GLFW_KEY_D])
+    if (gameState->keycodes[GLFW_KEY_D])
         camera->position = glms_vec3_add(camera->position, glms_vec3_scale_as(camera->right, speed * dt));
 
     glm_look(camera->position.raw, camera->front.raw, up.raw, camera->lookAt.raw);
-
-    LOG_WARN("[Camera Script] deltaTime : %fms", dt * 1000.0f);
 }

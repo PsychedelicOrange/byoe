@@ -12,13 +12,14 @@
 #include "scripting.h"
 #include "game_registry.h"
 #include "gameobject.h"
+#include "logging/log.h"
 
 extern int game_main(void);
 
 // -- -- -- -- -- -- Constants -- -- -- -- -- --- --
 // settings
-const unsigned int SCR_WIDTH = 1280;
-const unsigned int SCR_HEIGHT = 720;
+const unsigned int SCR_WIDTH = 800;
+const unsigned int SCR_HEIGHT = 600;
 
 // -- -- function declare
 //
@@ -144,6 +145,9 @@ int main(int argc, char** argv)
     (void)argc;
     (void)argv;
 
+    // seed 
+    srand ( time(NULL) );
+
     init_glfw();
     GLFWwindow* window = create_glfw_window();
     init_glad();
@@ -168,6 +172,8 @@ int main(int argc, char** argv)
     //////////////////////////////////////////////////////// 
     // START GAME RUNTIME
     init_game_registry();
+
+    LOG_ERROR("%s, %d\n", __FILE__, __LINE__);
 
     // register game objects on run-time side
     game_main();
@@ -217,12 +223,13 @@ int main(int argc, char** argv)
                     if (strcmp(go->typeName, "Camera") == 0)
                         continue;
 
+                    // LOG_INFO("rendering gameobject: %s position: (%f, %f, %f)\n", go->typeName, go->transform.position[0], go->transform.position[1], go->transform.position[2]);
+
                     // Render
                     glUseProgram(shaderProgram);
-                    GameState* gameStatePtr = gamestate_get_global_instance();
-                    setUniformMat4(shaderProgram, gameStatePtr->camera.lookAt, "view");
+                    setUniformMat4(shaderProgram, gamestate_get_global_instance()->camera.lookAt, "view");
                     mat4s model = GLMS_MAT4_IDENTITY_INIT;
-                    //glm_translate_make(model.raw, go->transform.position);
+                    glm_translate_make(model.raw, go->transform.position);
                     setUniformMat4(shaderProgram, model, "model");
 
                     glBindVertexArray(vao);

@@ -2,7 +2,7 @@
 
 #include <GLFW/glfw3.h>
 
-static GameState gGlobalGameState;
+GameState gGlobalGameState;
 
 void gamestate_update(struct GLFWwindow* window)
 {
@@ -29,7 +29,7 @@ void gamestate_update(struct GLFWwindow* window)
     }
 }
 
-void* gamestate_get_global_instance(void)
+GameState* gamestate_get_global_instance(void)
 {
     return &gGlobalGameState;
 }

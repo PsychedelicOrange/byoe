@@ -31,4 +31,4 @@ typedef struct GameState
 } GameState;
 
 void gamestate_update(struct GLFWwindow* window);
-void* gamestate_get_global_instance(void);
+GameState* gamestate_get_global_instance(void);
