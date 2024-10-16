@@ -31,6 +31,9 @@ void Camera_Update(uuid_t* uuid, float dt)
     (void)uuid;
     (void)dt;
 
+	vec3s up = {{0,1,0}};
+	float speed = 2.5f;
+
     GameState* gameState = gamestate_get_global_instance();
     Camera* camera = &gameState->camera;
 

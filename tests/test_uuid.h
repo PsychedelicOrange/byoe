@@ -12,7 +12,7 @@ void test_uuid(void) {
     // Generate a valid UUID
     {
         TEST_START();
-        uuid_t uuid = {0, 0, 0, 0};
+        uuid_t uuid = {{0, 0, 0, 0}};
         uuid_generate(&uuid);
         TEST_END();
         ASSERT_CON(uuid_is_null(&uuid) == false, test_case, "UUID should not be null upon generation.");
