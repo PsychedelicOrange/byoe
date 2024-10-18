@@ -1,5 +1,7 @@
 #include "gameobject.h"
 
+#include "logging/log.h"
+
 static void create_transform_matrix(mat4s* dest, vec3 position, versor rotation, vec3 scale) {
     // Create individual transformation matrices
     mat4s translation, rotationMatrix, scaling;
@@ -120,6 +122,8 @@ void gameobject_set_position(uuid_t goUUID, vec3 position)
     if (go != NULL) {
         glm_vec3_copy(position, go->transform.position);
     }
+    else
+        LOG_ERROR("Failed to update position for gameobject %s\n", uuid_to_string(&goUUID));
 }
 
 void gameobject_set_rotation(uuid_t goUUID, versor rotationQuat)
@@ -128,6 +132,8 @@ void gameobject_set_rotation(uuid_t goUUID, versor rotationQuat)
     if (go != NULL) {
         glm_quat_copy(rotationQuat, go->transform.rotation);
     }
+    else
+        LOG_ERROR("Failed to update rotation for gameobject %s\n", uuid_to_string(&goUUID));
 }
 
 void gameobject_set_rotation_euler(uuid_t goUUID, vec3 rotationEuler)
@@ -136,6 +142,8 @@ void gameobject_set_rotation_euler(uuid_t goUUID, vec3 rotationEuler)
     if (go != NULL) {
         glm_euler_xyz_quat(rotationEuler, go->transform.rotation);
     }
+    else
+        LOG_ERROR("Failed to update rotation for gameobject %s\n", uuid_to_string(&goUUID));
 }
 
 void gameobject_set_scale(uuid_t goUUID, vec3 scale)
@@ -144,4 +152,6 @@ void gameobject_set_scale(uuid_t goUUID, vec3 scale)
     if (go != NULL) {
         glm_vec3_copy(scale, go->transform.scale);
     }
+    else
+        LOG_ERROR("Failed to update scale for gameobject %s\n", uuid_to_string(&goUUID));
 }

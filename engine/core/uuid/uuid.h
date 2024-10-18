@@ -18,6 +18,8 @@ void uuid_copy(const uuid_t* src, uuid_t* dest);
 
 void uuid_print(const uuid_t* uuid);
 
+char* uuid_to_string(const uuid_t* uuid);
+
 // compare two UUIDs (returns 1 if equal, 0 if not)
 int uuid_compare(const uuid_t* uuid1, const uuid_t* uuid2);
 
