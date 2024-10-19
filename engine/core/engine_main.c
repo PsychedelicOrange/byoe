@@ -84,6 +84,32 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 }
 // -- -- -- -- -- -- -- -- --
 
+GLuint setup_screen_quad(void){
+	// Vertex data for the rectangle (two triangles forming a quad)
+	float vertices[] = {
+		// Positions (X, Y)
+		-1.0f,  1.0f,  // Top-left
+		-1.0f, -1.0f,  // Bottom-left
+		1.0f, -1.0f,  // Bottom-right
+
+		-1.0f,  1.0f,  // Top-left
+		1.0f, -1.0f,  // Bottom-right
+		1.0f,  1.0f   // Top-right
+	};
+	unsigned int VAO, VBO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    // Position attribute
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+	return VAO;
+}
+
 GLuint setup_debug_cube(void) {
     GLfloat vertices[] = {
         // Front face
@@ -155,7 +181,14 @@ int main(int argc, char** argv)
         unsigned int fragShader = compile_shader("engine/shaders/frag", GL_FRAGMENT_SHADER);
         shaderProgram = create_program(vertexShader, fragShader);
     }
+	unsigned int raymarchshader;
+	{
+        unsigned int vertexShader = compile_shader("engine/shaders/simple_vert", GL_VERTEX_SHADER);
+        unsigned int fragShader = compile_shader("engine/shaders/raymarch", GL_FRAGMENT_SHADER);
+        raymarchshader = create_program(vertexShader, fragShader);
+	}
 
+	GLuint screen_quad_vao = setup_screen_quad();
     GLuint vao = setup_debug_cube();
 
     // set uniforms
@@ -234,6 +267,14 @@ int main(int argc, char** argv)
                 }
             }
         }
+		// draw over game lol
+        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		{
+			        glUseProgram(raymarchshader);
+					glBindVertexArray(screen_quad_vao);
+					glDrawArrays(GL_TRIANGLES, 0, 6);  // Drawing 6 vertices to form the quad
+		}
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
