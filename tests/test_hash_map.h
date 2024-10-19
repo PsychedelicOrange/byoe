@@ -89,7 +89,7 @@ char* words[] = {
     "raspberry", "strawberry", "tangerine", "dragonfruit", "watermelon"
 };
 
-char* get_random_word() {
+char* get_random_word(void) {
     int num_words = sizeof(words) / sizeof(words[0]);
     int random_index = rand() % num_words;  // Get a random index
     return words[random_index];

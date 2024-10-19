@@ -199,7 +199,7 @@ int main(int argc, char** argv)
         elapsedTime += deltaTime;
         if (elapsedTime > 1.0f) {
             char windowTitle[250];
-            sprintf(windowTitle, "BYOE Game: byoe_ghost_asteroids | FPS: %d", FPS);
+            sprintf(windowTitle, "BYOE Game: byoe_ghost_asteroids | FPS: %d | rendertime: %2.2fms", FPS, deltaTime * 1000.0f);
             glfwSetWindowTitle(window, windowTitle);
             elapsedTime = 0.0f;
         }

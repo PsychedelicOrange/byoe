@@ -199,8 +199,11 @@ void* hash_map_get_value(const hash_map_t* hash_map, random_uuid_t key)
     size_t i = 0;
 
     // Prefetch memory ahead of the lookup
-    //__builtin_prefetch(&hash_map->entries[index], 0, 1);
-    _mm_prefetch((const char*)&hash_map->entries[index], _MM_HINT_T0);
+    #ifdef __clang__ 
+        __builtin_prefetch(&hash_map->entries[index], 0, 1);
+    #elif defined ___MSVC__
+        _mm_prefetch((const char*)&hash_map->entries[index], _MM_HINT_T0);
+    #endif
 
     while (i < hash_map->capacity)  // Optimized loop to reduce condition checks
     {
@@ -216,8 +219,11 @@ void* hash_map_get_value(const hash_map_t* hash_map, random_uuid_t key)
         index = quadratic_probe(index, i, hash_map->capacity);
 
         // Prefetch the next entry
-        //__builtin_prefetch(&hash_map->entries[index], 0, 1);
-        _mm_prefetch((const char*)&hash_map->entries[index], _MM_HINT_T0);
+        #ifdef __clang__
+            __builtin_prefetch(&hash_map->entries[index], 0, 1);
+        #elif defined __MSVC__
+            _mm_prefetch((const char*)&hash_map->entries[index], _MM_HINT_T0);
+        #endif
     }
 
     LOG_ERROR("-----------------------------\n");

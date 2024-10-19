@@ -13,7 +13,7 @@
 
 #define BENCHMARK_START() \
     uint64_t __start_time = benchmark_get_time();
-    //printf("Starting benchmark: %s...\n", test_name); \
+    //printf("Starting benchmark: %s...\n", test_name);
 
 #define BENCHMARK_END() \
     uint64_t __end_time = benchmark_get_time(); \
@@ -38,13 +38,13 @@ static inline uint64_t benchmark_get_frequency() {
 }
 #else
 // Unix-based systems use gettimeofday for microsecond precision
-static inline uint64_t benchmark_get_time() {
+static inline uint64_t benchmark_get_time(void) {
     struct timeval time;
     gettimeofday(&time, NULL);
     return (uint64_t)(time.tv_sec * 1000000ULL + time.tv_usec);
 }
 
-static inline uint64_t benchmark_get_frequency() {
+static inline uint64_t benchmark_get_frequency(void) {
     return 1000000ULL;  // Microseconds to seconds
 }
 #endif
