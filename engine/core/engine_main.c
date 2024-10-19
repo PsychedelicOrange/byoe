@@ -23,6 +23,8 @@ extern int game_main(void);
 // settings
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
+// TODO: remove this later
+unsigned int raymarchshader;
 
 // -- -- function declare
 //
@@ -74,6 +76,10 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 void processInput(GLFWwindow* window)
 {
     (void)window;
+	if(glfwGetKey(window,GLFW_KEY_SPACE)){
+		glDeleteProgram(raymarchshader);
+		raymarchshader = create_shader("engine/shaders/simple_vert","engine/shaders/raymarch");
+	}
 }
 
 // ig we can just define this function from script and set callback from the script
@@ -157,12 +163,8 @@ int main(int argc, char** argv)
     GLFWwindow* window = create_glfw_window();
     init_glad();
     gl_settings();
-    unsigned int shaderProgram;
-    {
-        unsigned int vertexShader = compile_shader("engine/shaders/vertex", GL_VERTEX_SHADER);
-        unsigned int fragShader = compile_shader("engine/shaders/frag", GL_FRAGMENT_SHADER);
-        shaderProgram = create_program(vertexShader, fragShader);
-    }
+    unsigned int shaderProgram = create_shader("engine/shaders/vertex","engine/shaders/frag");
+    raymarchshader = create_shader("engine/shaders/simple_vert","engine/shaders/raymarch");
 
     GLuint vao = setup_debug_cube();
 
@@ -248,6 +250,14 @@ int main(int argc, char** argv)
                 }
             }
         }
+		// draw over game lol
+        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		{
+			glUseProgram(raymarchshader);
+			glBindVertexArray(screen_quad_vao);
+			glDrawArrays(GL_TRIANGLES, 0, 6);  // Drawing 6 vertices to form the quad
+		}
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------

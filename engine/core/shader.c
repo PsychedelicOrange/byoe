@@ -1,9 +1,14 @@
 #include <glad/glad.h>
 #include <stdio.h>
 #include <stddef.h>
-#include <shader.h>
+#include "shader.h"
 // -- -- -- -- -- -- Shader functions -- -- -- -- -- --- --
 //
+unsigned int create_shader(char* vertexPath,char* fragmentPath){
+	unsigned int vertexShader = compile_shader(vertexPath, GL_VERTEX_SHADER);
+	unsigned int fragShader = compile_shader(fragmentPath, GL_FRAGMENT_SHADER);
+	return create_program(vertexShader, fragShader);
+}
 unsigned int compile_shader(char * filePath, int shaderType){
 	char* shaderCode = readFileToString(filePath);
 	unsigned int shader = glCreateShader(shaderType);
