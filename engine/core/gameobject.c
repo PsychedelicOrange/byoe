@@ -121,9 +121,10 @@ void gameobject_set_position(uuid_t goUUID, vec3 position)
     GameObject* go = get_gameobject_by_uuid(goUUID);
     if (go != NULL) {
         glm_vec3_copy(position, go->transform.position);
+        LOG_SUCCESS("gameobject set pos success : %s", go->typeName);
     }
     else
-        LOG_ERROR("Failed to update position for gameobject %s\n", uuid_to_string(&goUUID));
+        LOG_ERROR("Failed to update position for gameobject: %s\n", uuid_to_string(&goUUID));
 }
 
 void gameobject_set_rotation(uuid_t goUUID, versor rotationQuat)

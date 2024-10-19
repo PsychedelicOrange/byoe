@@ -13,6 +13,7 @@ typedef struct hash_map_pair_t
 {
     char* key;
     void* value;
+    uint64_t hash; 
 } hash_map_pair_t;
 
 typedef struct hash_map_t
@@ -46,7 +47,8 @@ hash_map_iterator_t hash_map_iterator(hash_map_t* hash_map, const char* key);
 bool hash_map_parse_next(hash_map_iterator_t* iterator);
 
 // utils
-size_t hash_map_get_length(const hash_map_t* hash_map);
-size_t hash_map_get_capacity(const hash_map_t* hash_map);
+inline size_t hash_map_get_length(const hash_map_t* hash_map) { return hash_map->length; }
+
+inline size_t hash_map_get_capacity(const hash_map_t* hash_map) { return hash_map->length; }
 
 #endif

@@ -9,6 +9,24 @@
 #include "uuid/uuid.h"
 #include "logging/log.h"
 
+// TODO:
+// [ ] use memcmp instead of strcmp
+// [ ] use __builtin_prefetch for array elements
+// [ ] Improve collision handling: use quadratic probing or linked lists
+// [ ] Fix get_key_value bug: add a new test
+
+// void print_map(hash_map_t* map) {
+//     printf(COLOR_BLUE "Hash Map Contents:\n" COLOR_RESET);
+//     if (!map)
+//         return;
+//     for (size_t i = 0; i < map->capacity; i++)
+//     {
+//         if (map->entries && map->entries[i].key && map->entries[i].value)
+//             printf("Key: %s, Value: %s\n", map->entries[i].key, (char*)map->entries[i].value);
+//     }
+//     printf("\n");
+// }
+
 // [source]: Hash hash_map Hash Function: FNV-1a
 // https://en.wikipedia.org/wiki/Fowler–Noll–Vo_hash_function#FNV-1a_hash
 // https://benhoyt.com/writings/hash-hash_map-in-c/
@@ -16,30 +34,73 @@
 ////////////////////////////////////////////////////////////
 // Private API
 
+// Hash functions
+
 #define FNV_offset_basis    14695981039346656037UL
 #define FNV_prime           1099511628211UL
 
-static uint64_t fnv1a_hash(uint8_t* key)
+// static uint64_t fnv1a_hash(uint8_t* key)
+// {
+//     uint64_t hash = FNV_offset_basis;
+//     while (*key) {
+//         hash ^= (uint64_t)(unsigned char*)(key); // bitwise XOR
+//         hash *= FNV_prime;                       // multiply
+//         key++;
+//     }
+//     return hash;
+// }
+
+static uint64_t murmur_hash_uuid(const uuid_t* uuid)
 {
-    uint64_t hash = FNV_offset_basis;
-    while (*key) {
-        hash ^= (uint64_t)(unsigned char*)(key); // bitwise XOR
-        hash *= FNV_prime;                       // multiply
-        key++;
-    }
+    const uint64_t seed = 0xc70f6907UL;         // Seed for hashing
+    const uint64_t m = 0xc6a4a7935bd1e995UL;    // Multiplier constant
+    const int r = 47;                           // Right shift for mixing
+
+    uint64_t hash = seed ^ (16 * m);            // UUID is 16 bytes (128 bits)
+
+    const uint64_t* data = (const uint64_t*)uuid;
+
+    // Hash the first 64 bits
+    uint64_t k1 = data[0];
+    k1 *= m;
+    k1 ^= k1 >> r;
+    k1 *= m;
+    hash ^= k1;
+    hash *= m;
+
+    // Hash the second 64 bits
+    uint64_t k2 = data[1];
+    k2 *= m;
+    k2 ^= k2 >> r;
+    k2 *= m;
+    hash ^= k2;
+    hash *= m;
+
+    // Final mixing of the hash to reduce entropy
+    hash ^= hash >> r;
+    hash *= m;
+    hash ^= hash >> r;
+
     return hash;
+}
+
+// Internal methods
+
+static size_t quadratic_probe(size_t index, size_t i, size_t capacity)
+{
+    return (index + i * i) & (capacity - 1);
 }
 
 static void hash_map_set_entry(hash_map_pair_t* hash_map_entries, size_t capacity, const char* key, void* value, size_t* plength)
 {
     // first compute the hash for the key
-    uint64_t hash = fnv1a_hash((uint8_t*)key);
+    uint64_t hash = murmur_hash_uuid((const uuid_t*)key);
     // wrap it around capacity
     size_t index = (size_t)(hash & (uint64_t)(capacity - 1));
 
     while (hash_map_entries[index].key != NULL)
     {
-        if (strcmp(key, hash_map_entries[index].key) == 0) {
+        if (memcmp(key, hash_map_entries[index].key, sizeof(uuid_t)) == 0) {
             // entry found update it (empty/existing)
             hash_map_entries[index].value = value;
             return;
@@ -67,14 +128,17 @@ static void hash_map_set_entry(hash_map_pair_t* hash_map_entries, size_t capacit
 
 static bool hash_map_expand(hash_map_t* hash_map)
 {
+    LOG_ERROR("[Hash Map] Expanding hash map... previous size: %zu new size: %zu\n", hash_map->capacity, hash_map->capacity * 2);
     // Allocate new entries array
     size_t new_capacity = hash_map->capacity * 2;
     if (new_capacity < hash_map->capacity) {
+        LOG_ERROR("[Hash Map] Failed to expand, overflow!\n");
         return false;  // overflow (capacity would be too big)
     }
 
     hash_map_pair_t* new_entries = calloc(new_capacity, sizeof(hash_map_pair_t));
     if (new_entries == NULL) {
+        LOG_ERROR("[Hash Map] Failed to allocate new entries using calloc!\n");
         return false;
     }
 
@@ -124,39 +188,38 @@ void hash_map_destroy(hash_map_t* hash_map)
 
 void* hash_map_get_value(const hash_map_t* hash_map, const char* key)
 {
-    // first compute the hash for the key
-    uint64_t hash = fnv1a_hash((uint8_t*)key);
-    // wrap it around capacity
+    // Compute the hash for the key
+    uint64_t hash = murmur_hash_uuid((const uuid_t*)key);
     size_t index = (size_t)(hash & (uint64_t)(hash_map->capacity - 1));
-
     size_t ogIndex = index;  // Original index to detect wrap-around
-    bool wrapped = false;
 
-    // TODO: move this to a function bool hash_map_linear_probe(hash_map, key);
-    // we use linear probing, if the index is unavailable we linearly move forward
-    // and wrapping the hash_map from start index until we find one
-    while (index < hash_map->capacity)
+    // Prefetch memory ahead of the lookup
+    __builtin_prefetch(&hash_map->entries[index], 0, 1);
+
+    while (1)  // Optimized loop to reduce condition checks
     {
+        // If key is not NULL, compare it
         if (hash_map->entries[index].key != NULL) {
-            // if empty key found
-            if (strcmp(key, hash_map->entries[index].key) == 0) {
+            // Compare the key using memcmp for faster comparison
+            if (memcmp(key, hash_map->entries[index].key, strlen(key) + 1) == 0) {
                 return hash_map->entries[index].value;
             }
         }
 
         // Linear probing to the next index
-        index++;
-        if (index >= hash_map->capacity) {
-            index = 0;  // Wrap around to the beginning
-            wrapped = true;
-        }
+        index = (index + 1) & (hash_map->capacity - 1);
+
+        // Prefetch the next entry
+        __builtin_prefetch(&hash_map->entries[index], 0, 1);
 
         // If we have come full circle and didn't find the key, exit
-        if (index == ogIndex && wrapped == true) {
+        if (index == ogIndex) {
             break;
         }
     }
-    // LOG_ERROR("hash_map value not found! KEY: %zu\n", index);
+
+    LOG_SUCCESS("-----------------------------\n");
+    LOG_ERROR("hash_map value not found! INDEX : %zu KEY: %s\n", index, uuid_to_string((uuid_t*)key));
     return NULL;
 }
 
@@ -205,7 +268,7 @@ hash_map_iterator_t hash_map_iterator(hash_map_t* hash_map, const char* key)
     it.hash_map_ref = hash_map;
 
     // First compute the hash for the key
-    uint64_t hash = fnv1a_hash((uint8_t*)key);
+    uint64_t hash = murmur_hash_uuid((const uuid_t*)key);
     // Wrap it around capacity
     it.index = (size_t)(hash & (uint64_t)(hash_map->capacity - 1));
 
@@ -261,14 +324,4 @@ bool hash_map_parse_next(hash_map_iterator_t* iterator)
         }
     }
     return false;
-}
-
-size_t hash_map_get_length(const hash_map_t* hash_map)
-{
-    return hash_map->length;
-}
-
-size_t hash_map_get_capacity(const hash_map_t* hash_map)
-{
-    return hash_map->length;
 }
