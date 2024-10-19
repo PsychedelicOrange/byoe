@@ -73,6 +73,9 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 void processInput(GLFWwindow* window)
 {
     (void)window;
+	if(glfwGetKey(window,GLFW_KEY_GRAVE_ACCENT)){
+		exit(0);
+	}
 	if(glfwGetKey(window,GLFW_KEY_SPACE)){
 		glDeleteProgram(raymarchshader);
 		raymarchshader = create_shader("engine/shaders/simple_vert","engine/shaders/raymarch");
@@ -186,6 +189,7 @@ int main(int argc, char** argv)
 
 	GLuint screen_quad_vao = setup_screen_quad();
     GLuint vao = setup_debug_cube();
+	(void)vao;
 
     // set uniforms
     {
@@ -263,7 +267,6 @@ int main(int argc, char** argv)
                 }
             }
         }
-		// draw over game lol
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		{
