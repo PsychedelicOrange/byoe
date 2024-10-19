@@ -184,6 +184,7 @@ int main(int argc, char** argv)
     // -----------
     float deltaTime; // Time between current frame and last frame
     float lastFrame = 0.0f; // Time of the last frame
+    float elapsedTime = 0;
 
     int FPS = 0;
 
@@ -194,9 +195,14 @@ int main(int argc, char** argv)
         deltaTime = currentFrame - lastFrame; // Calculate delta time
         // calculate FPS
         FPS = (int)(1.0f / deltaTime);
-        char windowTitle[250];
-        sprintf(windowTitle, "BYOE Game: byoe_ghost_asteroids | FPS: %d", FPS);
-        glfwSetWindowTitle(window, windowTitle);
+
+        elapsedTime += deltaTime;
+        if (elapsedTime > 1.0f) {
+            char windowTitle[250];
+            sprintf(windowTitle, "BYOE Game: byoe_ghost_asteroids | FPS: %d", FPS);
+            glfwSetWindowTitle(window, windowTitle);
+            elapsedTime = 0.0f;
+        }
 
         processInput(window);
 

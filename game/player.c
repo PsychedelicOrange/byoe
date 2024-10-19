@@ -27,6 +27,12 @@ void Player_Start(random_uuid_t* uuid)
     // Ex. API usage: 
     // gameobject_mark_as_renderable(*uuid, true);
     // gameobject_set_scale(*uuid, newScale);
+}
+
+void Player_Update(random_uuid_t* uuid, float dt)
+{
+    (void)uuid;
+    (void)dt;
 
     // Generate random movement offsets for x, y, z
     float offsetX = (float)((int32_t)rng_range(0, 50) * 2 - 50) / 10.0f;
@@ -35,8 +41,8 @@ void Player_Start(random_uuid_t* uuid)
 
     // Calculate new chaotic position based on offsets and dt
     vec3 newPosition = {
-        offsetX,
-        offsetY,
+        offsetX * dt * 25,
+        offsetY * dt * 25,
         0
     };;
 
@@ -48,13 +54,4 @@ void Player_Start(random_uuid_t* uuid)
 
     gameobject_set_position(*uuid, newPosition);
     // LOG_SUCCESS("-----------------------------\n");
-}
-
-void Player_Update(random_uuid_t* uuid, float dt)
-{
-    (void)uuid;
-    (void)dt;
-
-
-
 }

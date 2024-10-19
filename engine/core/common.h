@@ -16,7 +16,7 @@
     #endif
 #endif
 
-// Manimum number of game Object Instances in the game world at any moment
+// Maximum number of game Object Instances in the game world at any moment
 #define MAX_OBJECTS 1024
 
 #define COLOR_RESET   "\x1b[0m"
