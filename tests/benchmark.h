@@ -11,14 +11,17 @@
 #include <sys/time.h>
 #endif
 
-#define BENCHMARK_START(test_name) \
-    printf("⏱️ Starting benchmark: %s...\n", test_name); \
+#define BENCHMARK_START() \
     uint64_t __start_time = benchmark_get_time();
+    //printf("Starting benchmark: %s...\n", test_name); \
 
-#define BENCHMARK_END(test_name) \
+#define BENCHMARK_END() \
     uint64_t __end_time = benchmark_get_time(); \
-    double __duration = (double)(__end_time - __start_time) / benchmark_get_frequency(); \
-    printf("✅ Benchmark finished: %s in %.6f seconds\n", test_name, __duration);
+    double __duration = (double)(__end_time - __start_time) / benchmark_get_frequency();
+    //printf("Benchmark finished: %s in %4.4f ms\n", test_name, __duration * 1000.0f);
+
+#define BENCHMARK_TIME() \
+    __duration * 1000.0f // This retrieves the time spent from BENCHMARK_END
 
 #ifdef _WIN32
 // Windows high-resolution time functions

@@ -13,7 +13,7 @@ void gameobjects_start(void)
     for (size_t i = 0; i < registry->capacity; i++)
     {
        hash_map_pair_t pair = registry->entries[i];
-       if(pair.key && pair.value) {
+       if(!uuid_is_null(&pair.key) && pair.value) {
             GameObject* go = (GameObject*)pair.value;
             go->startFn(&go->uuid);
        }
@@ -28,7 +28,7 @@ void gameobjects_update(float dt)
     for (size_t i = 0; i < registry->capacity; i++)
     {
        hash_map_pair_t pair = registry->entries[i];
-       if(pair.key && pair.value) {
+       if(!uuid_is_null(&pair.key) && pair.value) {
             GameObject* go = (GameObject*)pair.value;
             if(go->updateFn)
                 go->updateFn(&go->uuid, dt);

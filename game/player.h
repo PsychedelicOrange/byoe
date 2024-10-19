@@ -9,5 +9,5 @@ typedef struct PlayerData
     uint32_t health;
 } PlayerData;
 
-void Player_Start(uuid_t* uuid);
-void Player_Update(uuid_t* uuid, float dt);
+void Player_Start(random_uuid_t* uuid);
+void Player_Update(random_uuid_t* uuid, float dt);

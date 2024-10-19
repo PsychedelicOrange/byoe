@@ -145,6 +145,9 @@ int main(int argc, char** argv)
     (void)argc;
     (void)argv;
 
+    srand((unsigned int)time(NULL));  // Seed for random number generator
+
+
     init_glfw();
     GLFWwindow* window = create_glfw_window();
     init_glad();
@@ -213,7 +216,7 @@ int main(int argc, char** argv)
             for (size_t i = 0; i < game_registry_get_instance()->capacity; i++)
             {
                 hash_map_pair_t pair = game_registry_get_instance()->entries[i];
-                if (pair.key && pair.value) {
+                if (!uuid_is_null(&pair.key) && pair.value) {
                     GameObject* go = (GameObject*)pair.value;
                     if (strcmp(go->typeName, "Camera") == 0)
                         continue;

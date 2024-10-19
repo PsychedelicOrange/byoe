@@ -12,7 +12,11 @@ void test_uuid(void) {
     // Generate a valid UUID
     {
         TEST_START();
-        uuid_t uuid = {{0, 0, 0, 0}};
+#ifdef __GNUC__
+        random_uuid_t uuid = {{0, 0, 0, 0}};
+#else 
+        random_uuid_t uuid = {0, 0, 0, 0};
+#endif
         uuid_generate(&uuid);
         TEST_END();
         ASSERT_CON(uuid_is_null(&uuid) == false, test_case, "UUID should not be null upon generation.");
@@ -21,8 +25,8 @@ void test_uuid(void) {
     // Subsequent generations should be unique
     {
         TEST_START();
-        uuid_t uuid_1;
-        uuid_t uuid_2;
+        random_uuid_t uuid_1;
+        random_uuid_t uuid_2;
         uuid_generate(&uuid_1);
         uuid_generate(&uuid_2);
         TEST_END();
@@ -32,8 +36,8 @@ void test_uuid(void) {
     // Testing copy + comparision
     {
         TEST_START();
-        uuid_t uuid_1;
-        uuid_t uuid_2;
+        random_uuid_t uuid_1;
+        random_uuid_t uuid_2;
         uuid_generate(&uuid_1);
         uuid_copy(&uuid_1, &uuid_2);
         TEST_END();
