@@ -3,47 +3,28 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-
-#ifdef _WIN32
-#include <xmmintrin.h>  // For _mm_prefetch
-#endif
-
 #include "common.h"
+
+#include "simd/intrinsics.h"
 
 #include "uuid/uuid.h"
 #include "logging/log.h"
-
-#include "memory/memalloc.h"
 
 // TODO:
 // [x] use memcmp instead of strcmp
 // [x] use __builtin_prefetch for array elements
 // [x] Improve collision handling: use quadratic probing or linked lists
-// [ ] Fix get_key_value test: add a new test to make sure it always find the key
+// [x] Fix get_key_value test: add a new test to make sure it always find the key
+// [ ] Fix hash_map tests, use UUID, it's fine.
+// [ ] New benchmarks target: hash_map
 
 // [source]: Hash hash_map Hash Function: FNV-1a
 // https://en.wikipedia.org/wiki/Fowler–Noll–Vo_hash_function#FNV-1a_hash
-// https://benhoyt.com/writings/hash-hash_map-in-c/
 
 ////////////////////////////////////////////////////////////
 // Private API
 
-// Hash functions
-
-#define FNV_offset_basis    14695981039346656037UL
-#define FNV_prime           1099511628211UL
-
-// static uint64_t fnv1a_hash(uint8_t* key)
-// {
-//     uint64_t hash = FNV_offset_basis;
-//     while (*key) {
-//         hash ^= (uint64_t)(unsigned char*)(key); // bitwise XOR
-//         hash *= FNV_prime;                       // multiply
-//         key++;
-//     }
-//     return hash;
-// }
-
+// Hash function
 static uint64_t murmur_hash_uuid(const random_uuid_t* uuid)
 {
     const uint64_t seed = 0xc70f6907UL;         // Seed for hashing
@@ -78,9 +59,9 @@ static uint64_t murmur_hash_uuid(const random_uuid_t* uuid)
     return hash;
 }
 
+//-----------------------------------------------------------------
 // Internal methods
-
-static size_t quadratic_probe(size_t index, size_t i, size_t capacity)
+static size_t hash_map_quadratic_probe(size_t index, size_t i, size_t capacity)
 {
     return (index + i * i) % capacity;
 }
@@ -103,7 +84,7 @@ static void hash_map_set_entry(hash_map_pair_t* hash_map_entries, size_t capacit
 
         // Quadratic probing
         i++;
-        index = quadratic_probe(index, i, capacity);
+        index = hash_map_quadratic_probe(index, i, capacity);
     }
 
     if (plength != NULL) {
@@ -133,6 +114,7 @@ static bool hash_map_expand(hash_map_t* hash_map)
     // Iterate entries, move all non-empty ones to new hash_map's entries.
     for (size_t i = 0; i < hash_map->capacity; i++) {
         hash_map_pair_t entry = hash_map->entries[i];
+        prefetch(&entry);
         if (!uuid_is_null(&entry.key)) {
             hash_map_set_entry(new_entries, new_capacity, entry.key, entry.value, NULL);
         }
@@ -199,11 +181,7 @@ void* hash_map_get_value(const hash_map_t* hash_map, random_uuid_t key)
     size_t i = 0;
 
     // Prefetch memory ahead of the lookup
-    #ifdef __clang__ 
-        __builtin_prefetch(&hash_map->entries[index], 0, 1);
-    #elif defined ___MSVC__
-        _mm_prefetch((const char*)&hash_map->entries[index], _MM_HINT_T0);
-    #endif
+    prefetch(&hash_map->entries[index]);
 
     while (i < hash_map->capacity)  // Optimized loop to reduce condition checks
     {
@@ -216,14 +194,10 @@ void* hash_map_get_value(const hash_map_t* hash_map, random_uuid_t key)
         }
 
         i++;
-        index = quadratic_probe(index, i, hash_map->capacity);
+        index = hash_map_quadratic_probe(index, i, hash_map->capacity);
 
         // Prefetch the next entry
-        #ifdef __clang__
-            __builtin_prefetch(&hash_map->entries[index], 0, 1);
-        #elif defined __MSVC__
-            _mm_prefetch((const char*)&hash_map->entries[index], _MM_HINT_T0);
-        #endif
+        prefetch(&hash_map->entries[index]);    
     }
 
     LOG_ERROR("-----------------------------\n");
@@ -281,6 +255,8 @@ hash_map_iterator_t hash_map_iterator(hash_map_t* hash_map, random_uuid_t key)
     it.index = (size_t)(hash & (uint64_t)(hash_map->capacity - 1));
     size_t i = 0;
 
+    prefetch(&hash_map->entries[it.index]);
+
     // Start probing for the key
     while (it.index < hash_map->capacity)
     {
@@ -296,7 +272,9 @@ hash_map_iterator_t hash_map_iterator(hash_map_t* hash_map, random_uuid_t key)
         }
 
         i++;
-        it.index = quadratic_probe(it.index, i, hash_map->capacity);
+        it.index = hash_map_quadratic_probe(it.index, i, hash_map->capacity);
+
+        prefetch(&hash_map->entries[it.index]);
     }
 
     // If not found, return an invalid iterator
