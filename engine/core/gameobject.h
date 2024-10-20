@@ -9,8 +9,8 @@
 #include <cglm/struct.h>
 
 // proj
-#include "common.h"
 #include "../scripting/scripting.h"
+#include "common.h"
 #include "uuid/uuid.h"
 
 #include "game_registry.h"
@@ -24,24 +24,24 @@
 
 typedef struct Transform
 {
-    vec3    position;
-    float _padding1;
-    versor  rotation; // glm::quat [x, y, z, w]
-    vec3    scale;
-    float _padding2;
+    vec3   position;
+    float  _padding1;
+    versor rotation;    // glm::quat [x, y, z, w]
+    vec3   scale;
+    float  _padding2;
 } Transform;
 
 typedef struct GameObject
 {
-    random_uuid_t uuid;
-    Transform transform;
-    random_uuid_t meshID;
-    bool isRenderable;
-    char typeName[255];         // Type of the game object (class/type)
-    void* gameState;            // Global game state such as Input, world info, scene data etc. 
-    void* gameObjectData;       // Object-specific data that can be serialized/reflected
-    StartFunction startFn;      // Start function for the object
-    UpdateFunction updateFn;    // Update function for the object
+    random_uuid_t  uuid;
+    Transform      transform;
+    random_uuid_t  meshID;
+    bool           isRenderable;
+    char           typeName[255];     // Type of the game object (class/type)
+    void*          gameState;         // Global game state such as Input, world info, scene data etc.
+    void*          gameObjectData;    // Object-specific data that can be serialized/reflected
+    StartFunction  startFn;           // Start function for the object
+    UpdateFunction updateFn;          // Update function for the object
     // TODO: Add collision callback functions here if needed
 } GameObject;
 
@@ -56,10 +56,10 @@ void gameobject_mark_as_renderable(random_uuid_t goUUID, bool value);
 
 mat4s gameobject_get_transform(random_uuid_t goUUID);
 mat4s gameobject_ptr_get_transform(GameObject* obj);
-void gameobject_get_position(random_uuid_t goUUID, vec3* position);
-void gameobject_get_rotation(random_uuid_t goUUID, versor* rorationQuad);
-void gameobject_get_rotation_euler(random_uuid_t goUUID, vec3* rotationEuler);
-void gameobject_get_scale(random_uuid_t goUUID, vec3* scale);
+void  gameobject_get_position(random_uuid_t goUUID, vec3* position);
+void  gameobject_get_rotation(random_uuid_t goUUID, versor* rorationQuad);
+void  gameobject_get_rotation_euler(random_uuid_t goUUID, vec3* rotationEuler);
+void  gameobject_get_scale(random_uuid_t goUUID, vec3* scale);
 
 // Transform Utils
 void gameobject_set_transform(random_uuid_t goUUID, Transform transform);
