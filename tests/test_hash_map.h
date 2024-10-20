@@ -22,45 +22,57 @@ void test_hash_map(void) {
        ASSERT_EQ((size_t)0, hash_map_get_length(map), "%zu", test_case, "Map should be empty upon creation.");
    }
 
+    random_uuid_t uuid_retriieve_1;
+    random_uuid_t uuid_retriieve_2;
+
    // Test inserting some key-value pairs
    {
-       TEST_START();
-       hash_map_set_key_value(map, "apple", "fruit");
-       hash_map_set_key_value(map, "carrot", "vegetable");
-       hash_map_set_key_value(map, "pear", "fruit");
-       hash_map_set_key_value(map, "broccoli", "vegetable");
-       TEST_END();
-       ASSERT_EQ((size_t)4, hash_map_get_length(map), "%zu", test_case, "Map should have 4 elements after insertion.");
+        TEST_START();
+        random_uuid_t uuid;
+        
+        uuid_generate(&uuid);
+        hash_map_set_key_value(map, uuid, "apple");
+        
+        uuid_generate(&uuid_retriieve_1);
+        hash_map_set_key_value(map, uuid_retriieve_1, "carrot");
+        
+        uuid_generate(&uuid_retriieve_2);
+        hash_map_set_key_value(map, uuid_retriieve_2, "pear");
+        
+        uuid_generate(&uuid);
+        hash_map_set_key_value(map, uuid, "broccoli");
+        TEST_END();
+        ASSERT_EQ((size_t)4, hash_map_get_length(map), "%zu", test_case, "Map should have 4 elements after insertion.");
    }
 
    // Test retrieval
    {
        TEST_START();
-       const char* apple_val = (const char*)hash_map_get_value(map, "apple");
+       const char* ret_val_1 = (const char*)hash_map_get_value(map, uuid_retriieve_1);
        TEST_END();
-       ASSERT_STR_EQ("fruit", apple_val, test_case, "'apple' should map to 'fruit'.");
+       ASSERT_STR_EQ("carrot", ret_val_1, test_case, "uuid should map to 'carrot'.");
    }
 
    {
        TEST_START();
-       const char* broccoli_val = (const char*)hash_map_get_value(map, "broccoli");
+       const char* ret_val_2 = (const char*)hash_map_get_value(map, uuid_retriieve_2);
        TEST_END();
-       ASSERT_STR_EQ("vegetable", broccoli_val, test_case, "'broccoli' should map to 'vegetable'.");
+       ASSERT_STR_EQ("pear", ret_val_2, test_case, "uuid should map to 'pear'.");
    }
 
    // Test removing an entry
    {
        TEST_START();
-       hash_map_remove_entry(map, "carrot");
+       hash_map_remove_entry(map, uuid_retriieve_2);
        TEST_END();
-       ASSERT_EQ((size_t)3, hash_map_get_length(map), "%zu", test_case, "'carrot' should be removed, reducing length to 3.");
+       ASSERT_EQ((size_t)3, hash_map_get_length(map), "%zu", test_case, "key/value pair should be removed, reducing length to 3.");
    }
 
    {
        TEST_START();
-       hash_map_remove_entry(map, "apple");
+       hash_map_remove_entry(map, uuid_retriieve_1);
        TEST_END();
-       ASSERT_EQ((size_t)2, hash_map_get_length(map), "%zu", test_case, "'apple' should be removed, reducing length to 2.");
+       ASSERT_EQ((size_t)2, hash_map_get_length(map), "%zu", test_case, "key/value pair should be removed, reducing length to 2.");
    }
 
    // Iterate over the hash map using the iterator and compare with entries,

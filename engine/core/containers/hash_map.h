@@ -51,8 +51,8 @@ hash_map_iterator_t hash_map_iterator(hash_map_t* hash_map, random_uuid_t key);
 bool hash_map_parse_next(hash_map_iterator_t* iterator);
 
 // utils
-inline size_t hash_map_get_length(const hash_map_t* hash_map) { return hash_map->length; }
+static inline size_t hash_map_get_length(const hash_map_t* hash_map) { return hash_map->length; }
 
-inline size_t hash_map_get_capacity(const hash_map_t* hash_map) { return hash_map->length; }
+static inline size_t hash_map_get_capacity(const hash_map_t* hash_map) { return hash_map->length; }
 
 #endif
