@@ -11,6 +11,6 @@ typedef struct renderer_desc
 } renderer_desc;
 
 bool renderer_sdf_init(renderer_desc desc);
-void renderer_sdf_destroy();
+void renderer_sdf_destroy(void);
 
 #endif
