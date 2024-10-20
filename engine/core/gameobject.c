@@ -1,5 +1,7 @@
 #include "gameobject.h"
 
+#include "logging/log.h"
+
 static void create_transform_matrix(mat4s* dest, vec3 position, versor rotation, vec3 scale) {
     // Create individual transformation matrices
     mat4s translation, rotationMatrix, scaling;
@@ -22,7 +24,7 @@ static void create_transform_matrix(mat4s* dest, vec3 position, versor rotation,
 //-------------------------------------------------------
 // Public API
 
-void gameobject_mark_as_renderable(uuid_t goUUID, bool value)
+void gameobject_mark_as_renderable(random_uuid_t goUUID, bool value)
 {
     GameObject* go = get_gameobject_by_uuid(goUUID);
     if (go != NULL) {
@@ -30,7 +32,7 @@ void gameobject_mark_as_renderable(uuid_t goUUID, bool value)
     }
 }
 
-mat4s gameobject_get_transform(uuid_t goUUID) {
+mat4s gameobject_get_transform(random_uuid_t goUUID) {
     GameObject* obj = get_gameobject_by_uuid(goUUID);
     if (!obj) {
         mat4s i;
@@ -62,7 +64,7 @@ mat4s gameobject_ptr_get_transform(GameObject* obj)
     return result;
 }
 
-void gameobject_get_position(uuid_t goUUID, vec3* position)
+void gameobject_get_position(random_uuid_t goUUID, vec3* position)
 {
     GameObject* obj = get_gameobject_by_uuid(goUUID);
     if (obj) {
@@ -73,7 +75,7 @@ void gameobject_get_position(uuid_t goUUID, vec3* position)
     }
 }
 
-void gameobject_get_rotation(uuid_t goUUID, versor* rotationQuad)
+void gameobject_get_rotation(random_uuid_t goUUID, versor* rotationQuad)
 {
     GameObject* obj = get_gameobject_by_uuid(goUUID);
     if (obj) {
@@ -84,7 +86,7 @@ void gameobject_get_rotation(uuid_t goUUID, versor* rotationQuad)
     }
 }
 
-void gameobject_get_rotation_euler(uuid_t goUUID, vec3* rotationEuler)
+void gameobject_get_rotation_euler(random_uuid_t goUUID, vec3* rotationEuler)
 {
     GameObject* obj = get_gameobject_by_uuid(goUUID);
     if (obj) {
@@ -95,7 +97,7 @@ void gameobject_get_rotation_euler(uuid_t goUUID, vec3* rotationEuler)
     }
 }
 
-void gameobject_get_scale(uuid_t goUUID, vec3* scale)
+void gameobject_get_scale(random_uuid_t goUUID, vec3* scale)
 {
     GameObject* obj = get_gameobject_by_uuid(goUUID);
     if (obj) {
@@ -106,7 +108,7 @@ void gameobject_get_scale(uuid_t goUUID, vec3* scale)
     }
 }
 
-void gameobject_set_transform(uuid_t goUUID, Transform transform)
+void gameobject_set_transform(random_uuid_t goUUID, Transform transform)
 {
     GameObject* go = get_gameobject_by_uuid(goUUID);
     if (go != NULL) {
@@ -114,34 +116,42 @@ void gameobject_set_transform(uuid_t goUUID, Transform transform)
     }
 }
 
-void gameobject_set_position(uuid_t goUUID, vec3 position)
+void gameobject_set_position(random_uuid_t goUUID, vec3 position)
 {
     GameObject* go = get_gameobject_by_uuid(goUUID);
     if (go != NULL) {
         glm_vec3_copy(position, go->transform.position);
     }
+    else
+        LOG_ERROR("Failed to update position for gameobject: %s\n", uuid_to_string(&goUUID));
 }
 
-void gameobject_set_rotation(uuid_t goUUID, versor rotationQuat)
+void gameobject_set_rotation(random_uuid_t goUUID, versor rotationQuat)
 {
     GameObject* go = get_gameobject_by_uuid(goUUID);
     if (go != NULL) {
         glm_quat_copy(rotationQuat, go->transform.rotation);
     }
+    else
+        LOG_ERROR("Failed to update rotation for gameobject %s\n", uuid_to_string(&goUUID));
 }
 
-void gameobject_set_rotation_euler(uuid_t goUUID, vec3 rotationEuler)
+void gameobject_set_rotation_euler(random_uuid_t goUUID, vec3 rotationEuler)
 {
     GameObject* go = get_gameobject_by_uuid(goUUID);
     if (go != NULL) {
         glm_euler_xyz_quat(rotationEuler, go->transform.rotation);
     }
+    else
+        LOG_ERROR("Failed to update rotation for gameobject %s\n", uuid_to_string(&goUUID));
 }
 
-void gameobject_set_scale(uuid_t goUUID, vec3 scale)
+void gameobject_set_scale(random_uuid_t goUUID, vec3 scale)
 {
     GameObject* go = get_gameobject_by_uuid(goUUID);
     if (go != NULL) {
         glm_vec3_copy(scale, go->transform.scale);
     }
+    else
+        LOG_ERROR("Failed to update scale for gameobject %s\n", uuid_to_string(&goUUID));
 }

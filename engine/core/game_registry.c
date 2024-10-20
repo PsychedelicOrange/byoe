@@ -19,9 +19,9 @@ void cleanup_game_registry(void)
     hash_map_destroy(gGameRegistry);
 }
 
-uuid_t register_gameobject_type(const char* typeName, uint32_t gameObjectDataSize, StartFunction StartFn, UpdateFunction UpdateFn)
+random_uuid_t register_gameobject_type(const char* typeName, uint32_t gameObjectDataSize, StartFunction StartFn, UpdateFunction UpdateFn)
 {
-    uuid_t uuid = {{ 0, 0, 0, 0 }};
+    random_uuid_t uuid = {{ 0, 0, 0, 0 }};
 
     if (gNumObjects >= MAX_OBJECTS) {
         LOG_ERROR("Registry FULL cannot create new game objects!");
@@ -47,27 +47,28 @@ uuid_t register_gameobject_type(const char* typeName, uint32_t gameObjectDataSiz
     game_object->startFn = StartFn;
     game_object->updateFn = UpdateFn;
 
-    hash_map_set_key_value(gGameRegistry, (const char*)&uuid, (void*)game_object);
+    hash_map_set_key_value(gGameRegistry, uuid, (void*)game_object);
 
     gNumObjects++;
     return uuid;  // Return the UUID of the registered object
 }
 
-void unregister_gameobject_type(const uuid_t uuid)
+void unregister_gameobject_type(const random_uuid_t uuid)
 {
-    GameObject* game_object = hash_map_get_value(gGameRegistry, (const char*)&uuid);
+    GameObject* game_object = hash_map_get_value(gGameRegistry, uuid);
     if (game_object->gameObjectData)
         free(game_object->gameObjectData);
-    hash_map_remove_entry(gGameRegistry, (const char*)&game_object->uuid);
+    hash_map_remove_entry(gGameRegistry, game_object->uuid);
 }
 
-GameObject* get_gameobject_by_uuid(uuid_t goUUID)
+GameObject* get_gameobject_by_uuid(random_uuid_t goUUID)
 {
-    GameObject* go = (GameObject*)hash_map_get_value(gGameRegistry, (const char*)&goUUID);
+    GameObject* go = (GameObject*)hash_map_get_value(gGameRegistry, goUUID);
     if (go != NULL) {
         return go;
     }
     else {
+        LOG_ERROR("[Game Registry] cannot find gameobject using uuid! | UUID: %s\n", uuid_to_string(&goUUID));
         return NULL;
     }
 }

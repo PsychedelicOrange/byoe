@@ -6,7 +6,7 @@
 
 #include <GLFW/glfw3.h>
 
-void Camera_Start(uuid_t* uuid)
+void Camera_Start(random_uuid_t* uuid)
 {
     (void)uuid;
 
@@ -26,7 +26,7 @@ void Camera_Start(uuid_t* uuid)
     camera->right.z = 0;
 }
 
-void Camera_Update(uuid_t* uuid, float dt)
+void Camera_Update(random_uuid_t* uuid, float dt)
 {
     (void)uuid;
     (void)dt;

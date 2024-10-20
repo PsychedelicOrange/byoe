@@ -1,5 +1,3 @@
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
@@ -13,6 +11,11 @@
 #include "game_registry.h"
 #include "gameobject.h"
 #include "logging/log.h"
+#include "simd/platform_caps.h"
+
+// Put them at last: causing some weird errors while compiling on MSVC with APIENTRY define
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
 
 extern int game_main(void);
 
@@ -145,6 +148,11 @@ int main(int argc, char** argv)
     (void)argc;
     (void)argv;
 
+    srand((unsigned int)time(NULL));  // Seed for random number generator
+
+    cpu_caps_print_info();
+    os_caps_print_info();
+
     init_glfw();
     GLFWwindow* window = create_glfw_window();
     init_glad();
@@ -181,6 +189,7 @@ int main(int argc, char** argv)
     // -----------
     float deltaTime; // Time between current frame and last frame
     float lastFrame = 0.0f; // Time of the last frame
+    float elapsedTime = 0;
 
     int FPS = 0;
 
@@ -191,9 +200,14 @@ int main(int argc, char** argv)
         deltaTime = currentFrame - lastFrame; // Calculate delta time
         // calculate FPS
         FPS = (int)(1.0f / deltaTime);
-        char windowTitle[250];
-        sprintf(windowTitle, "BYOE Game: byoe_ghost_asteroids | FPS: %d", FPS);
-        glfwSetWindowTitle(window, windowTitle);
+
+        elapsedTime += deltaTime;
+        if (elapsedTime > 1.0f) {
+            char windowTitle[250];
+            sprintf(windowTitle, "BYOE Game: byoe_ghost_asteroids | FPS: %d | rendertime: %2.2fms", FPS, deltaTime * 1000.0f);
+            glfwSetWindowTitle(window, windowTitle);
+            elapsedTime = 0.0f;
+        }
 
         processInput(window);
 
@@ -213,7 +227,7 @@ int main(int argc, char** argv)
             for (size_t i = 0; i < game_registry_get_instance()->capacity; i++)
             {
                 hash_map_pair_t pair = game_registry_get_instance()->entries[i];
-                if (pair.key && pair.value) {
+                if (!uuid_is_null(&pair.key) && pair.value) {
                     GameObject* go = (GameObject*)pair.value;
                     if (strcmp(go->typeName, "Camera") == 0)
                         continue;

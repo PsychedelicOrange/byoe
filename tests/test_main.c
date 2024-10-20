@@ -6,9 +6,10 @@ int main(int argc, char** argv) {
     (void)argc;
     (void)argv;
 
+    // Tests
     test_hash_map();
     test_uuid();
     test_rng();
-    
+
     return EXIT_SUCCESS;
 }
