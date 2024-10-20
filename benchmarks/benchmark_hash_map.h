@@ -100,11 +100,8 @@ void benchmark_hash_map(void)
 
     const char* benchmark_name = "Perf:hash_map_get_value";
     const size_t num_runs = NUM_RUNS;
-    double average_time;
 
-    BENCHMARK_RUN_MULTIPLE(num_runs, average_time, benchmark_name, avg_runs_benchmark);
-
-    BENCHMARK_PRINT_RESULTS(benchmark_name, average_time, num_runs);
+    BENCHMARK_RUN_MULTIPLE(num_runs, benchmark_name, avg_runs_benchmark);
 
     // Calculate the average time and average success rate
     size_t avg_found_count = total_found_count / num_runs;

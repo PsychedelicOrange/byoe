@@ -29,7 +29,7 @@
 // printf(COLOR_YELLOW "[Benchmark] Running iteration %zu for benchmark: %s\n" COLOR_RESET, i + 1, test_name); \
 
 // Macro for running a benchmark multiple times and calculating the average time
-#define BENCHMARK_RUN_MULTIPLE(iterations, result, test_name, benchmark_code) \
+#define BENCHMARK_RUN_MULTIPLE(iterations, test_name, benchmark_code) \
     double __total_time = 0; \
     for (size_t i = 0; i < (iterations); ++i) { \
         uint64_t __start_time = benchmark_get_time(); \
@@ -38,14 +38,10 @@
         double __duration = (double)(__end_time - __start_time) / benchmark_get_frequency(); \
         __total_time += __duration * 1000.0f ; \
     } \
-    result = __total_time / (iterations); \
+    double result = __total_time / (iterations); \
     printf(COLOR_GREEN "[Benchmark] Average: [%s] for [%zu] runs: %4.4f ms\n" COLOR_RESET, \
-            test_name, iterations, result);
+            test_name, iterations, result); \
 
-// Macro for printing the results of multiple benchmarks
-#define BENCHMARK_PRINT_RESULTS(test_name, average_time, iterations) \
-    printf(COLOR_GREEN "[Benchmark] Results: [%s] for Average time over %zu iterations: %4.4f ms\n" COLOR_RESET, \
-             test_name, iterations, average_time);
 
 #ifdef _WIN32
 // Windows high-resolution time functions
