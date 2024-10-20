@@ -2,6 +2,7 @@
 #define RENDERER_SDF_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 typedef struct renderer_desc
 {

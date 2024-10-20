@@ -2,6 +2,7 @@
 
 bool renderer_sdf_init(renderer_desc desc)
 {
+    (void) desc;
     return false;
 }
 

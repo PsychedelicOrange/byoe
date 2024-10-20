@@ -4,11 +4,13 @@ file(GLOB_RECURSE engine_sources
     "core/*.c"
     "scripting/*.c"
     "external/*.c"
+    "*.c"
 )
 
 file(GLOB_RECURSE engine_headers 
     "core/*.h"
     "scripting/*.h"
+    "*.h"
 )
 file(GLOB_RECURSE external_headers
     "external/*.h"
