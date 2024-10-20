@@ -13,6 +13,7 @@
 #include "game_registry.h"
 #include "gameobject.h"
 #include "logging/log.h"
+#include "simd/platform_caps.h"
 
 extern int game_main(void);
 
@@ -147,6 +148,8 @@ int main(int argc, char** argv)
 
     srand((unsigned int)time(NULL));  // Seed for random number generator
 
+    cpu_caps_print_info();
+    os_caps_print_info();
 
     init_glfw();
     GLFWwindow* window = create_glfw_window();

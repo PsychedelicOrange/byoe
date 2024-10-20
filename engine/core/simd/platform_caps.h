@@ -1,6 +1,8 @@
 #ifndef PLATFORM_DEFS_H
 #define PLATFORM_DEFS_H
 
+#include "../logging/log.h"
+
 #if defined(_MSC_VER)
     #include <intrin.h>
 #elif defined(__clang__) || defined(__GNUC__)
@@ -11,6 +13,18 @@
     #endif
 #else
     #error "Unknown compiler"
+#endif
+
+#if defined(_WIN32)
+    #include <windows.h>
+#elif defined(__linux__)
+    #include <sys/sysinfo.h>
+    #include <sys/utsname.h>
+    #include <unistd.h>
+#elif defined(__APPLE__)
+    #include <sys/types.h>
+    #include <sys/sysctl.h>
+    #include <mach/mach.h>
 #endif
 
 // Enum to represent different instruction sets
@@ -30,7 +44,7 @@ typedef enum SIMD {
 } SIMD;
 
 // Function to detect supported instruction sets
-static inline int cpu_detect_instruction_set() {
+static inline int cpu_detect_instruction_set(void) {
     int supported = SIMD_NONE;
 
 #if defined(_MSC_VER)
@@ -92,5 +106,95 @@ static inline int cpu_detect_instruction_set() {
 
     return supported;
 }
+
+void cpu_caps_print_info(void) {
+    #if defined(_WIN32)
+    // Windows-specific CPU info
+    SYSTEM_INFO sysinfo;
+    GetSystemInfo(&sysinfo);
+    LOG_INFO("Number of processors: %u\n", sysinfo.dwNumberOfProcessors);
+
+    // Processor architecture
+    if (sysinfo.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64) {
+        LOG_INFO("Processor architecture: x64 (AMD or Intel)\n");
+    } else if (sysinfo.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_ARM) {
+        LOG_INFO("Processor architecture: ARM\n");
+    } else if (sysinfo.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_INTEL) {
+        LOG_INFO("Processor architecture: x86 (Intel)\n");
+    }
+
+    // Processor name
+    HKEY hKeyProcessor;
+    char cpuName[256] = { 0 };
+    DWORD bufferSize = sizeof(cpuName);
+    if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, "HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0", 0, KEY_READ, &hKeyProcessor) == ERROR_SUCCESS) {
+        RegQueryValueExA(hKeyProcessor, "ProcessorNameString", NULL, NULL, (LPBYTE)cpuName, &bufferSize);
+        RegCloseKey(hKeyProcessor);
+    }
+    LOG_INFO("Processor Name: %s\n", cpuName);
+
+    #elif defined(__linux__)
+    // Linux-specific CPU info
+    FILE* cpuInfoFile = fopen("/proc/cpuinfo", "r");
+    char buffer[256];
+    while (fgets(buffer, sizeof(buffer), cpuInfoFile)) {
+        if (strncmp(buffer, "model name", 10) == 0) {
+            LOG_INFO("CPU Model: %s", strchr(buffer, ':') + 2);
+        }
+        if (strncmp(buffer, "cpu MHz", 7) == 0) {
+            LOG_INFO("CPU Frequency: %s", strchr(buffer, ':') + 2);
+        }
+    }
+    fclose(cpuInfoFile);
+
+    struct sysinfo sysInfo;
+    sysinfo(&sysInfo);
+    LOG_INFO("Uptime: %ld seconds\n", sysInfo.uptime);
+
+    #elif defined(__APPLE__)
+    // https://gist.github.com/HalCanary/59d7c9c3c408ddfd55c477a992281827
+    // macOS-specific CPU info
+    char cpuBrand[512];
+    size_t size = sizeof(cpuBrand);
+    sysctlbyname("machdep.cpu.brand_string", &cpuBrand, &size, NULL, 0);
+    LOG_INFO("Processor: %s\n", cpuBrand);
+
+    int frequency;
+    size = sizeof(frequency);
+    sysctlbyname("hw.cpufrequency", &frequency, &size, NULL, 0);
+    LOG_INFO("CPU Frequency: %d MHz\n", frequency);
+
+    int numCores;
+    sysctlbyname("hw.physicalcpu", &numCores, &size, NULL, 0);
+    LOG_INFO("Number of cores: %d\n", numCores);
+
+    #endif
+}
+
+void os_caps_print_info(void) {
+    #if defined(_WIN32)
+    // Windows OS info
+    OSVERSIONINFO osvi;
+    ZeroMemory(&osvi, sizeof(OSVERSIONINFO));
+    osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
+    GetVersionEx(&osvi);
+    LOG_INFO("Operating System: Windows %lu.%lu\n", osvi.dwMajorVersion, osvi.dwMinorVersion);
+    
+    #elif defined(__linux__)
+    // Linux OS info
+    struct utsname buffer;
+    if (uname(&buffer) == 0) {
+        LOG_INFO("Operating System: %s %s\n", buffer.sysname, buffer.release);
+    }
+
+    #elif defined(__APPLE__)
+    // macOS info
+    char osVersion[256];
+    size_t size = sizeof(osVersion);
+    sysctlbyname("kern.osproductversion", &osVersion, &size, NULL, 0);
+    LOG_INFO("Operating System: macOS %s\n", osVersion);
+    #endif
+}
+
 
 #endif // PLATFORM_DEFS_H
