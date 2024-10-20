@@ -1,5 +1,3 @@
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
@@ -14,6 +12,10 @@
 #include "gameobject.h"
 #include "logging/log.h"
 #include "simd/platform_caps.h"
+
+// Put them at last: causing some weird errors while compiling on MSVC with APIENTRY define
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
 
 extern int game_main(void);
 
