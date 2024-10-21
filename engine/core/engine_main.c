@@ -95,6 +95,32 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     (void)mods;
 }
 // -- -- -- -- -- -- -- -- --
+// OpengL helper functions
+GLuint setup_screen_quad(void){
+	// Vertex data for the rectangle (two triangles forming a quad)
+	float vertices[] = {
+		// Positions (X, Y)
+		-1.0f,  1.0f,  // Top-left
+		-1.0f, -1.0f,  // Bottom-left
+		1.0f, -1.0f,  // Bottom-right
+
+		-1.0f,  1.0f,  // Top-left
+		1.0f, -1.0f,  // Bottom-right
+		1.0f,  1.0f   // Top-right
+	};
+	unsigned int VAO, VBO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    // Position attribute
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+	return VAO;
+}
 
 GLuint setup_debug_cube(void) {
     GLfloat vertices[] = {
@@ -169,8 +195,8 @@ int main(int argc, char** argv)
     unsigned int shaderProgram = create_shader("engine/shaders/vertex","engine/shaders/frag");
     raymarchshader = create_shader("engine/shaders/simple_vert","engine/shaders/raymarch");
 
-    GLuint vao = setup_debug_cube();
-	(void)vao;
+	GLuint screen_quad_vao = setup_screen_quad();
+	GLuint vao = setup_debug_cube();
 
     // set uniforms
     {
