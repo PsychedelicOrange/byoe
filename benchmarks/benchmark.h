@@ -25,7 +25,7 @@
 #define BENCHMARK_TIME() \
     __duration * 1000.0f    // This retrieves the time spent from BENCHMARK_END
 
-// printf(COLOR_YELLOW "[Benchmark] Running iteration %zu for benchmark: %s\n" COLOR_RESET, i + 1, test_name); \
+// printf(COLOR_YELLOW "[Benchmark] Running iteration %zu for benchmark: %s\n" COLOR_RESET, i + 1, test_name); 
 
 // Macro for running a benchmark multiple times and calculating the average time
 #define BENCHMARK_RUN_MULTIPLE(iterations, test_name, benchmark_code)                           \

@@ -472,6 +472,8 @@ CMakeUserPresets.json
 *.i*86
 *.x86_64
 *.hex
+benchmarks/benchmarks
+tests/tests
 
 # Debug files
 *.dSYM/
