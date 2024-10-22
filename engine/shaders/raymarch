@@ -36,7 +36,7 @@ float sdBox( vec3 p, vec3 b )
 float sceneSDF(vec3 p)
 {
 	float hit = RAY_MAX_STEP;
-	for(int k = 0; k < 100; k++)
+	for(int k = 0; k < 10; k++)
 	{
 		hit = min(hit, sphereSDF(p, rocks[k]));
 	}
