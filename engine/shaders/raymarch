@@ -1,8 +1,37 @@
-#version 330 core
+#version 410 core
 out vec4 FragColor;
+
+uniform vec4 rocks[100];
+uniform ivec2 resolution;
+
+float sphere(vec3 p, vec4 circle){
+	return length(p-circle.xyz) - circle.w;
+}
+
+float raymarch(vec3 ro, vec3 rd){
+	 float di = 0;
+	 for(int i = 0; i < 100; i++){
+	 	vec3 p = ro + rd * di;
+		float ds = 100;
+		for(int k = 0; k < 100; k++){
+			ds = min(ds, sphere(p,rocks[k]));
+		//	ds = min(ds, sphere(p,rock));
+		}
+		di += ds;
+		if(di > 100.0 || di < 0.01)break;
+	 }
+	 return di;
+}
 
 void main()
 {
-    FragColor = vec4(1.0, 1.0, 1.0, 1.0);  // White color
+	vec2 uv = (gl_FragCoord.xy - 0.5 * resolution.xy)/ resolution.y;
+	vec3 ro = vec3(4,3,0); // camera eye aka ray origin
+	vec3 rd = normalize(vec3(uv.x,uv.y,1)); // ray direction
+
+	float d  = raymarch(ro,rd);
+
+	d /= 10;
+    FragColor = vec4(vec3(d),1.0);  
 }
 

@@ -4,6 +4,11 @@
 #include "shader.h"
 // -- -- -- -- -- -- Shader functions -- -- -- -- -- --- --
 //
+
+unsigned int create_shader_compute(char* computePath){
+	unsigned int computeShader = compile_shader(computePath, GL_COMPUTE_SHADER);
+	return create_program_compute(computeShader);
+}
 unsigned int create_shader(char* vertexPath,char* fragmentPath){
 	unsigned int vertexShader = compile_shader(vertexPath, GL_VERTEX_SHADER);
 	unsigned int fragShader = compile_shader(fragmentPath, GL_FRAGMENT_SHADER);
@@ -32,6 +37,22 @@ unsigned int compile_shader(char * filePath, int shaderType){
 	return shader;
 }
 
+unsigned int create_program_compute(unsigned int computeShader){
+    unsigned int shaderProgram = glCreateProgram();
+    glAttachShader(shaderProgram, computeShader);
+    glLinkProgram(shaderProgram);
+    // check for linking errors
+	int success;
+	char infoLog[512];
+    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+    if (!success) {
+        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+		printf("\nfailed to link shaders: %s",infoLog);
+		return (unsigned int) - 1;
+    }
+    glDeleteShader(computeShader);
+	return shaderProgram;
+}
 unsigned int create_program(unsigned int vertexShader, unsigned int fragmentShader){
     unsigned int shaderProgram = glCreateProgram();
     glAttachShader(shaderProgram, vertexShader);
@@ -51,6 +72,11 @@ unsigned int create_program(unsigned int vertexShader, unsigned int fragmentShad
 	return shaderProgram;
 }
 
+void setUniformVec2Int(unsigned int shaderProgram, int vector[2], char* location){
+	glUseProgram(shaderProgram);
+	int loc = glGetUniformLocation(shaderProgram,location);
+	glUniform2iv(loc,1,vector);	
+}
 void setUniformMat4(unsigned int shaderProgram,mat4s matrix, char* location){
 	glUseProgram(shaderProgram);
 	int loc = glGetUniformLocation(shaderProgram,location);

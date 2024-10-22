@@ -12,13 +12,16 @@
 #include "gameobject.h"
 #include "logging/log.h"
 #include "simd/platform_caps.h"
-
+#include "rng/rng.h"
 // Put them at last: causing some weird errors while compiling on MSVC with APIENTRY define
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
 extern int game_main(void);
-
+// -- -- -- -- -- -- Game state -- -- -- -- -- --- --
+// refactor this later into global state/ or expose to script 
+vec4 rocks[100];
+vec4 rockVelocities[100];
 // -- -- -- -- -- -- Constants -- -- -- -- -- --- --
 // settings
 const unsigned int SCR_WIDTH = 800;
@@ -33,19 +36,9 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow* window);
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 
-
 // -- -- function define
 // 
 GLFWwindow* create_glfw_window(void) {
-
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-#ifdef __APPLE__
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-#endif
-
     GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "psychspiration", NULL, NULL);
     if (window == NULL)
     {
@@ -82,6 +75,10 @@ void processInput(GLFWwindow* window)
 	if(glfwGetKey(window,GLFW_KEY_SPACE)){
 		glDeleteProgram(raymarchshader);
 		raymarchshader = create_shader("engine/shaders/simple_vert","engine/shaders/raymarch");
+		{
+			int resolution[2] = {SCR_WIDTH,SCR_HEIGHT};
+			setUniformVec2Int(raymarchshader,resolution,"resolution");
+		}
 	}
 }
 
@@ -95,87 +92,19 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     (void)mods;
 }
 // -- -- -- -- -- -- -- -- --
-// OpengL helper functions
-GLuint setup_screen_quad(void){
-	// Vertex data for the rectangle (two triangles forming a quad)
-	float vertices[] = {
-		// Positions (X, Y)
-		-1.0f,  1.0f,  // Top-left
-		-1.0f, -1.0f,  // Bottom-left
-		1.0f, -1.0f,  // Bottom-right
 
-		-1.0f,  1.0f,  // Top-left
-		1.0f, -1.0f,  // Bottom-right
-		1.0f,  1.0f   // Top-right
-	};
-	unsigned int VAO, VBO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-
-    glBindVertexArray(VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    // Position attribute
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-	return VAO;
-}
-
-GLuint setup_debug_cube(void) {
-    GLfloat vertices[] = {
-        // Front face
-        -0.5f, -0.5f,  0.5f,  // Bottom-left
-         0.5f, -0.5f,  0.5f,  // Bottom-right
-         0.5f,  0.5f,  0.5f,  // Top-right
-        -0.5f,  0.5f,  0.5f,  // Top-left
-
-        // Back face
-        -0.5f, -0.5f, -0.5f,  // Bottom-left
-         0.5f, -0.5f, -0.5f,  // Bottom-right
-         0.5f,  0.5f, -0.5f,  // Top-right
-        -0.5f,  0.5f, -0.5f   // Top-left
-    };
-
-    // Define the indices for the cube's faces
-    GLuint indices[] = {
-        // Front face
-        0, 1, 2, 2, 3, 0,
-        // Back face
-        4, 5, 6, 6, 7, 4,
-        // Left face
-        0, 4, 7, 7, 3, 0,
-        // Right face
-        1, 5, 6, 6, 2, 1,
-        // Top face
-        3, 7, 6, 6, 2, 3,
-        // Bottom face
-        0, 4, 5, 5, 1, 0
-    };
-
-    GLuint VAO, VBO, EBO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
-
-    // Bind VAO
-    glBindVertexArray(VAO);
-
-    // Bind and set VBO
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    // Bind and set EBO
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-    // Set vertex attribute pointers
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    // Unbind VAO (NOT EBO) to prevent accidental modification
-    glBindVertexArray(0);
-    return VAO;
+// debug randomize rocks 
+void debug_randomize_rocks(){
+	rng_generate();
+	for(int i = 0; i < 100; i++){
+		rocks[i][0] = rng_range(1,10);
+		rocks[i][1] = rng_range(1,10);
+		rocks[i][2] = rng_range(1,10);
+		rocks[i][3] = 0.5;
+	}
+	rocks[1][0] = 1;
+	rocks[1][1] = 6;
+	rocks[1][2] = 1;
 }
 
 int main(int argc, char** argv)
@@ -194,6 +123,13 @@ int main(int argc, char** argv)
     gl_settings();
     unsigned int shaderProgram = create_shader("engine/shaders/vertex","engine/shaders/frag");
     raymarchshader = create_shader("engine/shaders/simple_vert","engine/shaders/raymarch");
+	// set constant shader variables
+	{
+		int resolution[2] = {SCR_WIDTH,SCR_HEIGHT};
+		setUniformVec2Int(raymarchshader,resolution,"resolution");
+	}
+
+	debug_randomize_rocks();
 
 	GLuint screen_quad_vao = setup_screen_quad();
 	GLuint vao = setup_debug_cube();
@@ -202,6 +138,7 @@ int main(int argc, char** argv)
     {
         mat4s projection = glms_perspective(glm_rad(45.0f), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 1000.0f);
         setUniformMat4(shaderProgram, projection, "projection");
+        setUniformMat4(raymarchshader, projection, "projection");
         mat4s model = GLMS_MAT4_IDENTITY_INIT;
         setUniformMat4(shaderProgram, model, "model");
     }
@@ -240,6 +177,9 @@ int main(int argc, char** argv)
             glfwSetWindowTitle(window, windowTitle);
             elapsedTime = 0.0f;
         }
+		if(((int)glfwGetTime())%10 == 5){
+			debug_randomize_rocks();
+		}
 
         processInput(window);
 
@@ -249,11 +189,11 @@ int main(int argc, char** argv)
         // Game scripts update loop
         gameobjects_update(deltaTime);
 
+
         // Render
         // ------
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
         // Draw cubes
         {
             for (size_t i = 0; i < game_registry_get_instance()->capacity; i++)
@@ -284,6 +224,9 @@ int main(int argc, char** argv)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		{
 			glUseProgram(raymarchshader);
+			int loc = glGetUniformLocation(raymarchshader,"rocks");
+			glUniform4fv(loc,100,&rocks[0][0]);	
+
 			glBindVertexArray(screen_quad_vao);
 			glDrawArrays(GL_TRIANGLES, 0, 6);  // Drawing 6 vertices to form the quad
 		}
