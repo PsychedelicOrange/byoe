@@ -9,6 +9,11 @@ option(BUILD_SHARED_ENGINE "Build engine as shared library (DLL)" OFF)
 ## GLOBAL COMPILATION SETTINGS
 set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+# VS edit and continue for h0to reloading
+if(MSVC)
+    add_compile_options("/ZI")
+    add_link_options("/INCREMENTAL")
+endif()
 ####################################################################
 ## SOURCES
 # Add subdirectories for engine and game

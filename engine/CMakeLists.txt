@@ -17,6 +17,7 @@ set_source_files_properties(
   COMPILE_FLAGS "-w"
 )
 
+# [Source]: https://stackoverflow.com/questions/31966135/cmake-source-group-not-working-correctly-with-hierarchical-project-setup
 foreach(FILE ${engine_sources}) 
     # Get the directory of the source file
     get_filename_component(PARENT_DIR "${FILE}" DIRECTORY)
