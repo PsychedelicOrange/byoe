@@ -1,5 +1,7 @@
 #version 410 core
-// https://www.shadertoy.com/view/7lj3Rt
+// Phong: https://www.shadertoy.com/view/7lj3Rt
+// Reference: https://www.shadertoy.com/view/stBcW1
+// Added: https://www.shadertoy.com/view/lsc3z4
 ////////////////////////////////////////////////////////////////////////////////////////
 // Constants
 #define MAX_STEPS 128
@@ -57,6 +59,27 @@ mat3 identity() {
         vec3(0, 1, 0),
         vec3(0, 0, 1)
     );
+}
+
+#define STARDISTANCE 150.
+#define STARBRIGHTNESS 0.5
+#define STARDENSITY 0.05
+
+
+float hash13(vec3 p3)
+{
+	p3  = fract(p3 * vec3(.1031,.11369,.13787));
+    p3 += dot(p3, p3.yzx + 19.19);
+    return fract((p3.x + p3.y) * p3.z);
+}
+
+float stars(vec3 ray)
+{
+    vec3 p = ray * STARDISTANCE;
+    float h = hash13(p);
+    float flicker = cos( 1. + hash13(abs(p) * 0.01) * 13.) * 0.5 + 0.5;
+    float brigtness = smoothstep(1.0 - STARDENSITY, 1.0, hash13(floor(p)));
+    return smoothstep(STARBRIGHTNESS, 0., length(fract(p) - 0.5)) * brigtness * flicker;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -130,7 +153,7 @@ void main()
     ray.ro = vec4(vec4(0, 0, 0, 1)).xyz; // camera eye aka ray origin
     
     // dir
-    //ray.ro = (vec4(cameraPos, 1.0)).xyz;
+    // ray.ro = (vec4(cameraPos, 1.0)).xyz;
     ray.rd = normalize(vec3(uv, 1));
     ray.rd *= rotateX(cameraPitch);
     ray.rd *= rotateY(-cameraYaw);
@@ -161,7 +184,8 @@ void main()
     else
     {
         // Render the skybox
-        FragColor = vec4(0.0f, 0.0f, 0.0f, 1.0);  
+        float s = stars(ray.rd);
+        FragColor = vec4(s, s, s, 1.0);  
     }
 }
 
