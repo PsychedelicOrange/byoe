@@ -209,7 +209,7 @@ int main(int argc, char** argv)
             // vec3 camera position
             loc          = glGetUniformLocation(raymarchshader, "cameraPos");
             vec3s camPos = camera.position;
-            glUniform3f(loc, (GLfloat) camPos.x, (GLfloat) camPos.y, (GLfloat) -camPos.z);
+            glUniform3f(loc, (GLfloat) camPos.x, (GLfloat) camPos.y, (GLfloat) camPos.z);
 
             // camera Pitch
             loc            = glGetUniformLocation(raymarchshader, "cameraPitch");
@@ -221,9 +221,11 @@ int main(int argc, char** argv)
             float camYaw = glm_rad(camera.yaw);
             glUniform1f(loc, (GLfloat) camYaw);
 
-            loc         = glGetUniformLocation(raymarchshader, "cameraForward");
+            loc        = glGetUniformLocation(raymarchshader, "cameraForward");
             vec3s camF = camera.front;
             glUniform3f(loc, (GLfloat) camF.x, (GLfloat) camF.y, (GLfloat) camF.z);
+
+            setUniformMat4(raymarchshader, camera.lookAt, "viewMatrix");
 
             //loc            = glGetUniformLocation(raymarchshader, "cameraRight");
             //vec3s camRight = camera.right;

@@ -22,11 +22,13 @@ typedef struct GameState
 {
     // Mouse + Keyboard
     vec2     mousePos;
-    bool     isMouseDown;
+    vec2     lastMousePos;
+    vec2     mouseDelta;
+    bool     isMousePrimaryDown;
     bool     isKeyDown;
     bool     _padding1[2];
     uint32_t _padding2;
-    bool     keycodes[256];
+    bool     keycodes[512];
     Camera   camera;
     // TBD...
 } GameState;
