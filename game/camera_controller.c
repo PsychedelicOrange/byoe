@@ -11,7 +11,6 @@ static const float YAW         = -90.0f;
 static const float PITCH       = 0.0f;
 static const float SPEED       = 2.25f;
 static const float SENSITIVITY = 0.25f;
-static const float ZOOM        = 45.0f;
 static vec3s       WorldUp     = {{0, 1, 0}};    // World up direction (Y axis)
 
 //------------------------------------------------
@@ -20,7 +19,7 @@ void process_keyboard(Camera* camera, enum Camera_Movement_Direction direction, 
 {
     float velocity = SPEED * dt;
 
-    vec3s CameraMovement = GLM_VEC3_ZERO_INIT;
+    vec3s CameraMovement = {GLM_VEC3_ZERO_INIT};
 
     if (direction == FORWARD)
         CameraMovement = glms_vec3_add(CameraMovement, camera->front);
@@ -124,7 +123,7 @@ void Camera_Update(random_uuid_t* uuid, float dt)
     camera->right = glms_vec3_normalize(glms_vec3_cross(camera->front, WorldUp));
     camera->up    = glms_vec3_normalize(glms_vec3_cross(camera->right, camera->front));    // Up vector (recalculated)
 
-    LOG_INFO("camera pos: (%f, %f, %f)\n", camera->position.x, camera->position.y, camera->position.z);
+    // LOG_INFO("camera pos: (%f, %f, %f)\n", camera->position.x, camera->position.y, camera->position.z);
 
     // Update the camera's lookAt matrix
     vec3s camForward = glms_vec3_add(camera->position, camera->front);
