@@ -6,6 +6,6 @@ void init_glfw(void);
 void init_glad(void);
 
 //debug drawing
-unsigned int setup_debug_cube();
-unsigned int setup_screen_quad();
+unsigned int setup_debug_cube(void);
+unsigned int setup_screen_quad(void);
 #endif

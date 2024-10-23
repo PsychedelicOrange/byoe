@@ -101,7 +101,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 // -- -- -- -- -- -- -- -- --
 
 // debug randomize rocks
-void debug_randomize_rocks()
+void debug_randomize_rocks(void)
 {
     rng_generate();
     for (int i = 0; i < 100; i++) {
