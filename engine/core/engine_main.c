@@ -28,8 +28,8 @@ vec4 rocks[100];
 vec4 rockVelocities[100];
 // -- -- -- -- -- -- Constants -- -- -- -- -- --- --
 // settings
-unsigned int SCR_WIDTH  = 1280;
-unsigned int SCR_HEIGHT = 720;
+unsigned int SCR_WIDTH  = 1024;
+unsigned int SCR_HEIGHT = 1024;
 // TODO: remove this later
 unsigned int raymarchshader;
 
@@ -188,7 +188,7 @@ int main(int argc, char** argv)
         gameobjects_update(deltaTime);
 
         {
-            mat4s projection = glms_perspective(glm_rad(45.0f), (float) SCR_WIDTH / (float) SCR_HEIGHT, 0.1f, 1000.0f);
+            mat4s projection = glms_perspective(glm_rad(60.0f), (float) SCR_WIDTH / (float) SCR_HEIGHT, 0.1f, 100.0f);
             setUniformMat4(shaderProgram, projection, "projection");
             setUniformMat4(raymarchshader, projection, "projection");
         }
