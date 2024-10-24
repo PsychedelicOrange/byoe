@@ -1,8 +1,8 @@
 #ifndef ENGINE_H
 #define ENGINE_H
 
-#include <stdio.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 // Include all engine realted includes here
 #include "core/gameobject.h"
@@ -26,8 +26,7 @@ bool engineShouldQuit()
 
 void runEngine()
 {
-    while(!engineShouldQuit())
-    {
+    while (!engineShouldQuit()) {
         // Run the enginesystem;
     }
 }
