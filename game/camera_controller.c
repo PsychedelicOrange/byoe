@@ -15,7 +15,7 @@ void Camera_Start(random_uuid_t* uuid)
     
     camera->position.x = 0;
     camera->position.y = 0;
-    camera->position.z = 3;
+    camera->position.z = 0;
 
     camera->front.x = 0;
     camera->front.y = 0;
@@ -37,6 +37,10 @@ void Camera_Update(random_uuid_t* uuid, float dt)
     GameState* gameState = gamestate_get_global_instance();
     Camera* camera = &gameState->camera;
 
+    if (gameState->keycodes[GLFW_KEY_Q])
+        camera->position = glms_vec3_add(camera->position, glms_vec3_scale_as(up, speed * dt));
+    if (gameState->keycodes[GLFW_KEY_E])
+        camera->position = glms_vec3_add(camera->position, glms_vec3_scale_as(up, speed * -dt));
     if (gameState->keycodes[GLFW_KEY_W])
         camera->position = glms_vec3_add(camera->position, glms_vec3_scale_as(camera->front, speed * dt));
     if (gameState->keycodes[GLFW_KEY_A])
