@@ -13,6 +13,7 @@ typedef struct Camera
     vec3s position;
     vec3s right;
     vec3s front;
+	vec3s up;
 } Camera;
 
 typedef struct GameState
