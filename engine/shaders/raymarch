@@ -4,9 +4,6 @@ out vec4 FragColor;
 uniform int rocks_count;
 uniform vec4 rocks[100];
 uniform ivec2 resolution;
-uniform vec3 campos;
-uniform mat4 view;
-uniform mat4 projection;
 
 in vec4 nearp;
 in vec4 farp;
