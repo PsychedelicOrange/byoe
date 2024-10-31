@@ -17,6 +17,10 @@ static vec3s       WorldUp     = {{0, 1, 0}};    // World up direction (Y axis)
 // Private
 void process_keyboard(Camera* camera, enum Camera_Movement_Direction direction, float dt)
 {
+    (void) dt;
+    (void) camera;
+    (void) direction;
+
     float velocity = SPEED * dt;
 
     vec3s CameraMovement = {GLM_VEC3_ZERO_INIT};
@@ -71,7 +75,7 @@ void Camera_Start(random_uuid_t* uuid)
     // Init some default values for the camera
     camera->position.x = 0;
     camera->position.y = 0;
-    camera->position.z = 5;
+    camera->position.z = 7;
 
     camera->front.x = 0;
     camera->front.y = 0;
@@ -90,7 +94,7 @@ void Camera_Start(random_uuid_t* uuid)
 
     camera->near_plane = 0.1f;
     camera->far_plane  = 100.0f;
-    camera->fov  = 45.0f;
+    camera->fov        = 45.0f;
 }
 
 void Camera_Update(random_uuid_t* uuid, float dt)
@@ -113,7 +117,7 @@ void Camera_Update(random_uuid_t* uuid, float dt)
         process_keyboard(camera, LEFT, dt);
 
     if (gameState->isMousePrimaryDown) {
-        process_mouse_movement(camera, gameState->mouseDelta[0], -gameState->mouseDelta[1]);
+        process_mouse_movement(camera, -gameState->mouseDelta[0], gameState->mouseDelta[1]);
     }
 
     // Calculate new front vector using yaw and pitch
@@ -130,6 +134,5 @@ void Camera_Update(random_uuid_t* uuid, float dt)
     // LOG_INFO("camera pos: (%f, %f, %f)\n", camera->position.x, camera->position.y, camera->position.z);
 
     // Update the camera's lookAt matrix
-    vec3s camForward = glms_vec3_add(camera->position, camera->front);
-    glm_look(camera->position.raw, camForward.raw, camera->up.raw, camera->lookAt.raw);
+    glm_look(camera->position.raw, camera->front.raw, WorldUp.raw, camera->lookAt.raw);
 }
