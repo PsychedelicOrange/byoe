@@ -13,7 +13,12 @@ typedef struct Camera
     vec3s position;
     vec3s right;
     vec3s front;
-	vec3s up;
+    vec3s up;
+    float near_plane;
+    float far_plane;
+    float fov;
+    float yaw;
+    float pitch;
 } Camera;
 
 typedef struct GameState
