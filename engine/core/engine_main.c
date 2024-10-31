@@ -9,6 +9,7 @@
 #include "gameobject.h"
 #include "logging/log.h"
 #include "rng/rng.h"
+#include "frustum.h"
 #include "scripting.h"
 #include "shader.h"
 #include "simd/platform_caps.h"
@@ -20,6 +21,8 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 // clang-format on
+// max values
+#define MAX_ROCKS_COUNT 100
 
 extern int game_main(void);
 // -- -- -- -- -- -- Game state -- -- -- -- -- --- --
@@ -28,10 +31,65 @@ vec4 rocks[100];
 vec4 rockVelocities[100];
 // -- -- -- -- -- -- Constants -- -- -- -- -- --- --
 // settings
-unsigned int SCR_WIDTH  = 1024;
-unsigned int SCR_HEIGHT = 1024;
+const unsigned int SCR_WIDTH = 800;
+const unsigned int SCR_HEIGHT = 600;
+const float aspect = (float)SCR_WIDTH/SCR_HEIGHT;
+
+
 // TODO: remove this later
 unsigned int raymarchshader;
+
+// -- -- -- -- -- -- Game state -- -- -- -- -- --- --
+// refactor this later into global state/ or expose to script 
+vec4 rocks[MAX_ROCKS_COUNT];
+vec4 rocks_visible[MAX_ROCKS_COUNT];
+int rocks_visible_count = 0;
+// temp camera vars ( decide and relocate to proper location )
+float near = 0.01f;
+float far = 100.0f;
+float fov = GLM_PIf/4; 
+float yaw = -90.f;
+float cyaw = -90.f;
+float pitch = 0;
+vec3s up = {{0,1,0}};
+float lastX = SCR_WIDTH / 2.0f;
+float lastY = SCR_HEIGHT / 2.0f;
+
+// temp 
+void update_first_person_camera(){
+	Camera* camera = &gamestate_get_global_instance()->camera;
+	vec3s front;
+	front.x = cos(glm_rad(yaw)) * cos(glm_rad(pitch));
+	front.y = sin(glm_rad(pitch));
+	front.z = sin(glm_rad(yaw)) * cos(glm_rad(pitch));
+	camera->front = glms_normalize(front);
+	camera->right = glms_normalize(glms_cross(camera->front, up));  // normalize the vectors, because their length gets closer to 0 the more you look up or down which results in slower movement.
+	camera->up = glms_normalize(glms_cross(camera->right, camera->front));
+}
+
+// temp
+void update_camera_mouse_callback(float xoffset,float yoffset){
+	yaw += xoffset;
+	pitch += yoffset;
+	if (pitch > 89.0f)
+		pitch = 89.0f;
+	if (pitch < -89.0f)
+		pitch = -89.0f;
+}
+// temp
+static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
+{
+	(void)window;
+	float xoffset = xpos - lastX;
+    float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
+	lastX = xpos;
+	lastY = ypos;
+
+	xoffset *=  0.1;
+	yoffset *=  0.1;
+
+	update_camera_mouse_callback(xoffset,yoffset);
+}
 
 // -- -- function declare
 //
@@ -51,6 +109,10 @@ GLFWwindow* create_glfw_window(void)
     }
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+	if (glfwRawMouseMotionSupported())
+		glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+	glfwSetCursorPosCallback(window, cursor_position_callback);
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     //glfwSetKeyCallback(window,key_callback);
     // Disable V-Sync
     glfwSwapInterval(0);
@@ -75,18 +137,20 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 
 void processInput(GLFWwindow* window)
 {
-    (void) window;
-    if (glfwGetKey(window, GLFW_KEY_GRAVE_ACCENT)) {
-        exit(0);
-    }
-    if (glfwGetKey(window, GLFW_KEY_SPACE)) {
-        glDeleteProgram(raymarchshader);
-        raymarchshader = create_shader("engine/shaders/simple_vert", "engine/shaders/raymarch");
-        {
-            int resolution[2] = {SCR_WIDTH, SCR_HEIGHT};
-            setUniformVec2Int(raymarchshader, resolution, "resolution");
-        }
-    }
+    (void)window;
+	if(glfwGetKey(window,GLFW_KEY_GRAVE_ACCENT)){
+		exit(0);
+	}
+	if(glfwGetKey(window,GLFW_KEY_SPACE)){
+		glDeleteProgram(raymarchshader);
+		raymarchshader = create_shader("engine/shaders/simple_vert","engine/shaders/raymarch");
+		{
+			int resolution[2] = {SCR_WIDTH,SCR_HEIGHT};
+			setUniformVec2Int(raymarchshader,resolution,"resolution");
+			mat4s projection = glms_perspective(fov, (float)SCR_WIDTH / (float)SCR_HEIGHT, near, far);
+			setUniformMat4(raymarchshader, projection, "projection");
+		}
+	}
 }
 
 // ig we can just define this function from script and set callback from the script
@@ -100,19 +164,28 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 }
 // -- -- -- -- -- -- -- -- --
 
-// debug randomize rocks
-void debug_randomize_rocks(void)
-{
-    rng_generate();
-    for (int i = 0; i < 100; i++) {
-        rocks[i][0] = (float) rng_range(1, 10);
-        rocks[i][1] = (float) rng_range(1, 10);
-        rocks[i][2] = (float) rng_range(1, 10);
-        rocks[i][3] = 0.5;
-    }
-    rocks[1][0] = 1;
-    rocks[1][1] = 6;
-    rocks[1][2] = 1;
+
+void print_vec3(float* vec){
+	printf("(%f,%f,%f)",vec[0],vec[1],vec[2]);
+}
+// temp move to scripting side
+void debug_randomize_rocks(){
+	rng_generate();
+	for(int i = 0; i < MAX_ROCKS_COUNT; i++){
+		rocks[i][0] = (float)rng_range(1,10);
+		rocks[i][1] = (float)rng_range(1,10);
+		rocks[i][2] = (float)rng_range(1,10);
+		rocks[i][0] -= 5;
+		rocks[i][1] -= 5;
+		rocks[i][2] -= 5;
+		rocks[i][3] = 0.5;
+	}
+	rocks[1][0] = 1;
+	rocks[1][1] = 1;
+	rocks[1][2] = -2;
+	rocks[0][0] = 1;
+	rocks[0][1] = 1;
+	rocks[0][2] = -6;
 }
 
 int main(int argc, char** argv)
@@ -139,7 +212,14 @@ int main(int argc, char** argv)
 
     GLuint screen_quad_vao = setup_screen_quad();
 
-    debug_randomize_rocks();
+    // set uniforms
+    {
+        mat4s projection = glms_perspective(fov, (float)SCR_WIDTH / (float)SCR_HEIGHT, near, far);
+        setUniformMat4(shaderProgram, projection, "projection");
+        setUniformMat4(raymarchshader, projection, "projection");
+        mat4s model = GLMS_MAT4_IDENTITY_INIT;
+        setUniformMat4(shaderProgram, model, "model");
+    }
 
     ////////////////////////////////////////////////////////
     // START GAME RUNTIME
@@ -165,7 +245,9 @@ int main(int argc, char** argv)
         float currentFrame = (float) glfwGetTime();
         deltaTime          = currentFrame - lastFrame;    // Calculate delta time
         // calculate FPS
-        FPS = (int) (1.0f / deltaTime);
+        FPS = (int)(1.0f / deltaTime);
+		
+		update_first_person_camera();
 
         elapsedTime += deltaTime;
         if (elapsedTime > 1.0f) {
@@ -187,54 +269,57 @@ int main(int argc, char** argv)
         // Game scripts update loop
         gameobjects_update(deltaTime);
 
-        {
-            mat4s projection = glms_perspective(glm_rad(60.0f), (float) SCR_WIDTH / (float) SCR_HEIGHT, 0.1f, 100.0f);
-            setUniformMat4(shaderProgram, projection, "projection");
-            setUniformMat4(raymarchshader, projection, "projection");
-        }
 
         // Render
         // ------
-        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+		// frustum cull
+
+		mat4s projection = glms_perspective(fov, (float)SCR_WIDTH / (float)SCR_HEIGHT, near, far);
+		mat4s viewproj = glms_mul(projection,gamestate_get_global_instance()->camera.lookAt);
+		rocks_visible_count = cull_rocks(MAX_ROCKS_COUNT,rocks,rocks_visible,viewproj.raw);
+
+        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        // Draw cubes
         {
-            glUseProgram(raymarchshader);
-            int loc = glGetUniformLocation(raymarchshader, "rocks");
-            glUniform4fv(loc, 100, &rocks[0][0]);
+            for (size_t i = 0; i < game_registry_get_instance()->capacity; i++)
+            {
+                hash_map_pair_t pair = game_registry_get_instance()->entries[i];
+                if (!uuid_is_null(&pair.key) && pair.value) {
+                    GameObject* go = (GameObject*)pair.value;
+                    if (strcmp(go->typeName, "Camera") == 0)
+                        continue;
 
-            int resolution[2] = {SCR_WIDTH, SCR_HEIGHT};
-            setUniformVec2Int(raymarchshader, resolution, "resolution");
+                    // LOG_INFO("rendering gameobject: %s position: (%f, %f, %f)\n", go->typeName, go->transform.position[0], go->transform.position[1], go->transform.position[2]);
 
-            Camera camera = gamestate_get_global_instance()->camera;
-            // vec3 camera position
-            loc          = glGetUniformLocation(raymarchshader, "cameraPos");
-            vec3s camPos = camera.position;
-            glUniform3f(loc, (GLfloat) camPos.x, (GLfloat) camPos.y, (GLfloat) camPos.z);
+                    // Render
+                    glUseProgram(shaderProgram);
+                    setUniformMat4(shaderProgram, gamestate_get_global_instance()->camera.lookAt, "view");
+                    mat4s model;
+                    model = gameobject_ptr_get_transform(go);
 
-            // camera Pitch
-            loc            = glGetUniformLocation(raymarchshader, "cameraPitch");
-            float camPitch = glm_rad(camera.pitch);
-            glUniform1f(loc, (GLfloat) camPitch);
+                    setUniformMat4(shaderProgram, model, "model");
 
-            // Yaw
-            loc          = glGetUniformLocation(raymarchshader, "cameraYaw");
-            float camYaw = glm_rad(camera.yaw);
-            glUniform1f(loc, (GLfloat) camYaw);
-
-            loc        = glGetUniformLocation(raymarchshader, "cameraForward");
-            vec3s camF = camera.front;
-            glUniform3f(loc, (GLfloat) camF.x, (GLfloat) camF.y, (GLfloat) camF.z);
-
-            setUniformMat4(raymarchshader, camera.lookAt, "viewMatrix");
-
-            //loc            = glGetUniformLocation(raymarchshader, "cameraRight");
-            //vec3s camRight = camera.right;
-            //glUniform3f(loc, (GLfloat) camRight.x, (GLfloat) camRight.y, (GLfloat) camRight.z);
-
-            glBindVertexArray(screen_quad_vao);
-            glDrawArrays(GL_TRIANGLES, 0, 6);    // Drawing 6 vertices to form the quad
+                    glBindVertexArray(vao);
+                    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+                    glBindVertexArray(0);
+                }
+            }
         }
+        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		{
+			glUseProgram(raymarchshader);
+			int loc = glGetUniformLocation(raymarchshader,"rocks");
+			glUniform4fv(loc,rocks_visible_count,&rocks_visible[0][0]);	
+			loc = glGetUniformLocation(raymarchshader,"rocks_count");
+			glUniform1i(loc,rocks_visible_count);
+			setUniformMat4(raymarchshader, viewproj, "viewproj");
 
+			glBindVertexArray(screen_quad_vao);
+			glDrawArrays(GL_TRIANGLES, 0, 6);  // Drawing 6 vertices to form the quad
+		}
+		//(void)screen_quad_vao;
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
         glfwSwapBuffers(window);

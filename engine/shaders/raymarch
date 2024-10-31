@@ -85,6 +85,7 @@ float stars(vec3 ray)
 ////////////////////////////////////////////////////////////////////////////////////////
 // in/out variables
 
+uniform int rocks_count;
 uniform vec4 rocks[100];
 uniform ivec2 resolution;
 
@@ -101,6 +102,11 @@ out vec4 FragColor;
 float sphereSDF(vec3 p, vec4 circle)
 {
     return length(p-circle.xyz) - circle.w;
+in vec4 nearp;
+in vec4 farp;
+
+float sphere(vec3 p, vec4 circle){
+	return length(p-circle.xyz) - circle.w;
 }
 
 float sdBox( vec3 p, vec3 b )
@@ -147,6 +153,10 @@ float raymarch(Ray ray){
 // MAIN
 void main()
 {
+	vec3 ro = nearp.xyz/nearp.w;
+	vec3 rd = normalize((farp.xyz/farp.w) - ro);
+	vec2 uv = (gl_FragCoord.xy - (0.5 * resolution.xy))/resolution.y;
+	float d = raymarch(ro,rd);
     vec2 uv = (gl_FragCoord.xy - 0.5 * resolution.xy) / resolution.y;
     // uv.x *= resolution.x / resolution.y;  // Adjust for aspect ratio
     Ray ray;
@@ -188,4 +198,3 @@ void main()
         FragColor = vec4(s, s, s, 1.0) + 0.065;  
     }
 }
-
