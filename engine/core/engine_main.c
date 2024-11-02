@@ -88,9 +88,9 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 void processInput(GLFWwindow* window)
 {
     (void) window;
-    if (glfwGetKey(window, GLFW_KEY_GRAVE_ACCENT)) {
-        exit(0);
-    }
+     if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, true);
+
     if (glfwGetKey(window, GLFW_KEY_SPACE)) {
         glDeleteProgram(raymarchshader);
         raymarchshader = create_shader("engine/shaders/simple_vert", "engine/shaders/raymarch");

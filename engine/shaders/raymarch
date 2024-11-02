@@ -59,8 +59,15 @@ float sphereSDF(vec3 p, vec4 circle)
 
 float sdBox( vec3 p, vec3 b )
 {
-  vec3 q = abs(p) - b;
-  return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0);
+    vec3 q = abs(p) - b;
+    return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0);
+}
+
+float sdCapsule( vec3 p, vec3 a, vec3 b, float r )
+{
+  vec3 pa = p - a, ba = b - a;
+  float h = clamp( dot(pa,ba)/dot(ba,ba), 0.0, 1.0 );
+  return length( pa - ba*h ) - r;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -69,14 +76,15 @@ float sceneSDF(vec3 p)
 {
     float hit = RAY_MAX_STEP;
     hit = min(hit, sphereSDF(p, rocks[rocks_idx]));
-    //hit = min(hit, sdBox(p, vec3(0.2)));
+    // hit = hit + sin(2*p.x)*sin(2*p.y)*sin(2*p.z);
+    // hit = min(hit, sdCapsule(p, vec3(0.1), vec3(0.8), 0.5f));
     return hit;
 }
 
 vec3 estimateNormal(vec3 p) {
     return normalize(vec3(
-        sceneSDF(vec3(p.x + EPSILON, p.y, p.z)) - sceneSDF(vec3(p.x - EPSILON, p.y, p.z)),
-        sceneSDF(vec3(p.x, p.y + EPSILON, p.z)) - sceneSDF(vec3(p.x, p.y - EPSILON, p.z)),
+        sceneSDF(vec3(p.x + EPSILON, p.y, p.z))  - sceneSDF(vec3(p.x - EPSILON, p.y, p.z)),
+        sceneSDF(vec3(p.x, p.y + EPSILON, p.z))  - sceneSDF(vec3(p.x, p.y - EPSILON, p.z)),
         sceneSDF(vec3(p.x, p.y, p.z  + EPSILON)) - sceneSDF(vec3(p.x, p.y, p.z - EPSILON))
     ));
 }
