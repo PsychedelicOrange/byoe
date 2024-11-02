@@ -113,7 +113,7 @@ void print_vec3(float* vec)
     printf("(%f,%f,%f)", vec[0], vec[1], vec[2]);
 }
 // temp move to scripting side
-void debug_randomize_rocks()
+void debug_randomize_rocks(void)
 {
     rng_generate();
     for (int i = 0; i < MAX_ROCKS_COUNT; i++) {
