@@ -41,7 +41,7 @@ float stars(vec3 ray)
 ////////////////////////////////////////////////////////////////////////////////////////
 // in/out variables
 
-uniform int rocks_count;
+uniform int rocks_idx;
 uniform vec4 rocks[100];
 uniform ivec2 resolution;
 
@@ -68,10 +68,7 @@ float sdBox( vec3 p, vec3 b )
 float sceneSDF(vec3 p)
 {
     float hit = RAY_MAX_STEP;
-    for(int k = 0; k < 10; k++)
-    {
-        hit = min(hit, sphereSDF(p, rocks[k]));
-    }
+    hit = min(hit, sphereSDF(p, rocks[rocks_idx]));
     //hit = min(hit, sdBox(p, vec3(0.2)));
     return hit;
 }
@@ -109,7 +106,7 @@ void main()
     float d  = raymarch(ray);
     if(d < RAY_MAX_STEP)
     {
-        vec3 lightPos = vec3(0, 5, -5);
+        vec3 lightPos = vec3(0, 5, 5);
 
         vec3 p = ray.ro + ray.rd * d;
 
@@ -126,13 +123,11 @@ void main()
 		vec3 specular = vec3(0.3, 0.5, 0.2) * spec;
 		vec3 diffuseColor = diffuse * vec3(0.3, 0.5, 0.2);
 
+        gl_FragDepth = d/100;
 
         FragColor = vec4(diffuseColor + specular * 10,1.0);  
     }
     else
-    {
-        // Render the skybox
-        float s = stars(ray.rd);
-        FragColor = vec4(s, s, s, 1.0) + 0.065;  
-    }
+        gl_FragDepth = 1;
+
 }

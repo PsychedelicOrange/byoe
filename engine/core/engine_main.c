@@ -61,10 +61,9 @@ GLFWwindow* create_glfw_window(void)
     }
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    //if (glfwRawMouseMotionSupported())
-    //    glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+    if (glfwRawMouseMotionSupported())
+        glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
     //glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    //glfwSetKeyCallback(window,key_callback);
     // Disable V-Sync
     glfwSwapInterval(0);
     return window;
@@ -157,6 +156,8 @@ int main(int argc, char** argv)
 
     GLuint screen_quad_vao = setup_screen_quad();
 
+    debug_randomize_rocks();
+
     ////////////////////////////////////////////////////////
     // START GAME RUNTIME
     init_game_registry();
@@ -186,13 +187,9 @@ int main(int argc, char** argv)
         elapsedTime += deltaTime;
         if (elapsedTime > 1.0f) {
             char windowTitle[250];
-            sprintf(windowTitle, "BYOE Game: byoe_ghost_asteroids | FPS: %d | rendertime: %2.2fms", FPS, deltaTime * 1000.0f);
+            sprintf(windowTitle, "BYOE Game: byoe_ghost_asteroids | FPS: %d | render time: %2.2fms", FPS, deltaTime * 1000.0f);
             glfwSetWindowTitle(window, windowTitle);
             elapsedTime = 0.0f;
-        }
-
-        if (((int) glfwGetTime()) % 10 == 5) {
-            debug_randomize_rocks();
         }
 
         processInput(window);
@@ -222,12 +219,16 @@ int main(int argc, char** argv)
             glUseProgram(raymarchshader);
             int loc = glGetUniformLocation(raymarchshader, "rocks");
             glUniform4fv(loc, rocks_visible_count, &rocks_visible[0][0]);
-            loc = glGetUniformLocation(raymarchshader, "rocks_count");
-            glUniform1i(loc, rocks_visible_count);
             setUniformMat4(raymarchshader, viewproj, "viewproj");
 
-            glBindVertexArray(screen_quad_vao);
-            glDrawArrays(GL_TRIANGLES, 0, 6);    // Drawing 6 vertices to form the quad
+            for (int i = 0; i < rocks_visible_count; i++) {
+                glUseProgram(raymarchshader);
+                loc = glGetUniformLocation(raymarchshader, "rocks_idx");
+                glUniform1i(loc, i);
+
+                glBindVertexArray(screen_quad_vao);
+                glDrawArrays(GL_TRIANGLES, 0, 6);    // Drawing 6 vertices to form the quad
+            }
         }
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
