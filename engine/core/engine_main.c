@@ -299,14 +299,17 @@ int main(int argc, char** argv)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		{
 			glUseProgram(raymarchshader);
-			int loc = glGetUniformLocation(raymarchshader,"rocks");
-			glUniform4fv(loc,rocks_visible_count,&rocks_visible[0][0]);	
-			loc = glGetUniformLocation(raymarchshader,"rocks_count");
-			glUniform1i(loc,rocks_visible_count);
 			setUniformMat4(raymarchshader, viewproj, "viewproj");
-
 			glBindVertexArray(screen_quad_vao);
-			glDrawArrays(GL_TRIANGLES, 0, 6);  // Drawing 6 vertices to form the quad
+			int loc = glGetUniformLocation(raymarchshader,"rt");
+			for(int i = 0; i < rocks_visible_count; i++){
+				//glClear(GL_DEPTH_BUFFER_BIT);
+				glUniform4fv(loc,1,&rocks_visible[i][0]);	
+				glDrawArrays(GL_TRIANGLES, 0, 6);  // Drawing 6 vertices to form the quad
+			}
+			//loc = glGetUniformLocation(raymarchshader,"rocks_count");
+			//glUniform1i(loc,rocks_visible_count);
+
 		}
 		//(void)screen_quad_vao;
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
