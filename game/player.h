@@ -1,6 +1,6 @@
-#pragma once 
+#pragma once
 
-#include<cglm/cglm.h>
+#include <cglm/cglm.h>
 
 #include <engine/core/gameobject.h>
 
