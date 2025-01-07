@@ -10,7 +10,7 @@ typedef struct renderer_desc
     struct GLFWwindow* window;
 } renderer_desc;
 
-bool renderer_sdf_create(renderer_desc desc);
+bool renderer_sdf_init(renderer_desc desc);
 void renderer_sdf_destroy(void);
 
 // this is where the drawcalls and rendering logic is handled including culling

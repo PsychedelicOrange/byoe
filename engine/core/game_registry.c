@@ -7,19 +7,19 @@
 hash_map_t* gGameRegistry = NULL;
 uint32_t gNumObjects = 0;
 
-void init_game_registry(void)
+void game_registry_init(void)
 {
     gNumObjects = 0;
     // create the hash_map
     gGameRegistry = hash_map_create(MAX_OBJECTS);
 }
 
-void cleanup_game_registry(void)
+void game_registry_destroy(void)
 {
     hash_map_destroy(gGameRegistry);
 }
 
-random_uuid_t register_gameobject_type(const char* typeName, uint32_t gameObjectDataSize, StartFunction StartFn, UpdateFunction UpdateFn)
+random_uuid_t game_registry_register_gameobject_type(const char* typeName, uint32_t gameObjectDataSize, StartFunction StartFn, UpdateFunction UpdateFn)
 {
     random_uuid_t uuid = {{ 0, 0, 0, 0 }};
 
@@ -53,7 +53,7 @@ random_uuid_t register_gameobject_type(const char* typeName, uint32_t gameObject
     return uuid;  // Return the UUID of the registered object
 }
 
-void unregister_gameobject_type(const random_uuid_t uuid)
+void game_registry_unregister_gameobject_type(const random_uuid_t uuid)
 {
     GameObject* game_object = hash_map_get_value(gGameRegistry, uuid);
     if (game_object->gameObjectData)
@@ -61,7 +61,7 @@ void unregister_gameobject_type(const random_uuid_t uuid)
     hash_map_remove_entry(gGameRegistry, game_object->uuid);
 }
 
-GameObject* get_gameobject_by_uuid(random_uuid_t goUUID)
+GameObject* game_registry_get_gameobject_by_uuid(random_uuid_t goUUID)
 {
     GameObject* go = (GameObject*)hash_map_get_value(gGameRegistry, goUUID);
     if (go != NULL) {

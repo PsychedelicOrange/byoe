@@ -81,7 +81,7 @@ int main(int argc, char** argv)
     desc.width = INIT_SCR_WIDTH;
     desc.height = INIT_SCR_HEIGHT;
     desc.window = g_GameWindow;
-    bool success = renderer_sdf_create(desc);
+    bool success = renderer_sdf_init(desc);
     if(!success){
         LOG_ERROR("Error initializing SDF renderer");
         return -1;
@@ -92,7 +92,7 @@ int main(int argc, char** argv)
 
     ////////////////////////////////////////////////////////
     // START GAME RUNTIME
-    init_game_registry();
+    game_registry_init();
 
     // register game objects on run-time side
     game_main();
@@ -138,7 +138,7 @@ int main(int argc, char** argv)
         lastFrame = currentFrame;    // Update last frame time
     }
     renderer_sdf_destroy();
-    cleanup_game_registry();
+    game_registry_destroy();
 
     LOG_SUCCESS("Exiting game...");
     return 0;

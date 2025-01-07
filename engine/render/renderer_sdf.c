@@ -46,7 +46,7 @@ static void renderer_internal_sdf_hot_reload_shaders(void)
 }
 
 //-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
-bool renderer_sdf_create(renderer_desc desc)
+bool renderer_sdf_init(renderer_desc desc)
 {
     // use the desc to init the internal state
     (void) desc;
