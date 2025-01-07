@@ -17,6 +17,14 @@ typedef struct index_buffer
     uint16_t* data; // We are using 16-bit indices
 }index_buffer;
 
+typedef struct color_rgba {
+    float r, g, b, a;
+}color_rgba;
+
+typedef struct color_rgb {
+    float r, g, b;
+}color_rgb;
+
 typedef struct sdf_function
 {
     char prototype_struct;

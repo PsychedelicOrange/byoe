@@ -5,6 +5,8 @@
 
 struct GLFWwindow;
 
+#define MAX_ROCKS_COUNT 100
+
 // Note:- keep everything aligned to /16 bytes
 
 typedef struct Camera
@@ -33,7 +35,10 @@ typedef struct GameState
     uint32_t _padding2;
     bool     keycodes[512];
     Camera   camera;
-    // TBD...
+    // Game context specific stuff
+    vec4     rocks[MAX_ROCKS_COUNT];
+    vec4     rocks_visible[MAX_ROCKS_COUNT];
+    int      rocks_visible_count;
 } GameState;
 
 void       gamestate_update(struct GLFWwindow* window);

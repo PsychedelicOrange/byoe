@@ -25,43 +25,11 @@ static GLFWwindow* g_GameWindow;
 // -- -- -- -- -- -- GAME MAIN -- -- -- -- -- --
 // This is called by the client (game) to register game objects and their scripts
 extern int game_main(void);
-// -- -- -- -- -- -- Game state -- -- -- -- -- --
-// TODO: refactor this later into global state/ or expose to script
-vec4 rocks[100];
-vec4 rockVelocities[100];
 // -- -- -- -- -- -- Constants -- -- -- -- -- --
 // settings
 const uint32_t INIT_SCR_WIDTH  = 800;
 const uint32_t INIT_SCR_HEIGHT = 600;
-// -- -- -- -- -- -- Temp Game state -- -- -- -- -- --
-// max values
-#define MAX_ROCKS_COUNT 100
-// refactor this later into global state/ or expose to script
-vec4 rocks[MAX_ROCKS_COUNT];
-vec4 rocks_visible[MAX_ROCKS_COUNT];
-int  rocks_visible_count = 0;
 // -- -- -- -- -- -- -- -- --
-// temp move to scripting side
-void debug_randomize_rocks(void)
-{
-    rng_generate();
-    for (int i = 0; i < MAX_ROCKS_COUNT; i++) {
-        rocks[i][0] = (float) rng_range(1, 10);
-        rocks[i][1] = (float) rng_range(1, 10);
-        rocks[i][2] = (float) rng_range(1, 10);
-        rocks[i][0] -= 5;
-        rocks[i][1] -= 5;
-        rocks[i][2] -= 5;
-        rocks[i][3] = 0.5;
-    }
-    rocks[1][0] = 1;
-    rocks[1][1] = 1;
-    rocks[1][2] = -2;
-    rocks[0][0] = 1;
-    rocks[0][1] = 1;
-    rocks[0][2] = -6;
-}
-
 int main(int argc, char** argv)
 {
     (void) argc;
@@ -86,9 +54,6 @@ int main(int argc, char** argv)
         LOG_ERROR("Error initializing SDF renderer");
         return -1;
     }
-
-    // this is wherer draw onto using SDFs
-    debug_randomize_rocks();
 
     ////////////////////////////////////////////////////////
     // START GAME RUNTIME
