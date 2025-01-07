@@ -3,6 +3,8 @@
 
 #include <stdio.h>
 
+#include "common.h"
+
 // TODO: Add timestamp
 // TODO: Add custom stream to write (ex. file, network, etc.)
 

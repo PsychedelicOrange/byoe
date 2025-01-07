@@ -1,16 +1,16 @@
+#include "render_utils.h"
+
+#include "logging/log.h"
+
 #include <stdio.h>
 #include <stdlib.h>
+
+// clang-format off
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include "utils.h"
+// clang-format on
 
-void crash_game(char* msg){
-	printf("\nGame crashed: %s\n",msg);
-	fflush(stdout);
-	exit(1);
-}
-
-void init_glfw(void){
+void render_utils_init_glfw(void){
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
@@ -22,21 +22,43 @@ void init_glfw(void){
 
 }
 
-void init_glad(void){
+void render_utils_init_glad(void){
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
-		crash_game("failed to initialize glad");
+		render_utils_crash_game("failed to initialize glad");
     }
 	const GLubyte* vendor = glGetString(GL_VENDOR); // Returns the vendor
 	const GLubyte* renderer = glGetString(GL_RENDERER); // Returns a hint to the model
-	printf("\nVendor: %s \n",vendor);
-	printf("\nRenderer: %s \n",renderer);
+	LOG_INFO("\nVendor: %s \n",vendor);
+	LOG_INFO("\nRenderer: %s \n",renderer);
 	fflush(stdout);
 }
 
+void render_utils_crash_game(char* msg){
+	LOG_ERROR("\nGame crashed: %s\n",msg);
+	fflush(stdout);
+	exit(1);
+}
+
+GLFWwindow* render_utils_create_glfw_window(const char* title, uint32_t width, uint32_t height)
+{
+    GLFWwindow* window = glfwCreateWindow(width, height, title, NULL, NULL);
+    if (window == NULL) {
+        render_utils_crash_game("Unable to create glfw window");
+        glfwTerminate();
+    }
+    glfwMakeContextCurrent(window);
+    if (glfwRawMouseMotionSupported())
+        glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+    // Enable this if you don't want the cursor to be shown
+    //glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    // Disable V-Sync
+    glfwSwapInterval(0);
+    return window;
+}
 
 // OpengL helper functions
-GLuint setup_screen_quad(void){
+GLuint render_utils_setup_screen_quad(void){
 	// Vertex data for the rectangle (two triangles forming a quad)
 	float vertices[] = {
 		// Positions (X, Y)
@@ -62,7 +84,7 @@ GLuint setup_screen_quad(void){
 	return VAO;
 }
 
-GLuint setup_debug_cube(void) {
+GLuint render_utils_setup_debug_cube(void) {
     GLfloat vertices[] = {
         // Front face
         -0.5f, -0.5f,  0.5f,  // Bottom-left

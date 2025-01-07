@@ -16,7 +16,7 @@ We also have plans to build a SDF editor that unlike others can generate functio
 
 ## Building
 
-Folow these instructions to build the engine and run the game
+Folow these instructions to build the engine and run the game. All the dependencies such as cglm, glfw etc. will be cloned and built by CMake itself.
 
 ```
 git clone https://github.com/PsychedelicOrange/byoe.git

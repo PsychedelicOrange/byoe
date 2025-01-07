@@ -2,6 +2,7 @@
 #include <cglm/struct.h> /* struct api */
 #include <stddef.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <stdlib.h>
 
 #include "frustum.h"
@@ -13,105 +14,33 @@
 #include "scripting.h"
 #include "shader.h"
 #include "simd/platform_caps.h"
-#include "utils.h"
+#include "../render/render_utils.h"
+#include "../render/renderer_sdf.h"
 
-// Put them at last: causing some weird errors while compiling on MSVC with APIENTRY define
-// Also follow this order as it will cause openlg include error
-// clang-format off
-#include <glad/glad.h>
 #include <GLFW/glfw3.h>
-// clang-format on
-// max values
-#define MAX_ROCKS_COUNT 100
 
+// Forward declarations
+static GLFWwindow* g_GameWindow;
+
+// -- -- -- -- -- -- GAME MAIN -- -- -- -- -- --
+// This is called by the client (game) to register game objects and their scripts
 extern int game_main(void);
-// -- -- -- -- -- -- Game state -- -- -- -- -- --- --
-// refactor this later into global state/ or expose to script
+// -- -- -- -- -- -- Game state -- -- -- -- -- --
+// TODO: refactor this later into global state/ or expose to script
 vec4 rocks[100];
 vec4 rockVelocities[100];
-// -- -- -- -- -- -- Constants -- -- -- -- -- --- --
+// -- -- -- -- -- -- Constants -- -- -- -- -- --
 // settings
-unsigned int SCR_WIDTH  = 800;
-unsigned int SCR_HEIGHT = 600;
-
-// TODO: remove this later
-unsigned int raymarchshader;
-
-// -- -- -- -- -- -- Game state -- -- -- -- -- --- --
+const uint32_t INIT_SCR_WIDTH  = 800;
+const uint32_t INIT_SCR_HEIGHT = 600;
+// -- -- -- -- -- -- Temp Game state -- -- -- -- -- --
+// max values
+#define MAX_ROCKS_COUNT 100
 // refactor this later into global state/ or expose to script
 vec4 rocks[MAX_ROCKS_COUNT];
 vec4 rocks_visible[MAX_ROCKS_COUNT];
 int  rocks_visible_count = 0;
-
-// -- -- function declare
-//
-GLFWwindow* create_glfw_window(void);
-void        framebuffer_size_callback(GLFWwindow* window, int width, int height);
-void        processInput(GLFWwindow* window);
-void        key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
-
-// -- -- function define
-//
-GLFWwindow* create_glfw_window(void)
-{
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "psychspiration", NULL, NULL);
-    if (window == NULL) {
-        crash_game("Unable to create glfw window");
-        glfwTerminate();
-    }
-    glfwMakeContextCurrent(window);
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    if (glfwRawMouseMotionSupported())
-        glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
-    //glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    // Disable V-Sync
-    glfwSwapInterval(0);
-    return window;
-}
-
-void gl_settings(void)
-{
-    glEnable(GL_DEPTH_TEST);
-}
-
-// glfw: whenever the window size changed (by OS or user resize) this callback function executes
-void framebuffer_size_callback(GLFWwindow* window, int width, int height)
-{
-    (void) window;
-    SCR_WIDTH  = width;
-    SCR_HEIGHT = height;
-    // make sure the viewport matches the new window dimensions; note that width and
-    // height will be significantly larger than specified on retina displays.
-    glViewport(0, 0, width, height);
-}
-
-void processInput(GLFWwindow* window)
-{
-    (void) window;
-     if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, true);
-
-    if (glfwGetKey(window, GLFW_KEY_SPACE)) {
-        glDeleteProgram(raymarchshader);
-        raymarchshader = create_shader("engine/shaders/simple_vert", "engine/shaders/raymarch");
-    }
-}
-
-// ig we can just define this function from script and set callback from the script
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
-{
-    (void) window;
-    (void) key;
-    (void) scancode;
-    (void) action;
-    (void) mods;
-}
 // -- -- -- -- -- -- -- -- --
-
-void print_vec3(float* vec)
-{
-    printf("(%f,%f,%f)", vec[0], vec[1], vec[2]);
-}
 // temp move to scripting side
 void debug_randomize_rocks(void)
 {
@@ -143,19 +72,22 @@ int main(int argc, char** argv)
     cpu_caps_print_info();
     os_caps_print_info();
 
-    init_glfw();
-    GLFWwindow* window = create_glfw_window();
-    init_glad();
-    gl_settings();
-    raymarchshader = create_shader("engine/shaders/simple_vert", "engine/shaders/raymarch");
-    // set constant shader variables
-    {
-        int resolution[2] = {SCR_WIDTH, SCR_HEIGHT};
-        setUniformVec2Int(raymarchshader, resolution, "resolution");
+    render_utils_init_glad();
+    render_utils_init_glfw();
+
+    g_GameWindow = render_utils_create_glfw_window("BYOE Game: Spooky Asteroids!", INIT_SCR_WIDTH, INIT_SCR_HEIGHT);
+
+    renderer_desc desc;
+    desc.width = INIT_SCR_WIDTH;
+    desc.height = INIT_SCR_HEIGHT;
+    desc.window = g_GameWindow;
+    bool success = renderer_sdf_create(desc);
+    if(!success){
+        LOG_ERROR("Error initializing SDF renderer");
+        return -1;
     }
 
-    GLuint screen_quad_vao = setup_screen_quad();
-
+    // this is wherer draw onto using SDFs
     debug_randomize_rocks();
 
     ////////////////////////////////////////////////////////
@@ -177,7 +109,7 @@ int main(int argc, char** argv)
 
     int FPS = 0;
 
-    while (!glfwWindowShouldClose(window)) {
+    while (!glfwWindowShouldClose(g_GameWindow)) {
         // Get current time
         float currentFrame = (float) glfwGetTime();
         deltaTime          = currentFrame - lastFrame;    // Calculate delta time
@@ -187,63 +119,27 @@ int main(int argc, char** argv)
         elapsedTime += deltaTime;
         if (elapsedTime > 1.0f) {
             char windowTitle[250];
-            sprintf(windowTitle, "BYOE Game: byoe_ghost_asteroids | FPS: %d | render time: %2.2fms", FPS, deltaTime * 1000.0f);
-            glfwSetWindowTitle(window, windowTitle);
+            sprintf(windowTitle, "BYOE Game: spooky asteroids! | FPS: %d | render dt: %2.2fms", FPS, deltaTime * 1000.0f);
+            glfwSetWindowTitle(g_GameWindow, windowTitle);
             elapsedTime = 0.0f;
         }
 
-        processInput(window);
-
         // Update the global game state
-        gamestate_update(window);
+        gamestate_update(g_GameWindow);
 
         // Game scripts update loop
         gameobjects_update(deltaTime);
 
         // Render
         // ------
-        // frustum cull
-
-        Camera* camera = &gamestate_get_global_instance()->camera;
-
-        int resolution[2] = {SCR_WIDTH, SCR_HEIGHT};
-        setUniformVec2Int(raymarchshader, resolution, "resolution");
-
-        mat4s projection    = glms_perspective(camera->fov, (float) SCR_WIDTH / (float) SCR_HEIGHT, camera->near_plane, camera->far_plane);
-        mat4s viewproj      = glms_mul(projection, gamestate_get_global_instance()->camera.lookAt);
-        rocks_visible_count = cull_rocks(MAX_ROCKS_COUNT, rocks, rocks_visible, viewproj.raw);
-
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        {
-            glUseProgram(raymarchshader);
-            int loc = glGetUniformLocation(raymarchshader, "rocks");
-            glUniform4fv(loc, rocks_visible_count, &rocks_visible[0][0]);
-            setUniformMat4(raymarchshader, viewproj, "viewproj");
-
-            for (int i = 0; i < rocks_visible_count; i++) {
-                glUseProgram(raymarchshader);
-                loc = glGetUniformLocation(raymarchshader, "rocks_idx");
-                glUniform1i(loc, i);
-
-                glBindVertexArray(screen_quad_vao);
-                glDrawArrays(GL_TRIANGLES, 0, 6);    // Drawing 6 vertices to form the quad
-            }
-        }
-
-        // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
-        // -------------------------------------------------------------------------------
-        glfwSwapBuffers(window);
-        glfwPollEvents();
+        renderer_sdf_render();
+        // ------
 
         lastFrame = currentFrame;    // Update last frame time
     }
-
+    renderer_sdf_destroy();
     cleanup_game_registry();
 
-    // glfw: terminate, clearing all previously allocated GLFW resources.
-    // ------------------------------------------------------------------
-    glfwTerminate();
-    printf("\nbye!\n");
+    LOG_SUCCESS("Exiting game...");
     return 0;
 }
