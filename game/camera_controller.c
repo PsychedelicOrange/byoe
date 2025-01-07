@@ -92,7 +92,7 @@ void Camera_Start(random_uuid_t* uuid)
     camera->yaw   = YAW;
     camera->pitch = PITCH;
 
-    camera->near_plane = 0.1f;
+    camera->near_plane = 0.01f;
     camera->far_plane  = 100.0f;
     camera->fov        = 45.0f;
 }

@@ -13,6 +13,7 @@
         printf(COLOR_GREEN "[BYOE] - SUCCESS: "); \
         printf(__VA_ARGS__);                      \
         printf(COLOR_RESET);                      \
+        printf("\n");                             \
     } while (0)
 
 #define LOG_INFO(...)                         \
@@ -20,6 +21,7 @@
         printf(COLOR_BLUE "[BYOE] - INFO: "); \
         printf(__VA_ARGS__);                  \
         printf(COLOR_RESET);                  \
+        printf("\n");                         \
     } while (0)
 
 #define LOG_WARN(...)                              \
@@ -27,6 +29,7 @@
         printf(COLOR_YELLOW "[BYOE] - WARNING: "); \
         printf(__VA_ARGS__);                       \
         printf("\033[0m\n");                       \
+        printf("\n");                              \
     } while (0)
 
 #define LOG_ERROR(...)                        \
@@ -34,6 +37,7 @@
         printf(COLOR_RED "[BYOE] - ERROR: "); \
         printf(__VA_ARGS__);                  \
         printf(COLOR_RESET);                  \
+        printf("\n");                         \
     } while (0)
 
 #endif

@@ -131,7 +131,7 @@ void renderer_sdf_render(void)
 
         setUniformMat4(g_RendererSDFInternalState.raymarchShaderID, viewproj, "viewproj");
 
-        for (uint32_t i = 0; i < rocks_visible_count; i++) {
+        for (uint32_t i = 0; i < 1; i++) {
             glUseProgram(g_RendererSDFInternalState.raymarchShaderID);
             loc = glGetUniformLocation(g_RendererSDFInternalState.raymarchShaderID, "rocks_idx");
             glUniform1i(loc, i);
