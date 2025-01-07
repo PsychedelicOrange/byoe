@@ -118,6 +118,9 @@ void renderer_sdf_render(void)
 
     const Camera camera = gamestate_get_global_instance()->camera;
 
+    // Enable depth testing 
+    glEnable(GL_DEPTH_TEST);
+
     int resolution[2] = {g_RendererSDFInternalState.width, g_RendererSDFInternalState.height};
     setUniformVec2Int(g_RendererSDFInternalState.raymarchShaderID, resolution, "resolution");
 
@@ -131,7 +134,7 @@ void renderer_sdf_render(void)
 
         setUniformMat4(g_RendererSDFInternalState.raymarchShaderID, viewproj, "viewproj");
 
-        for (uint32_t i = 0; i < 1; i++) {
+        for (uint32_t i = 0; i < rocks_visible_count; i++) {
             glUseProgram(g_RendererSDFInternalState.raymarchShaderID);
             loc = glGetUniformLocation(g_RendererSDFInternalState.raymarchShaderID, "rocks_idx");
             glUniform1i(loc, i);

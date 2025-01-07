@@ -54,9 +54,9 @@ float sdCapsule( vec3 p, vec3 a, vec3 b, float r )
 float sceneSDF(vec3 p)
 {
     float hit = RAY_MAX_STEP;
-    hit = min(hit, sphereSDF(p, vec4(0.0f, 0.0f, 0.0f, 1.0f)));
+    hit = min(hit, sphereSDF(p, rocks[rocks_idx]));
     // hit = hit + sin(2*p.x)*sin(2*p.y)*sin(2*p.z);
-    hit = min(hit, sdCapsule(p, vec3(0.1), vec3(0.8), 0.5f));
+    // hit = min(hit, sdCapsule(p, vec3(0.1), vec3(0.8), 0.5f));
     return hit;
 }
 
