@@ -72,10 +72,10 @@ int main(int argc, char** argv)
     cpu_caps_print_info();
     os_caps_print_info();
 
-    render_utils_init_glad();
+    // Follow this order strictly to avoid load crashing
     render_utils_init_glfw();
-
     g_GameWindow = render_utils_create_glfw_window("BYOE Game: Spooky Asteroids!", INIT_SCR_WIDTH, INIT_SCR_HEIGHT);
+    render_utils_init_glad();
 
     renderer_desc desc;
     desc.width = INIT_SCR_WIDTH;

@@ -60,7 +60,7 @@ bool renderer_sdf_create(renderer_desc desc)
 
     glfwSetFramebufferSizeCallback(g_RendererSDFInternalState.window, renderer_internal_sdf_resize);
 
-    return false;
+    return true;
 }
 
 void renderer_sdf_destroy(void)
