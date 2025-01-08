@@ -1,7 +1,7 @@
-# byoe : Aseroids adventure
-A while ago some of us came together to make a game for BYOG (Build Your Own Game) a game jam that happend just before IGDC. Initially we hoped to make a game from scratch but realized it'll take a longer time given our requirements. 
+# BYOE : Asteroids adventure
+A while ago some of us came together to make a game for BYOG (Build Your Own Game) a game jam that happend just before IGDC. Initially we hoped to make a BYOE (Build Your Own Engine) game from scratch but realized it'll take a longer time given our requirements. 
 
-We decided to build a mini-engine using SDF (signed distance fields) and make a clone of asteroid but with a slap of ghosts. This is an attemp to make such a game.
+We decided to build a mini-engine using SDF (signed distance fields) and make a clone of asteroid but with a slap of ghosts. This is an attemp to make such a game and also make some tools for SDF editing.
 
 ## Engine 
 The engine is completely made in C and uses SDFs for rendering all it's primitives. This engine runs on Windows/Mac/Linux and is tested from time to time. We will add more info on how the SDF renderer works and architecture details in the PRs and link them here as we develop.

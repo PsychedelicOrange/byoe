@@ -36,7 +36,7 @@ int sdf_scene_cull_nodes(const SDF_Scene* scene, Camera camera);
 // Add a primitive to the scene and return its node index
 int sdf_scene_add_primitive(SDF_Scene* scene, SDF_Primitive primitive);
 
-// This is used to store primitive refenreces int he SDF_scene to be lateer combined for operations
+// This is used to store primitive references in the SDF_scene to be later combined for operations
 int sdf_scene_add_primitive_ref(SDF_Scene* scene, SDF_Primitive primitive);
 
 // Add a composite operation to the scene and return its node index, can be used in chain rule fashion to create more complex SDFs
