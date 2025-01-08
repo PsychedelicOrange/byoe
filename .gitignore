@@ -419,6 +419,7 @@ FodyWeavers.xsd
 engine/external/cglm
 # exe
 byoe_ghost_asteroids
+sdf_editor
 # cmake
 CMakeLists.txt.user
 CMakeCache.txt

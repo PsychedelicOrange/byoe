@@ -15,7 +15,7 @@ Operations can be specified on these shapes individually.
 Each of them can have distinct materials.
 #### Primitives
 These are the collection of sdfs which are rendered together in 1 draw call.
-Operations can be specified on primitives also, which will be applied after all the sdfs operations and blending(min function) are processed.
+Operations can be specified on primitives also, which will be applied after all the sdfs operations and blending(min function) are processed. We will output one shader file per primitive.
 #### Mixing
 These will define which blend function to use btw two sdfs within a primitive, as well as bolean operations like union intersection, etc.
 If not specified, by default it will use a min function and union two objects.
