@@ -1,0 +1,20 @@
+{
+    "version": 0
+    "primitives":[
+	{
+	    "label": "example red sphere primitive",
+	    "sdfs":[
+		{
+		    "label": "red sphere sdf",
+		    "type":"sphere",
+		    "radius":"10",
+		    "center":"0,0,0",
+		    "material":{
+                        "color": [1,0,0]
+                    }
+
+		}
+	    ]
+	}
+    ]
+}

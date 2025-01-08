@@ -1,8 +1,8 @@
 # architecture
-`sdf_editor` will allow creation of complex sdf shapes and will save the file as .sdf (json file)
-`.sdf` sdf format will be the format for storing `sdf_editor` projects
-`sdf_parser` will parse the `.sdf` json file into `sdf_types`
-`sdf_render` will convert a `.sdf` file to a shader file that can be imported into your engine.
+* `sdf_editor` will allow creation of complex sdf shapes and will save the file as .sdf (json file)
+* `.sdf` sdf format will be the format for storing `sdf_editor` projects
+* `sdf_parser` will parse the `.sdf` json file into `sdf_types`
+* `sdf_render` will convert a `.sdf` file to a shader file that can be imported into your engine.
 # sdf format specification
 ### Inspirations and reference
 * the goat - https://iquilezles.org/articles/distfunctions/
