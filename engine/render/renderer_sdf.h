@@ -1,9 +1,12 @@
 #ifndef RENDERER_SDF_H
 #define RENDERER_SDF_H
 
+// Design explanation: https://github.com/PsychedelicOrange/byoe/pull/10
+
 #include "gameobject.h"
 #include "render_structs.h"
 
+// forward declaration
 typedef struct SDF_Scene SDF_Scene;
 
 typedef struct renderer_desc
@@ -19,8 +22,9 @@ void renderer_sdf_destroy(void);
 // this is where the drawcalls and rendering logic is handled including culling
 void renderer_sdf_render(void);
 
-// for single shot primitives
-void renderer_sdf_draw_primitive(SDF_Primitive prim, Transform transform);
+void renderer_sdf_set_scene(const SDF_Scene* scene);
+void renderer_sdf_set_scene_root(const SDF_Scene* scene, int rootIdx);
+
 void renderer_sdf_draw_scene(const SDF_Scene* scene);
 
 #endif

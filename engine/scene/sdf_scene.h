@@ -5,7 +5,7 @@
 
 #include "../render/render_structs.h"
 
-#define MAX_SDF_NODES 1024 // same ax mac game objects
+#define MAX_SDF_NODES 1024 // same as max game objects
 
 typedef enum SDF_NodeType {
     SDF_NODE_PRIMITIVE,
@@ -24,7 +24,7 @@ typedef struct SDF_Scene {
     // TODO: use batch compaction and use a single array to reduce memory footprint
     SDF_Node nodes[MAX_SDF_NODES];
     SDF_Node culled_nodes[MAX_SDF_NODES];
-    int node_count; // Number of active nodes after culling
+    int active_node_count;
 } SDF_Scene;
 
 void sdf_scene_init(SDF_Scene* scene);
@@ -36,9 +36,10 @@ int sdf_scene_cull_nodes(const SDF_Scene* scene, Camera camera);
 // Add a primitive to the scene and return its node index
 int sdf_scene_add_primitive(SDF_Scene* scene, SDF_Primitive primitive);
 
-// Add a composite operation to the scene and return its node index
+// This is used to store primitive refenreces int he SDF_scene to be lateer combined for operations
+int sdf_scene_add_primitive_ref(SDF_Scene* scene, SDF_Primitive primitive);
+
+// Add a composite operation to the scene and return its node index, can be used in chain rule fashion to create more complex SDFs
 int sdf_scene_add_operation(SDF_Scene* scene, SDF_Operation operation);
-
-
 
 #endif
