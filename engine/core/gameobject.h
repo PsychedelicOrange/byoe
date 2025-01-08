@@ -13,6 +13,8 @@
 #include "common.h"
 #include "uuid/uuid.h"
 
+#include "../scene/transform.h"
+
 #include "game_registry.h"
 
 // Q. How to solve sending/updating transform, we don't have transform component and mesh data
@@ -21,15 +23,6 @@
 // so we can replace the scripting functions to take the GameObject itself instead of limited data from this struct, kinda like
 // emulating this pointer like behavior. We can hardcore stuff like Transform as it makes sense similar to uuid
 // or we already have the UUID of the scripting functions for easy access of the below game object public API
-
-typedef struct Transform
-{
-    vec3   position;
-    float  _padding1;
-    versor rotation;    // glm::quat [x, y, z, w]
-    vec3   scale;
-    float  _padding2;
-} Transform;
 
 typedef struct GameObject
 {

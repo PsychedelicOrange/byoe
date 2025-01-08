@@ -3,25 +3,13 @@
 #include <cglm/cglm.h>
 #include <cglm/struct.h> /* struct api */
 
+#include "../scene/camera.h"
+
 struct GLFWwindow;
 
 #define MAX_ROCKS_COUNT 100
 
 // Note:- keep everything aligned to /16 bytes
-
-typedef struct Camera
-{
-    mat4s lookAt;
-    vec3s position;
-    vec3s right;
-    vec3s front;
-    vec3s up;
-    float near_plane;
-    float far_plane;
-    float fov;
-    float yaw;
-    float pitch;
-} Camera;
 
 typedef struct GameState
 {
