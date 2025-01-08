@@ -11,8 +11,15 @@ We have a simple *C-based Scripting system*. Check the PR#2 for details on [Scri
 
 We are currently building a SDF renderer to render bulles, space ships and planets.
 
+### Renderer Design
+Doing everything from withing a shader is performance heavy, we cannot have for loops in shader code. Hence the renderer issues a number of drawcalls and intuitively handles SDF combinations using node based scene description. During the early stages the scene and operations will be dynamic and no pre-computation will be done, we will use a Pixel Shader approach and handle this using simple data structures. 
+
+This is the first draft of the preliminary design for the sdf_renderer: #PR10 [SDF Renderer Abstraction Draft - 1](https://github.com/PsychedelicOrange/byoe/pull/10)
+
+In future versions this can be done using compute shaders and 3D textures for pre-computing static geometry and handle SDFs in a perf safe way. We will also support using custom SDF functions later when are building the SDF editor
+
 ## Tools
-We also have plans to build a SDF editor that unlike others can generate functions that can be re-used in other shading languages. Most SDF editors output popular 3D formats, but in relaity outputting math formulas and funtions are the most useful to integrate them into any engine and edit them further.
+We also have plans to build an **SDF editor** that unlike others can generate functions that can be re-used in other shading languages. Most SDF editors output popular 3D formats, but in relaity outputting math formulas and funtions are the most useful to integrate them into any engine and edit them further. We will try to export in GLSL/HLSL/JSON formats.
 
 ## Building
 
