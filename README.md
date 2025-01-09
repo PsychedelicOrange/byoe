@@ -4,10 +4,10 @@ A while ago some of us came together to make a game for BYOG (Build Your Own Gam
 We decided to build a mini-engine using SDF (signed distance fields) and make a clone of asteroid but with a slap of ghosts. This is an attemp to make such a game and also make some tools for SDF editing.
 
 ## Engine 
-The engine is completely made in C and uses SDFs for rendering all it's primitives. This engine runs on Windows/Mac/Linux and is tested from time to time. We will add more info on how the SDF renderer works and architecture details in the PRs and link them here as we develop.
+The engine is completely made in C and uses SDFs for rendering all it's primitives and uses OpenGL for rendering (will support Vulkan once we have critical mass of engine/gameplay systems done). This engine runs on Windows/Mac/Linux and is tested from time to time. We will add more info on how the SDF renderer works and architecture details in the PRs and link them here as we develop.
 
 ### Scripting
-We have a simple *C-based Scripting system*. Check the PR#2 for details on [Scripting in engine using c](https://github.com/PsychedelicOrange/byoe/pull/2). Check the [game folder and specificaly the camera_controller](https://github.com/PsychedelicOrange/byoe/blob/sdf-renderer-draft-1/game/camera_controller.c) for examples on how scripting can be added to game objects in the game side.
+We have a simple *C-based Scripting system*. Check the PR#2 for details on [Scripting in engine using C](https://github.com/PsychedelicOrange/byoe/pull/2). Check the [game folder and specificaly the camera_controller](https://github.com/PsychedelicOrange/byoe/blob/sdf-renderer-draft-1/game/camera_controller.c) for examples on how scripting can be added to game objects in the game side.
 
 We are currently building a SDF renderer to render bulles, space ships and planets.
 
@@ -21,6 +21,8 @@ In future versions this can be done using compute shaders and 3D textures for pr
 ## Tools
 We also have plans to build an **SDF editor** that unlike others can generate functions that can be re-used in other shading languages. Most SDF editors output popular 3D formats, but in relaity outputting math formulas and funtions are the most useful to integrate them into any engine and edit them further. We will try to export in GLSL/HLSL/JSON formats.
 
+More info on the editor can be found on the sdf-editor branch here: https://github.com/PsychedelicOrange/byoe/tree/sdf-editor/sdf
+
 ## Building
 
 Folow these instructions to build the engine and run the game. All the dependencies such as cglm, glfw etc. will be cloned and built by CMake itself.
@@ -30,9 +32,16 @@ git clone https://github.com/PsychedelicOrange/byoe.git
 mkdir build
 cd build
 cmake ..
+make 
 ```
 
 you can configure cmake to generate project files (XCode/VS22 etc.) for you and build using your favourite IDE in the usual way 
+
+### Building the targets
+```
+make
+```
+Execute this command  to build all the targets that have changes (such as dependencies, engine, game, tests and benchmarks).
 
 ### Running the game
 ```

@@ -6,34 +6,33 @@
 
 #include "../scene/transform.h"
 
-typedef struct vertex_buffer
+typedef struct vertex_buffer_t
 {
     uint32_t count;
     uint32_t size;
     void* data;
-}vertex_buffer;
+} vertex_buffer_t;
 
-typedef struct index_buffer
+typedef struct index_buffer_t
 {
     uint32_t count;
     uint16_t* data; // We are using 16-bit indices
-}index_buffer;
+} index_buffer_t;
 
 typedef struct color_rgba {
     float r, g, b, a;
-}color_rgba;
+} color_rgba;
 
 typedef struct color_rgb {
     float r, g, b;
-}color_rgb;
+} color_rgb;
 
 //------------------------
 // SDF Renderer Structs
 //------------------------
 
 // Add new types here as you need
-typedef enum SDF_PrimitiveType
-{
+typedef enum SDF_PrimitiveType {
     SDF_PRIM_Cube,        // dummy for testing
     SDF_PRIM_Sphere,      // aka planet + testing
     SDF_PRIM_Capsule,
@@ -59,6 +58,7 @@ typedef struct SDF_Primitive {
     vec3 start;          // Start point (for capsule or line segment)
     vec3 end;            // End point (for capsule or line segment)
     // add more props here combine them all or use a new struct/union to simplify primitive attributes 
+    // Or use what psyornage is doing in sdf-editor branch to represent more complex SDF props
 } SDF_Primitive;
 
 typedef struct SDF_Operation {

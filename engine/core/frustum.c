@@ -81,7 +81,7 @@ int ClassifySphere(const Plane plane, vec4 pt)
     return d > -pt[3] - 1.25f;
 }
 
-int cull_rocks(int count, vec4* rocks, vec4* rocks_visible, mat4 viewproj)
+int cull_nodes(int count, vec4* nodes, vec4* out_visible_nodes, mat4 viewproj)
 {
     typedef struct Frustum
     {
@@ -97,14 +97,14 @@ int cull_rocks(int count, vec4* rocks, vec4* rocks_visible, mat4 viewproj)
 
     for (int i = 0; i < count; i++) {
         int visible =
-            ClassifySphere(f.planes[0], rocks[i]) &&
-            ClassifySphere(f.planes[1], rocks[i]) &&
-            ClassifySphere(f.planes[2], rocks[i]) &&
-            ClassifySphere(f.planes[3], rocks[i]) &&
-            ClassifySphere(f.planes[4], rocks[i]) &&
-            ClassifySphere(f.planes[5], rocks[i]);
+            ClassifySphere(f.planes[0], nodes[i]) &&
+            ClassifySphere(f.planes[1], nodes[i]) &&
+            ClassifySphere(f.planes[2], nodes[i]) &&
+            ClassifySphere(f.planes[3], nodes[i]) &&
+            ClassifySphere(f.planes[4], nodes[i]) &&
+            ClassifySphere(f.planes[5], nodes[i]);
         if (visible) {
-            memcpy(rocks_visible[rocks_visible_count++], rocks[i], sizeof(float) * 4);
+            memcpy(out_visible_nodes[rocks_visible_count++], nodes[i], sizeof(float) * 4);
         }
     }
     return rocks_visible_count;

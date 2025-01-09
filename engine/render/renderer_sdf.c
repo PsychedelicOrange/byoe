@@ -26,6 +26,7 @@ typedef struct renderer_internal_state
     GLFWwindow* window;
     uint32_t screen_quad_vao;
     uint64_t frameCount;
+    mat4s    viewproj;
 }renderer_internal_state;
 
 //---------------------------------------------------------
@@ -48,13 +49,38 @@ static void renderer_internal_sdf_hot_reload_shaders(void)
 {
     // reload the raymarch shader
     glDeleteProgram(g_RendererSDFInternalState.raymarchShaderID);
-    g_RendererSDFInternalState.raymarchShaderID = create_shader("engine/shaders/simple_vert", "engine/shaders/raymarch");
+    g_RendererSDFInternalState.raymarchShaderID = create_shader("engine/shaders/screen_quad.vert", "engine/shaders/raymarch_sdf_scene.frag");
 }
 
 static void renderer_internal_sdf_clear_screen(color_rgba color)
 {
     glClearColor(color.r, color.g, color.b, color.a);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
+
+static void renderer_internal_sdf_swap_backbuffer(void)
+{
+    // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
+    // -------------------------------------------------------------------------------
+    glfwSwapBuffers(g_RendererSDFInternalState.window);
+    glfwPollEvents();
+}
+
+static void renderer_internal_sdf_set_pipeline_settings(void)
+{
+    // Enable Depth testing
+    glEnable(GL_DEPTH_TEST);
+}
+
+static void renderer_internal_sdf_set_raymarch_shader_global_uniforms(void)
+{
+    int resolution[2] = {g_RendererSDFInternalState.width, g_RendererSDFInternalState.height};
+    setUniformVec2Int(g_RendererSDFInternalState.raymarchShaderID, resolution, "resolution");
+
+    const Camera camera                      = gamestate_get_global_instance()->camera;
+    mat4s projection                         = glms_perspective(camera.fov, (float) g_RendererSDFInternalState.width / (float) g_RendererSDFInternalState.height, camera.near_plane, camera.far_plane);
+    g_RendererSDFInternalState.viewproj      = glms_mul(projection, camera.lookAt);
+    setUniformMat4(g_RendererSDFInternalState.raymarchShaderID, g_RendererSDFInternalState.viewproj, "viewproj");
 }
 
 //-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
@@ -69,7 +95,7 @@ bool renderer_sdf_init(renderer_desc desc)
     g_RendererSDFInternalState.window = desc.window;
     g_RendererSDFInternalState.frameCount = 0;
 
-    g_RendererSDFInternalState.raymarchShaderID = create_shader("engine/shaders/simple_vert", "engine/shaders/raymarch");
+    renderer_internal_sdf_hot_reload_shaders();
     g_RendererSDFInternalState.screen_quad_vao = render_utils_setup_screen_quad();
 
     glfwSetFramebufferSizeCallback(g_RendererSDFInternalState.window, renderer_internal_sdf_resize);
@@ -113,39 +139,23 @@ void renderer_sdf_render(void)
     if (game_state->keycodes[GLFW_KEY_SPACE] == GLFW_PRESS)
         renderer_internal_sdf_hot_reload_shaders();
 
+    // Scene Culling is done before any rendering begins (might move it to update part of engine loop)
+
+
     // clear with a pink color
     renderer_internal_sdf_clear_screen((color_rgba){0.0f, 0.0f, 0.0f, 1.0f});
 
-    const Camera camera = gamestate_get_global_instance()->camera;
+    renderer_internal_sdf_set_pipeline_settings();
 
-    // Enable depth testing 
-    glEnable(GL_DEPTH_TEST);
+    renderer_internal_sdf_set_raymarch_shader_global_uniforms();
 
-    int resolution[2] = {g_RendererSDFInternalState.width, g_RendererSDFInternalState.height};
-    setUniformVec2Int(g_RendererSDFInternalState.raymarchShaderID, resolution, "resolution");
-
-    mat4s projection    = glms_perspective(camera.fov, (float) g_RendererSDFInternalState.width / (float) g_RendererSDFInternalState.height, camera.near_plane, camera.far_plane);
-    mat4s viewproj      = glms_mul(projection, camera.lookAt);
-    uint32_t rocks_visible_count = cull_rocks(MAX_ROCKS_COUNT, gamestate_get_global_instance()->rocks, gamestate_get_global_instance()->rocks_visible, viewproj.raw);
+    // TEST! TEST! TEST! TEST! TEST! TEST!
+    // Test rendering code, move this to a internal function and hide it
     {
-        glUseProgram(g_RendererSDFInternalState.raymarchShaderID);
-        int loc = glGetUniformLocation(g_RendererSDFInternalState.raymarchShaderID, "rocks");
-        glUniform4fv(loc, rocks_visible_count, &gamestate_get_global_instance()->rocks_visible[0][0]);
-
-        setUniformMat4(g_RendererSDFInternalState.raymarchShaderID, viewproj, "viewproj");
-
-        for (uint32_t i = 0; i < rocks_visible_count; i++) {
-            glUseProgram(g_RendererSDFInternalState.raymarchShaderID);
-            loc = glGetUniformLocation(g_RendererSDFInternalState.raymarchShaderID, "rocks_idx");
-            glUniform1i(loc, i);
-
-            glBindVertexArray(g_RendererSDFInternalState.screen_quad_vao);
-            glDrawArrays(GL_TRIANGLES, 0, 6);    // Drawing 6 vertices to form the quad
-        }
+        glDrawArrays(GL_TRIANGLES, 0, 6);
     }
+    // TEST! TEST! TEST! TEST! TEST! TEST!
+ 
 
-    // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
-    // -------------------------------------------------------------------------------
-    glfwSwapBuffers(g_RendererSDFInternalState.window);
-    glfwPollEvents();
+    renderer_internal_sdf_swap_backbuffer();
 }
