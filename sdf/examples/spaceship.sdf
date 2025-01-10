@@ -1,0 +1,56 @@
+{
+    "version": 0,
+    "primitives":[
+        {
+            "label":"main_body",
+            "type":"sphere",
+            "radius":"10",
+            "center":"0,0,0",
+            "operations": [ // these will act on this primitive
+            {
+                "type":"rotate",
+                "axisangle": [1,0,0,3.14],// or
+                "quaternion": [1,23,45,100] // or euler etc.
+            },
+            {
+                "type":"elongation",
+                "axis": [1,0,0]
+                    "length": 10
+            }
+            ],
+            "material":{
+                "color": [1,0,0],
+                "transparency": 1,
+                // custom shader effects here
+                "pbr_rough_metal_texture": {
+                    "path": "~/texture/spaceship_body_rough_metal.png",
+                    // uv mapping parameters
+                }
+                "pbr_normal_texture": {...}
+                "pbr_albedo_texture": {...}
+            }
+        },
+        {
+            "label":"glass_sphere",
+            "type":"hemisphere",
+            "radius":"6",
+            "center": [0,0,0],
+            "face_dir": [1,0,0]
+        }
+    ],
+    "operations":[ // this will act on the whole object
+        {
+            "type":"elongation",
+            "axis": [1,0,0],
+            "length": 10
+        }
+    ]
+    "blending":[
+        {
+            "primitive_a": 0,
+            "primitive_b": 1,
+            "function": "smooth_union",
+            "parameter": 0.35
+        }
+    ]
+}
