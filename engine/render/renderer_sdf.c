@@ -174,6 +174,9 @@ void renderer_sdf_draw_scene(const SDF_Scene* scene)
     // Test rendering code, move this to a internal function and hide it
     for (uint32_t i = 0; i < scene->current_node_head; ++i) {
 
+        // don't draw ref nodes, let the shader do that
+        if(scene->nodes[i].is_ref_node) continue;
+
         setUniformInt(g_RendererSDFInternalState.raymarchShaderID, i, "node_idx");
         // Draw the screen quad
         glDrawArrays(GL_TRIANGLES, 0, 6);

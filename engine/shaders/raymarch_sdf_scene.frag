@@ -27,9 +27,9 @@ struct SDF_Node {
     vec4 pos;
     vec4 scale;
 
-    int op;       
-    int left;     // Index of the left child node
-    int right;    // Index of the right child node
+    int blend;       
+    int prim_a;     // Index of the left child node
+    int prim_b;    // Index of the right child node
 
     int is_ref_node;
     SDF_Material material;
@@ -102,26 +102,23 @@ hit_info sceneSDF(vec3 p) {
     int sp = 0; // Stack pointer
     stack[sp++] = 0; // Push root node (assumes root is at index 0)
 
-    // while (sp > 0) {
-        // int node_index = stack[--sp]; // Pop node index
-        // if (node_index < 0) continue;
+    while (sp > 0) {
+        int node_index = stack[--sp]; // Pop node index
+        if (node_index < 0) continue;
 
         SDF_Node node = nodes[node_idx];
 
         // Evaluate the current node
         float d;
-        if (node.primType == 1) { // Sphere
+        if (node.primType == 0) { // Sphere
             d = sphereSDF(p, node.pos.xyz, node.scale.x);
-        } else if (node.primType == 0) { // Box
+        } else if (node.primType == 1) { // Box
             d = boxSDF(p, node.pos.xyz, node.scale.xyz);
         } else {
             d = RAY_MAX_STEP; // Default for unknown types
         }
-        hit.d = d;
-        hit.material = node.material;
-        // break;
 
-        // // Apply the operation
+        // Apply the operation
         // if (node.op == 0) { // Union
         //     result = unionOp(result, d);
         // } else if (node.op == 1) { // Intersection
@@ -137,7 +134,10 @@ hit_info sceneSDF(vec3 p) {
         //     if (node.left >= 0) stack[sp++] = node.left;
         //     if (node.right >= 0) stack[sp++] = node.right;
         // }
-    // }
+
+        hit.d = d;
+        hit.material = node.material;
+    }
 
     return hit;
 }

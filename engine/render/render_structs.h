@@ -33,22 +33,22 @@ typedef struct color_rgb {
 
 // Add new types here as you need
 typedef enum SDF_PrimitiveType {
-    SDF_PRIM_Cube = 0,        // dummy for testing
-    SDF_PRIM_Sphere,      // aka planet + testing
+    SDF_PRIM_Sphere = 0,
+    SDF_PRIM_Cube,
     SDF_PRIM_Capsule,
     SDF_PRIM_Cylinder,
-    // Game Specific Primitives
+    // Game Specific Primitives presets!
     SDF_PRIM_Planet,
     SDF_PRIM_Spaceship,
     SDF_PRIM_Bullet,
     SDF_PRIM_Ghost
 } SDF_PrimitiveType;
 
-typedef enum SDF_OperationType {
-    SDF_OP_UNION,
-    SDF_OP_INTERSECTION,
-    SDF_OP_DIFFERENCE
-} SDF_OperationType;
+typedef enum SDF_BlendType {
+    SDF_BLEND_UNION,
+    SDF_BLEND_INTERSECTION,
+    SDF_BLEND_DIFFERENCE
+} SDF_BlendType;
 
 // TODO: If data memory gets too much, push the material to a sepearate buffer and use a bindless model
 typedef struct SDF_Material {
@@ -64,10 +64,17 @@ typedef struct SDF_Primitive {
     // What if we make them a union for easier user land API and pass packed info the GPU with wrapper functions to intgerpret them?
 } SDF_Primitive;
 
-typedef struct SDF_Operation {
-    SDF_OperationType type;
-    int left;                // Index of the left child in the SDF node pool
-    int right;               // Index of the right child in the SDF node pool
-} SDF_Operation;
+// Blending -> these are blending method b/w two primitives (eg. smooth union, XOR, etc. )  ( again refer iq) 
+typedef struct SDF_Object {
+    SDF_BlendType type;
+    int prim_a;                // Index of the left child in the SDF node pool
+    int prim_b;               // Index of the right child in the SDF node pool
+} SDF_Object;
+
+// TODO:
+// Operations -> operations can act on primitives and objects alike. 
+// (eg. transformation, distortion, elongation, rotation, etc.) 
+//( taken from https://iquilezles.org/articles/distfunctions/ ) 
+
 
 #endif

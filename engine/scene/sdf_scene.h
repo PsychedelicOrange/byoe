@@ -25,7 +25,7 @@ typedef struct SDF_Node
     union
     {
         SDF_Primitive primitive;
-        SDF_Operation operation;
+        SDF_Object operation;
     };
     bounding_sphere bounds;
     bool            is_ref_node;
@@ -79,7 +79,7 @@ int sdf_scene_add_primitive(SDF_Scene* scene, SDF_Primitive primitive);
 int sdf_scene_add_primitive_ref(SDF_Scene* scene, SDF_Primitive primitive);
 
 // Add a composite operation to the scene and return its node index, can be used in chain rule fashion to create more complex SDFs
-int sdf_scene_add_operation(SDF_Scene* scene, SDF_Operation operation);
+int sdf_scene_add_operation(SDF_Scene* scene, SDF_Object operation);
 
 void sdf_scene_upload_scene_nodes_to_gpu(const SDF_Scene* scene);
 

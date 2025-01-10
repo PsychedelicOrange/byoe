@@ -66,7 +66,7 @@ int sdf_scene_add_primitive_ref(SDF_Scene* scene, SDF_Primitive primitive)
     return idx;
 }
 
-int sdf_scene_add_operation(SDF_Scene* scene, SDF_Operation operation)
+int sdf_scene_add_operation(SDF_Scene* scene, SDF_Object operation)
 {
     SDF_Node node = {
         .type        = SDF_NODE_OPERATION,
@@ -108,8 +108,8 @@ void sdf_scene_upload_scene_nodes_to_gpu(const SDF_Scene* scene)
             data.material = node.primitive.material;
         } else {
             data.op    = node.operation.type;
-            data.left  = node.operation.left;
-            data.right = node.operation.right;
+            data.left  = node.operation.prim_a;
+            data.right = node.operation.prim_b;
         }
 
         glBufferSubData(GL_UNIFORM_BUFFER, i * sizeof(SDF_NodeGPUData), sizeof(SDF_NodeGPUData), &data);
