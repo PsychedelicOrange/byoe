@@ -18,6 +18,7 @@ int game_main(void)
     SDF_Scene* scene = malloc(sizeof(SDF_Scene));
     sdf_scene_init(scene);
 
+#if 1
     SDF_Primitive sphere = {
         .type      = SDF_PRIM_Sphere,
         .transform = {
@@ -41,12 +42,13 @@ int game_main(void)
             }
         };
     sdf_scene_add_primitive(scene, cube);
+#endif
 
     // Meta ball of 3 spheres
     SDF_Primitive sphere1 = {
     .type      = SDF_PRIM_Sphere,
     .transform = {
-        .position = {{1.0f, 2.0f, 0.0f}},
+        .position = {{1.0f, 1.0f, 0.0f}},
         .rotation = {0.0f, 0.0f, 0.0f, 0.0f},
         .scale    = {{1.5f, 0.0f, 0.0f}}}, // only x is used as radius of the sphere
         .material = {
@@ -54,13 +56,13 @@ int game_main(void)
         }
     };
     int prim1 = sdf_scene_add_primitive_ref(scene, sphere1);
-    sphere1.transform.position = (vec3s){{0.0f, 0.0f, 0.0f}};
+    sphere1.transform.position = (vec3s){{1.0f, 0.0f, 0.0f}};
     int prim2 = sdf_scene_add_primitive_ref(scene, sphere1);
 
     SDF_Object obj = {
         .type = SDF_BLEND_SUBTRACTION,
-        .prim_a = prim1,
-        .prim_b = prim2
+        .prim_a = prim2,
+        .prim_b = prim1
     };
 
     sdf_scene_add_object(scene, obj);

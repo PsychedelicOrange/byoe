@@ -93,27 +93,34 @@ struct hit_info
     SDF_Material material;
 };
 
+struct blend_node {
+    int blend;
+    int node;
+};
+
 hit_info sceneSDF(vec3 p) {
     hit_info hit;
     hit.d = RAY_MAX_STEP;
-    hit.material.diffuse = vec4(1, 0, 0, 1);
 
-    float d = sphereSDF(p, vec3(1, 1, 0), 1.5f);
-    hit.d = unionOp(hit.d, d);
-    d = sphereSDF(p, vec3(0, 0, 0), 1.5f);
-    hit.d = subtractOp(hit.d, d);
-    return hit;
+    // TEST CODE!!! TEST CODE!!! TEST CODE!!!
+    // hit.material.diffuse = vec4(1, 0, 0, 1);
+    // float d = sphereSDF(p, vec3(1, 1, 0), 1.5f);
+    // hit.d = unionOp(hit.d, d);
+    // d = sphereSDF(p, vec3(0, 0, 0), 1.5f);
+    // hit.d = intersectOp(hit.d, d);
+    // return hit;
+    // TEST CODE!!! TEST CODE!!! TEST CODE!!!
 
     // Explicit stack to emulate tree traversal
-    int stack[MAX_STACK_SIZE];
+    blend_node stack[MAX_STACK_SIZE];
     int sp = 0; // Stack pointer
-    stack[sp++] = curr_draw_node_idx; 
+    stack[sp++] = blend_node(0, curr_draw_node_idx);
 
     while (sp > 0) {
-        int node_index = stack[--sp]; // Pop node index
-        if (node_index < 0) continue;
+        blend_node node_index = stack[--sp]; // Pop node index
+        if (node_index.node < 0) continue;
 
-        SDF_Node node = nodes[node_index];
+        SDF_Node node = nodes[node_index.node];
         float d = RAY_MAX_STEP;
         // Evaluate the current node
         if(node.nodeType == 0) {
@@ -126,22 +133,22 @@ hit_info sceneSDF(vec3 p) {
             }
 
             // Apply the blend b/w primitives
-            if (node.blend == 0) {
+            if (node_index.blend == 0) {
                 hit.d = unionOp(hit.d, d);
-            } else if (node.blend == 1) {
+            } else if (node_index.blend == 1) {
                 hit.d = intersectOp(hit.d, d);
-            } else if (node.blend == 2) {
+            } else if (node_index.blend == 2) {
                 hit.d = subtractOp(hit.d, d);
             } else {
-                hit.d = d;
+                hit.d = RAY_MAX_STEP;
             }
         }
         // it it's an Object process to blend and do stuff etc.
         else {
             // Push child nodes onto the stack
             if (sp < MAX_STACK_SIZE - 2) {
-                if (node.prim_a >= 0) stack[sp++] = node.prim_a;
-                if (node.prim_b >= 0) stack[sp++] = node.prim_b;
+                if (node.prim_b >= 0) stack[sp++] = blend_node(node.blend, node.prim_b);
+                if (node.prim_a >= 0) stack[sp++] = blend_node(0, node.prim_a);
             }
         }
 
