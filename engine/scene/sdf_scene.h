@@ -79,7 +79,7 @@ int sdf_scene_add_primitive(SDF_Scene* scene, SDF_Primitive primitive);
 int sdf_scene_add_primitive_ref(SDF_Scene* scene, SDF_Primitive primitive);
 
 // Add a composite operation to the scene and return its node index, can be used in chain rule fashion to create more complex SDFs
-int sdf_scene_add_operation(SDF_Scene* scene, SDF_Object operation);
+int sdf_scene_add_object(SDF_Scene* scene, SDF_Object object);
 
 void sdf_scene_upload_scene_nodes_to_gpu(const SDF_Scene* scene);
 

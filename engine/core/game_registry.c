@@ -35,9 +35,9 @@ random_uuid_t game_registry_register_gameobject_type(const char* typeName, uint3
 
     // Init transform to 0
     vec3 pos = { 0, 0, 0 };
-    glm_vec3_copy(pos, game_object->transform.position);
+    glm_vec3_copy(pos, game_object->transform.position.raw);
     vec3 scale = { 1, 1, 1 };
-    glm_vec3_copy(scale, game_object->transform.scale);
+    glm_vec3_copy(scale, game_object->transform.scale.raw);
     versor rotquat = { 0, 0, 0, 0 };
     glm_quat_copy(rotquat, game_object->transform.rotation);
 

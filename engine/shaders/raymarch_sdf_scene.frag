@@ -40,7 +40,7 @@ struct SDF_Node {
 uniform ivec2 resolution;              
 uniform int sdf_node_count;       
 uniform vec3 dir_light_pos;  
-uniform int node_idx;
+uniform int curr_draw_node_idx;
 layout(std140) uniform SDFScene {
     SDF_Node nodes[100];
 };        
@@ -100,40 +100,43 @@ hit_info sceneSDF(vec3 p) {
     // Explicit stack to emulate tree traversal
     int stack[MAX_STACK_SIZE];
     int sp = 0; // Stack pointer
-    stack[sp++] = 0; // Push root node (assumes root is at index 0)
+    stack[sp++] = curr_draw_node_idx; 
 
     while (sp > 0) {
         int node_index = stack[--sp]; // Pop node index
         if (node_index < 0) continue;
 
-        SDF_Node node = nodes[node_idx];
-
-        // Evaluate the current node
+        SDF_Node node = nodes[node_index];
         float d;
-        if (node.primType == 0) { // Sphere
-            d = sphereSDF(p, node.pos.xyz, node.scale.x);
-        } else if (node.primType == 1) { // Box
-            d = boxSDF(p, node.pos.xyz, node.scale.xyz);
-        } else {
-            d = RAY_MAX_STEP; // Default for unknown types
+        // Evaluate the current node
+        if(node.nodeType == 0) {
+            if (node.primType == 0) { // Sphere
+                d = sphereSDF(p, node.pos.xyz, node.scale.x);
+            } else if (node.primType == 1) { // Box
+                d = boxSDF(p, node.pos.xyz, node.scale.xyz);
+            } else {
+                d = RAY_MAX_STEP; // Default for unknown types
+            }
+
+            // Apply the blend b/w primitives
+            if (node.blend == 0) {
+                hit.d = unionOp(hit.d, d);
+            } else if (node.blend == 1) {
+                hit.d = intersectOp(hit.d, d);
+            } else if (node.blend == 2) {
+                hit.d = subtractOp(hit.d, d);
+            } else {
+                hit.d = d;
+            }
         }
-
-        // Apply the operation
-        // if (node.op == 0) { // Union
-        //     result = unionOp(result, d);
-        // } else if (node.op == 1) { // Intersection
-        //     result = intersectOp(result, d);
-        // } else if (node.op == 2) { // Subtraction
-        //     result = subtractOp(result, d);
-        // } else { // No operation
-        //     result = d;
-        // }
-
-        // // Push child nodes onto the stack
-        // if (sp < MAX_STACK_SIZE - 2) {
-        //     if (node.left >= 0) stack[sp++] = node.left;
-        //     if (node.right >= 0) stack[sp++] = node.right;
-        // }
+        // it it's an Object process to blend and do stuff etc.
+        else {
+            // Push child nodes onto the stack
+            if (sp < MAX_STACK_SIZE - 2) {
+                if (node.prim_a >= 0) stack[sp++] = node.prim_a;
+                if (node.prim_b >= 0) stack[sp++] = node.prim_b;
+            }
+        }
 
         hit.d = d;
         hit.material = node.material;

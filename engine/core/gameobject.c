@@ -43,7 +43,7 @@ mat4s gameobject_get_transform(random_uuid_t goUUID) {
     Transform* transform = &obj->transform;
 
     mat4s result;
-    create_transform_matrix(&result, transform->position, transform->rotation, transform->scale);
+    create_transform_matrix(&result, transform->position.raw, transform->rotation, transform->scale.raw);
 
     return result;
 }
@@ -59,7 +59,7 @@ mat4s gameobject_ptr_get_transform(GameObject* obj)
     Transform* transform = &obj->transform;
 
     mat4s result;
-    create_transform_matrix(&result, transform->position, transform->rotation, transform->scale);
+    create_transform_matrix(&result, transform->position.raw, transform->rotation, transform->scale.raw);
 
     return result;
 }
@@ -68,7 +68,7 @@ void gameobject_get_position(random_uuid_t goUUID, vec3* position)
 {
     GameObject* obj = game_registry_get_gameobject_by_uuid(goUUID);
     if (obj) {
-        glm_vec3_copy(obj->transform.position, *position);
+        glm_vec3_copy(obj->transform.position.raw, *position);
     }
     else {
         glm_vec3_zero(*position);
@@ -101,7 +101,7 @@ void gameobject_get_scale(random_uuid_t goUUID, vec3* scale)
 {
     GameObject* obj = game_registry_get_gameobject_by_uuid(goUUID);
     if (obj) {
-        glm_vec3_copy(obj->transform.scale, *scale);
+        glm_vec3_copy(obj->transform.scale.raw, *scale);
     }
     else {
         glm_vec3_zero(*scale);
@@ -120,7 +120,7 @@ void gameobject_set_position(random_uuid_t goUUID, vec3 position)
 {
     GameObject* go = game_registry_get_gameobject_by_uuid(goUUID);
     if (go != NULL) {
-        glm_vec3_copy(position, go->transform.position);
+        glm_vec3_copy(position, go->transform.position.raw);
     }
     else
         LOG_ERROR("Failed to update position for gameobject: %s\n", uuid_to_string(&goUUID));
@@ -150,7 +150,7 @@ void gameobject_set_scale(random_uuid_t goUUID, vec3 scale)
 {
     GameObject* go = game_registry_get_gameobject_by_uuid(goUUID);
     if (go != NULL) {
-        glm_vec3_copy(scale, go->transform.scale);
+        glm_vec3_copy(scale, go->transform.scale.raw);
     }
     else
         LOG_ERROR("Failed to update scale for gameobject %s\n", uuid_to_string(&goUUID));

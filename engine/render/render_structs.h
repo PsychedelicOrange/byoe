@@ -47,7 +47,7 @@ typedef enum SDF_PrimitiveType {
 typedef enum SDF_BlendType {
     SDF_BLEND_UNION,
     SDF_BLEND_INTERSECTION,
-    SDF_BLEND_DIFFERENCE
+    SDF_BLEND_SUBTRACTION
 } SDF_BlendType;
 
 // TODO: If data memory gets too much, push the material to a sepearate buffer and use a bindless model

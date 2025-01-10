@@ -7,6 +7,8 @@
 #include <cglm/cglm.h>
 #include <glad/glad.h>
 
+#include <string.h> // memset
+
 static uint32_t s_GPUSceneNodesUBO;
 
 void sdf_scene_init(SDF_Scene* scene)
@@ -66,12 +68,12 @@ int sdf_scene_add_primitive_ref(SDF_Scene* scene, SDF_Primitive primitive)
     return idx;
 }
 
-int sdf_scene_add_operation(SDF_Scene* scene, SDF_Object operation)
+int sdf_scene_add_object(SDF_Scene* scene, SDF_Object operation)
 {
     SDF_Node node = {
         .type        = SDF_NODE_OPERATION,
         .operation   = operation,
-        .is_ref_node = true,
+        .is_ref_node = false,
         .is_culled   = false};
 
     uint32_t idx      = scene->current_node_head++;
@@ -88,19 +90,21 @@ void sdf_scene_upload_scene_nodes_to_gpu(const SDF_Scene* scene)
     for (uint32_t i = 0; i < scene->current_node_head; ++i) {
         const SDF_Node  node = scene->nodes[i];
         SDF_NodeGPUData data;
+        memset(&data, 0, sizeof(SDF_NodeGPUData));
+
         data.nodeType = node.type;
         data.is_ref_node = node.is_ref_node;
         if (node.type == SDF_NODE_PRIMITIVE) {
             data.primType = node.primitive.type;
-            glm_vec4_copy((vec4){node.primitive.transform.position[0],
-                              node.primitive.transform.position[1],
-                              node.primitive.transform.position[2],
+            glm_vec4_copy((vec4){node.primitive.transform.position.x,
+                              node.primitive.transform.position.y,
+                              node.primitive.transform.position.z,
                               0.0f
                               },
                 data.pos.raw);
-            glm_vec4_copy((vec4){node.primitive.transform.scale[0],
-                            node.primitive.transform.scale[1],
-                            node.primitive.transform.scale[2],
+            glm_vec4_copy((vec4){node.primitive.transform.scale.x,
+                            node.primitive.transform.scale.y,
+                            node.primitive.transform.scale.z,
                             0.0f
                             },
             data.scale.raw);
