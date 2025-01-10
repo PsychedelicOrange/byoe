@@ -1,12 +1,12 @@
 #include "renderer_sdf.h"
 
-#include "rng/rng.h"
-#include "render_utils.h"
-#include "game_state.h"
-#include "shader.h"
-#include "frustum.h"
-#include "logging/log.h"
 #include "../scene/sdf_scene.h"
+#include "frustum.h"
+#include "game_state.h"
+#include "logging/log.h"
+#include "render_utils.h"
+#include "rng/rng.h"
+#include "shader.h"
 
 // Put them at last: causing some weird errors while compiling on MSVC with APIENTRY define
 // Also follow this order as it will cause openlg include error
@@ -19,30 +19,30 @@
 
 typedef struct renderer_internal_state
 {
-    uint32_t numPrimitives;
-    uint32_t width;
-    uint32_t height;
-    uint32_t raymarchShaderID;
-    GLFWwindow* window;
-    uint32_t screen_quad_vao;
-    uint64_t frameCount;
-    mat4s    viewproj;
+    uint32_t         numPrimitives;
+    uint32_t         width;
+    uint32_t         height;
+    uint32_t         raymarchShaderID;
+    GLFWwindow*      window;
+    uint32_t         screen_quad_vao;
+    uint64_t         frameCount;
+    mat4s            viewproj;
     const SDF_Scene* scene;
-}renderer_internal_state;
+} renderer_internal_state;
 
 //---------------------------------------------------------
 static renderer_internal_state g_RendererSDFInternalState;
 //---------------------------------------------------------
-//-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
-// Private functions 
+//-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+// Private functions
 // Resize callback
 static void renderer_internal_sdf_resize(GLFWwindow* window, int width, int height)
 {
     (void) window;
-    g_RendererSDFInternalState.width = width;
-    g_RendererSDFInternalState.height = height;
+    g_RendererSDFInternalState.width      = width;
+    g_RendererSDFInternalState.height     = height;
     g_RendererSDFInternalState.frameCount = 0;
-    
+
     glViewport(0, 0, width, height);
 }
 
@@ -78,23 +78,23 @@ static void renderer_internal_sdf_set_raymarch_shader_global_uniforms(void)
     int resolution[2] = {g_RendererSDFInternalState.width, g_RendererSDFInternalState.height};
     setUniformVec2Int(g_RendererSDFInternalState.raymarchShaderID, resolution, "resolution");
 
-    const Camera camera                      = gamestate_get_global_instance()->camera;
-    mat4s projection                         = glms_perspective(camera.fov, (float) g_RendererSDFInternalState.width / (float) g_RendererSDFInternalState.height, camera.near_plane, camera.far_plane);
-    g_RendererSDFInternalState.viewproj      = glms_mul(projection, camera.lookAt);
+    const Camera camera                 = gamestate_get_global_instance()->camera;
+    mat4s        projection             = glms_perspective(camera.fov, (float) g_RendererSDFInternalState.width / (float) g_RendererSDFInternalState.height, camera.near_plane, camera.far_plane);
+    g_RendererSDFInternalState.viewproj = glms_mul(projection, camera.lookAt);
     setUniformMat4(g_RendererSDFInternalState.raymarchShaderID, g_RendererSDFInternalState.viewproj, "viewproj");
 }
 
-//-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+//-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 bool renderer_sdf_init(renderer_desc desc)
 {
     // use the desc to init the internal state
     (void) desc;
 
     g_RendererSDFInternalState.numPrimitives = 0;
-    g_RendererSDFInternalState.width = desc.width;
-    g_RendererSDFInternalState.height = desc.height;
-    g_RendererSDFInternalState.window = desc.window;
-    g_RendererSDFInternalState.frameCount = 0;
+    g_RendererSDFInternalState.width         = desc.width;
+    g_RendererSDFInternalState.height        = desc.height;
+    g_RendererSDFInternalState.window        = desc.window;
+    g_RendererSDFInternalState.frameCount    = 0;
 
     renderer_internal_sdf_hot_reload_shaders();
     g_RendererSDFInternalState.screen_quad_vao = render_utils_setup_screen_quad();
@@ -149,13 +149,10 @@ void renderer_sdf_render(void)
 
     renderer_internal_sdf_set_raymarch_shader_global_uniforms();
 
-    sdf_scene_upload_scene_nodes_to_gpu(g_RendererSDFInternalState.scene);
-
     renderer_sdf_draw_scene(g_RendererSDFInternalState.scene);
 
     renderer_internal_sdf_swap_backbuffer();
 }
-
 
 void renderer_sdf_set_scene(const SDF_Scene* scene)
 {
@@ -164,10 +161,15 @@ void renderer_sdf_set_scene(const SDF_Scene* scene)
 
 void renderer_sdf_draw_scene(const SDF_Scene* scene)
 {
-    if(!scene)
+    if (!scene)
         return;
 
     glUseProgram(g_RendererSDFInternalState.raymarchShaderID);
+
+    sdf_scene_upload_scene_nodes_to_gpu(g_RendererSDFInternalState.scene);
+
+    sdf_scene_bind_scene_nodes(g_RendererSDFInternalState.raymarchShaderID);
+
     // TEST! TEST! TEST! TEST! TEST! TEST!
     // Test rendering code, move this to a internal function and hide it
     {

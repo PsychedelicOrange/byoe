@@ -3,15 +3,16 @@
 #include "../core/frustum.h"
 #include "camera.h"
 
-#include <glad/glad.h>
 #include <cglm/cglm.h>
+#include <glad/glad.h>
 
 static uint32_t s_GPUSceneNodesUBO;
 
 void sdf_scene_init(SDF_Scene* scene)
 {
     scene->culled_nodes_count = 0;
-    scene->current_node_head = 0;
+    scene->current_node_head  = 0;
+    scene->nodes              = calloc(MAX_SDF_NODES, sizeof(SDF_Node));
 
     // create the UBO to upload scene nodes data
     glGenBuffers(1, &s_GPUSceneNodesUBO);
@@ -19,12 +20,6 @@ void sdf_scene_init(SDF_Scene* scene)
     // Initialize with NULL data
     glBufferData(GL_UNIFORM_BUFFER, sizeof(SDF_NodeGPUData), NULL, GL_DYNAMIC_DRAW);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
-    
-    // Ex. Binding
-    // unsigned int viewProjectionBindingIndex = glGetUniformBlockIndex(this->Program, "SDFScene");
-    // glBindBufferRange(GL_UNIFORM_BUFFER, 0, m_UniformBuffer, 0, 2 * sizeof(glm::mat4));
-
-    // TODO: Create bounding spheres for all the init nodes in the scene here
 }
 
 void sdf_scene_destroy(SDF_Scene* scene)
@@ -47,66 +42,74 @@ int sdf_scene_cull_nodes(SDF_Scene* scene)
 int sdf_scene_add_primitive(SDF_Scene* scene, SDF_Primitive primitive)
 {
     SDF_Node node = {
-        .type = SDF_NODE_PRIMITIVE,
-        .primitive = primitive,
+        .type        = SDF_NODE_PRIMITIVE,
+        .primitive   = primitive,
         .is_ref_node = false,
-        .is_culled = false
-    };
+        .is_culled   = false};
 
-    scene->nodes[scene->current_node_head++] = node; 
-    return scene->current_node_head;
+    uint32_t idx      = scene->current_node_head++;
+    scene->nodes[idx] = node;
+    return idx;
 }
 
 int sdf_scene_add_primitive_ref(SDF_Scene* scene, SDF_Primitive primitive)
 {
-        SDF_Node node = {
-        .type = SDF_NODE_PRIMITIVE,
-        .primitive = primitive,
+    SDF_Node node = {
+        .type        = SDF_NODE_PRIMITIVE,
+        .primitive   = primitive,
         .is_ref_node = true,
-        .is_culled = false
-    };
+        .is_culled   = false};
 
-    scene->nodes[scene->current_node_head++] = node; 
-    return scene->current_node_head;
+    uint32_t idx      = scene->current_node_head++;
+    scene->nodes[idx] = node;
+    return idx;
 }
 
 int sdf_scene_add_operation(SDF_Scene* scene, SDF_Operation operation)
 {
     SDF_Node node = {
-        .type = SDF_NODE_OPERATION,
-        .operation = operation,
+        .type        = SDF_NODE_OPERATION,
+        .operation   = operation,
         .is_ref_node = true,
-        .is_culled = false
-    };
+        .is_culled   = false};
 
-    scene->nodes[scene->current_node_head++] = node; 
-    return scene->current_node_head;
+    uint32_t idx      = scene->current_node_head++;
+    scene->nodes[idx] = node;
+    return idx;
 }
 
 void sdf_scene_upload_scene_nodes_to_gpu(const SDF_Scene* scene)
 {
-    if(!scene)
+    if (!scene)
         return;
 
     glBindBuffer(GL_UNIFORM_BUFFER, s_GPUSceneNodesUBO);
-    for(uint32_t i = 0; i < scene->current_node_head; ++i) {
-
-        const SDF_Node node = scene->nodes[i];
+    for (uint32_t i = 0; i < scene->current_node_head; ++i) {
+        const SDF_Node  node = scene->nodes[i];
         SDF_NodeGPUData data;
         data.nodeType = node.type;
-        if (node.type == SDF_NODE_PRIMITIVE) {  
+        if (node.type == SDF_NODE_PRIMITIVE) {
             data.primType = node.primitive.type;
             glm_vec4_copy((vec4){node.primitive.transform.position[0],
-            node.primitive.transform.position[1],
-            node.primitive.transform.position[2],
-            node.primitive.radius}, data.params.raw);
+                              node.primitive.transform.position[1],
+                              node.primitive.transform.position[2],
+                              node.primitive.radius},
+                data.params.raw);
         } else {
-            data.op = node.operation.type;
-            data.left = node.operation.left;
+            data.op    = node.operation.type;
+            data.left  = node.operation.left;
             data.right = node.operation.right;
         }
 
         glBufferSubData(GL_UNIFORM_BUFFER, i * sizeof(SDF_NodeGPUData), sizeof(SDF_NodeGPUData), &data);
     }
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
+}
+
+void sdf_scene_bind_scene_nodes(uint32_t shaderProgramID)
+{
+    unsigned int bindingPoint = glGetUniformBlockIndex(shaderProgramID, "SDFScene");
+    glUniformBlockBinding(shaderProgramID, 0, bindingPoint);
+    glBindBufferBase(GL_UNIFORM_BUFFER, bindingPoint, s_GPUSceneNodesUBO);
+    glBindBuffer(GL_UNIFORM_BUFFER, s_GPUSceneNodesUBO);
 }

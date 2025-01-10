@@ -1,6 +1,8 @@
 #ifndef TRANSFORM_H
 #define TRANSFORM_H
 
+#include <cglm/cglm.h>
+
 typedef struct Transform
 {
     vec3   position;

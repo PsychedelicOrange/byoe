@@ -83,7 +83,7 @@ float sceneSDF(vec3 p) {
     result = sphereSDF(p, vec4(0, 0, 0, 1));
     // hit = hit + sin(2*p.x)*sin(2*p.y)*sin(2*p.z);
     // hit = min(hit, sdCapsule(p, vec3(0.1), vec3(0.8), 0.5f));
-    // return result;
+    //return result;
 
     // Explicit stack to emulate tree traversal
     int stack[MAX_STACK_SIZE];
@@ -94,18 +94,18 @@ float sceneSDF(vec3 p) {
         // int node_index = stack[--sp]; // Pop node index
         // if (node_index < 0) continue;
 
-        SDF_Node node = nodes[1];
+        SDF_Node node = nodes[0];
 
         // Evaluate the current node
         float d;
-        if (node.nodeType == 1) { // Sphere
+        if (node.primType == 1) { // Sphere
             d = sphereSDF(p, node.params);
-        } else if (node.nodeType == 0) { // Box
+        } else if (node.primType == 0) { // Box
             d = boxSDF(p, node.params.xyz);
         } else {
             d = RAY_MAX_STEP; // Default for unknown types
         }
-                    d = sphereSDF(p, node.params);
+        d = sphereSDF(p, node.params);
 
         result = d;
         // break;
