@@ -27,7 +27,8 @@ int game_main(void)
         },
         .radius = 0.5f
     };
-    sdf_scene_add_primitive(&scene, sphere);
+    int nodeIdx = sdf_scene_add_primitive(&scene, sphere);
+    LOG_INFO("Sphere node idx: %d", nodeIdx);
 
     renderer_sdf_set_scene(&scene);
 

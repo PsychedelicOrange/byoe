@@ -53,6 +53,13 @@ float boxSDF(vec3 p, vec3 size) {
     return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
 }
 
+float sdCapsule( vec3 p, vec3 a, vec3 b, float r )
+{
+  vec3 pa = p - a, ba = b - a;
+  float h = clamp( dot(pa,ba)/dot(ba,ba), 0.0, 1.0 );
+  return length( pa - ba*h ) - r;
+}
+
 // TODO: Define other SDF functions here
 ////////////////////////////////////////////////////////////////////////////////////////
 // SDF Combination Operations
@@ -73,46 +80,53 @@ float subtractOp(float d1, float d2) {
 float sceneSDF(vec3 p) {
     float result = RAY_MAX_STEP;
 
+    result = sphereSDF(p, vec4(0, 0, 0, 1));
+    // hit = hit + sin(2*p.x)*sin(2*p.y)*sin(2*p.z);
+    // hit = min(hit, sdCapsule(p, vec3(0.1), vec3(0.8), 0.5f));
+    // return result;
+
     // Explicit stack to emulate tree traversal
     int stack[MAX_STACK_SIZE];
     int sp = 0; // Stack pointer
     stack[sp++] = 0; // Push root node (assumes root is at index 0)
 
-    while (sp > 0) {
-        int node_index = stack[--sp]; // Pop node index
-        if (node_index < 0) continue;
+    // while (sp > 0) {
+        // int node_index = stack[--sp]; // Pop node index
+        // if (node_index < 0) continue;
 
-        SDF_Node node = nodes[node_index];
+        SDF_Node node = nodes[1];
 
         // Evaluate the current node
         float d;
-        if (node.nodeType == 0) { // Sphere
+        if (node.nodeType == 1) { // Sphere
             d = sphereSDF(p, node.params);
-        } else if (node.nodeType == 1) { // Box
+        } else if (node.nodeType == 0) { // Box
             d = boxSDF(p, node.params.xyz);
         } else {
             d = RAY_MAX_STEP; // Default for unknown types
         }
+                    d = sphereSDF(p, node.params);
 
-        break;
+        result = d;
+        // break;
 
-        // Apply the operation
-        if (node.op == 0) { // Union
-            result = unionOp(result, d);
-        } else if (node.op == 1) { // Intersection
-            result = intersectOp(result, d);
-        } else if (node.op == 2) { // Subtraction
-            result = subtractOp(result, d);
-        } else { // No operation
-            result = d;
-        }
+        // // Apply the operation
+        // if (node.op == 0) { // Union
+        //     result = unionOp(result, d);
+        // } else if (node.op == 1) { // Intersection
+        //     result = intersectOp(result, d);
+        // } else if (node.op == 2) { // Subtraction
+        //     result = subtractOp(result, d);
+        // } else { // No operation
+        //     result = d;
+        // }
 
-        // Push child nodes onto the stack
-        if (sp < MAX_STACK_SIZE - 2) {
-            if (node.left >= 0) stack[sp++] = node.left;
-            if (node.right >= 0) stack[sp++] = node.right;
-        }
-    }
+        // // Push child nodes onto the stack
+        // if (sp < MAX_STACK_SIZE - 2) {
+        //     if (node.left >= 0) stack[sp++] = node.left;
+        //     if (node.right >= 0) stack[sp++] = node.right;
+        // }
+    // }
 
     return result;
 }
@@ -128,25 +142,17 @@ vec3 estimateNormal(vec3 p) {
 }
 ////////////////////////////////////////////////////////////////////////////////////////
 // Ray Marching
-float raymarch(Ray ray) {
-    float depth = 0.0;
 
-    for (int i = 0; i < MAX_STEPS; ++i) {
+float raymarch(Ray ray){
+    float depth = 0;
+    for(int i = 0; i < MAX_STEPS; i++)
+    {
         vec3 p = ray.ro + ray.rd * depth;
-        float dist = sceneSDF(p);
-
-        if (dist < RAY_MIN_STEP) {
-            return depth; // Hit the surface
-        }
-
-        depth += dist;
-
-        if (depth > RAY_MAX_STEP) {
-            break; // Exit if the ray exceeds max depth
-        }
+        float hit = sceneSDF(p);
+        depth += hit;
+        if(depth > RAY_MAX_STEP || depth < RAY_MIN_STEP) break;
     }
-
-    return RAY_MAX_STEP; // Did not hit anything
+    return depth;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -158,36 +164,33 @@ void main() {
     ray.ro = nearp.xyz / nearp.w; // Ray origin in world space
     ray.rd = normalize((farp.xyz / farp.w) - ray.ro); // Ray direction
 
-    FragColor = vec4(uv, 0.0f, 1.0f);
-    return;
-
     // Perform ray marching
-    float depth = raymarch(ray);
+    float d  = raymarch(ray);
+    
+    if(d < RAY_MAX_STEP)
+    {
+        vec3 lightPos = vec3(0, 5, 5);
 
-    if (depth < RAY_MAX_STEP) {
-        vec3 p = ray.ro + ray.rd * depth;
+        vec3 p = ray.ro + ray.rd * d;
 
-        vec3 n = estimateNormal(p);
-        vec3 l = normalize(dir_light_pos - p);
-        vec3 v = normalize(ray.ro - p);
+        vec3 l = normalize(lightPos - p); // light vector
+        vec3 n = normalize(estimateNormal(p));
         vec3 r = reflect(-l, n);
+        vec3 v = normalize(ray.ro - p);
 
-        // Lighting model: Basic Phong Lighting (diffuse and specular only for directional light)
+        vec3 h = normalize(l + v); // the `half-angle` vector
 
-        float diff = max(dot(n, l), 0.0); // Diffuse shading
-        float spec = pow(max(dot(r, v), 0.0), 32.0); // Specular shading
+        float diffuse  = clamp(dot(l, n), 0., 1.);
+        float spec = pow(max(dot(v, r), 0.0), 32);
 
-        // using a default green material for testing
-        vec3 color = vec3(0.3, 0.5, 0.8) * diff + vec3(1.0) * spec;
+		vec3 specular = vec3(0.3, 0.5, 0.2) * spec;
+		vec3 diffuseColor = diffuse * vec3(0.3, 0.5, 0.2);
 
-        FragColor = vec4(color, 1.0);
+        gl_FragDepth = d / RAY_MAX_STEP;
 
-        // Write to depth texture (scale steps taken by range)
-        gl_FragDepth = depth / RAY_MAX_STEP;
-    } else {
-        // Miss? use background color
-        FragColor = vec4(0.0, 0.0, 0.0, 1.0);
-        // Write to depth texture no hit = no depth 
-        gl_FragDepth = 1.0;
+        FragColor = vec4(diffuseColor + specular * 10,1.0);  
     }
+    else
+        gl_FragDepth = 1;
+
 }
