@@ -20,7 +20,7 @@ struct SDF_Node {
     int nodeType; 
     
     int primType;
-    vec4 params;  // pos + radius
+    vec4 pos_scale;
 
     int op;       
     int left;     // Index of the left child node
@@ -32,6 +32,7 @@ struct SDF_Node {
 uniform ivec2 resolution;              
 uniform int sdf_node_count;       
 uniform vec3 dir_light_pos;  
+uniform int node_idx;
 layout(std140) uniform SDFScene {
     SDF_Node nodes[100];
 };        
@@ -94,19 +95,17 @@ float sceneSDF(vec3 p) {
         // int node_index = stack[--sp]; // Pop node index
         // if (node_index < 0) continue;
 
-        SDF_Node node = nodes[0];
+        SDF_Node node = nodes[node_idx];
 
         // Evaluate the current node
         float d;
         if (node.primType == 1) { // Sphere
-            d = sphereSDF(p, node.params);
+            d = sphereSDF(p, vec4(node.pos_scale.xyz, node.pos_scale.w));
         } else if (node.primType == 0) { // Box
-            d = boxSDF(p, node.params.xyz);
+            d = boxSDF(p, node.pos_scale.xyz);
         } else {
             d = RAY_MAX_STEP; // Default for unknown types
         }
-        d = sphereSDF(p, node.params);
-
         result = d;
         // break;
 

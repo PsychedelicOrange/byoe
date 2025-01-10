@@ -72,6 +72,12 @@ unsigned int create_program(unsigned int vertexShader, unsigned int fragmentShad
 	return shaderProgram;
 }
 
+void setUniformInt(unsigned int shaderProgram, int value, char* location){
+	glUseProgram(shaderProgram);
+	int loc = glGetUniformLocation(shaderProgram,location);
+	glUniform1iv(loc, 1, &value);	
+}
+
 void setUniformVec2Int(unsigned int shaderProgram, int vector[2], char* location){
 	glUseProgram(shaderProgram);
 	int loc = glGetUniformLocation(shaderProgram,location);

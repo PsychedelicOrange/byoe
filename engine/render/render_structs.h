@@ -33,7 +33,7 @@ typedef struct color_rgb {
 
 // Add new types here as you need
 typedef enum SDF_PrimitiveType {
-    SDF_PRIM_Cube,        // dummy for testing
+    SDF_PRIM_Cube = 0,        // dummy for testing
     SDF_PRIM_Sphere,      // aka planet + testing
     SDF_PRIM_Capsule,
     SDF_PRIM_Cylinder,
@@ -53,10 +53,6 @@ typedef enum SDF_OperationType {
 typedef struct SDF_Primitive {
     SDF_PrimitiveType type;
     Transform transform; // Position, Rotation, Scale
-    vec3 size;           // Dimensions (for box, cylinder, etc.)
-    float radius;        // Radius (for sphere, capsule, etc.)
-    vec3 start;          // Start point (for capsule or line segment)
-    vec3 end;            // End point (for capsule or line segment)
     // add more props here combine them all or use a new struct/union to simplify primitive attributes 
     // Or use what psyornage is doing in sdf-editor branch to represent more complex SDF props
 } SDF_Primitive;

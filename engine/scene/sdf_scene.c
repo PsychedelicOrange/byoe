@@ -1,6 +1,7 @@
 #include "sdf_scene.h"
 
 #include "../core/frustum.h"
+#include "../core/logging/log.h"
 #include "camera.h"
 
 #include <cglm/cglm.h>
@@ -93,8 +94,10 @@ void sdf_scene_upload_scene_nodes_to_gpu(const SDF_Scene* scene)
             glm_vec4_copy((vec4){node.primitive.transform.position[0],
                               node.primitive.transform.position[1],
                               node.primitive.transform.position[2],
-                              node.primitive.radius},
-                data.params.raw);
+                              node.primitive.transform.scale[0]
+                              },
+                data.pos_scale.raw);
+                LOG_INFO("vec4:(%f, %f, %f, %f)", data.pos_scale.x, data.pos_scale.y, data.pos_scale.z, data.pos_scale.w);
         } else {
             data.op    = node.operation.type;
             data.left  = node.operation.left;

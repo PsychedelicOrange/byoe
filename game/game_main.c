@@ -21,12 +21,20 @@ int game_main(void)
     SDF_Primitive sphere = {
         .type      = SDF_PRIM_Sphere,
         .transform = {
-            .position = {0.0f, 0.0f, 0.0f},
+            .position = {0.0f, 2.0f, 0.0f},
             .rotation = {0.0f, 0.0f, 0.0f},
-            .scale    = {1.0f, 1.0f, 1.0f}},
-        .radius = 0.85f};
-    int nodeIdx = sdf_scene_add_primitive(scene, sphere);
-    LOG_INFO("Sphere node idx: %d", nodeIdx);
+            .scale    = {1.0f, 1.0f, 1.0f}}
+        };
+    sdf_scene_add_primitive(scene, sphere);
+
+    SDF_Primitive cube = {
+        .type      = SDF_PRIM_Cube,
+        .transform = {
+            .position = {1.0f, 1.0f, 1.0f},
+            .rotation = {0.0f, 0.0f, 0.0f},
+            .scale    = {1.0f, 1.0f, 1.0f}}
+        };
+    sdf_scene_add_primitive(scene, cube);
 
     renderer_sdf_set_scene(scene);
 

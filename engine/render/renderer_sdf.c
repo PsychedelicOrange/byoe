@@ -172,7 +172,9 @@ void renderer_sdf_draw_scene(const SDF_Scene* scene)
 
     // TEST! TEST! TEST! TEST! TEST! TEST!
     // Test rendering code, move this to a internal function and hide it
-    {
+    for (uint32_t i = 0; i < scene->current_node_head; ++i) {
+
+        setUniformInt(g_RendererSDFInternalState.raymarchShaderID, i, "node_idx");
         // Draw the screen quad
         glDrawArrays(GL_TRIANGLES, 0, 6);
     }

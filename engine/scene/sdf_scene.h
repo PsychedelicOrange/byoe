@@ -39,12 +39,14 @@ typedef struct SDF_NodeGPUData
 
     // SDF_Primitive GPU View
     int   primType;
-    vec4s params;    // simplified view of params for the GPU
+    int _pad[2];
+    vec4s pos_scale;    // simplified view of params for the GPU
 
     // SDF_Operation GPU View
     int op;
     int left;     // Index of the left child node
     int right;    // Index of the right child node
+    int _pad1;
 } SDF_NodeGPUData;
 
 typedef struct SDF_Scene
