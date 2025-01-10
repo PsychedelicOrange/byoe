@@ -23,7 +23,6 @@ void renderer_sdf_destroy(void);
 void renderer_sdf_render(void);
 
 void renderer_sdf_set_scene(const SDF_Scene* scene);
-void renderer_sdf_set_scene_root(const SDF_Scene* scene, int rootIdx);
 
 void renderer_sdf_draw_scene(const SDF_Scene* scene);
 

@@ -5,8 +5,8 @@
 #include "game_state.h"
 #include "shader.h"
 #include "frustum.h"
-
 #include "logging/log.h"
+#include "../scene/sdf_scene.h"
 
 // Put them at last: causing some weird errors while compiling on MSVC with APIENTRY define
 // Also follow this order as it will cause openlg include error
@@ -27,6 +27,7 @@ typedef struct renderer_internal_state
     uint32_t screen_quad_vao;
     uint64_t frameCount;
     mat4s    viewproj;
+    const SDF_Scene* scene;
 }renderer_internal_state;
 
 //---------------------------------------------------------
@@ -141,7 +142,6 @@ void renderer_sdf_render(void)
 
     // Scene Culling is done before any rendering begins (might move it to update part of engine loop)
 
-
     // clear with a pink color
     renderer_internal_sdf_clear_screen((color_rgba){0.0f, 0.0f, 0.0f, 1.0f});
 
@@ -149,13 +149,30 @@ void renderer_sdf_render(void)
 
     renderer_internal_sdf_set_raymarch_shader_global_uniforms();
 
+    sdf_scene_upload_scene_nodes_to_gpu(g_RendererSDFInternalState.scene);
+
+    renderer_sdf_draw_scene(g_RendererSDFInternalState.scene);
+
+    renderer_internal_sdf_swap_backbuffer();
+}
+
+
+void renderer_sdf_set_scene(const SDF_Scene* scene)
+{
+    g_RendererSDFInternalState.scene = scene;
+}
+
+void renderer_sdf_draw_scene(const SDF_Scene* scene)
+{
+    if(!scene)
+        return;
+
+    glUseProgram(g_RendererSDFInternalState.raymarchShaderID);
     // TEST! TEST! TEST! TEST! TEST! TEST!
     // Test rendering code, move this to a internal function and hide it
     {
+        // Draw the screen quad
         glDrawArrays(GL_TRIANGLES, 0, 6);
     }
     // TEST! TEST! TEST! TEST! TEST! TEST!
- 
-
-    renderer_internal_sdf_swap_backbuffer();
 }

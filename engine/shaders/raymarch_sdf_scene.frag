@@ -86,7 +86,7 @@ float sceneSDF(vec3 p) {
 
         // Evaluate the current node
         float d;
-        if (node.type == 0) { // Sphere
+        if (node.nodeType == 0) { // Sphere
             d = sphereSDF(p, node.params);
         } else if (node.nodeType == 1) { // Box
             d = boxSDF(p, node.params.xyz);

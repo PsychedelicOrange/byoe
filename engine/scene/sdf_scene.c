@@ -83,8 +83,11 @@ int sdf_scene_add_operation(SDF_Scene* scene, SDF_Operation operation)
     return scene->current_node_head;
 }
 
-void sdf_scene_upload_scene_nodes_to_gpu(SDF_Scene* scene)
+void sdf_scene_upload_scene_nodes_to_gpu(const SDF_Scene* scene)
 {
+    if(!scene)
+        return;
+
     glBindBuffer(GL_UNIFORM_BUFFER, s_GPUSceneNodesUBO);
     for(uint32_t i = 0; i < scene->current_node_head; ++i) {
 
