@@ -96,6 +96,13 @@ struct hit_info
 hit_info sceneSDF(vec3 p) {
     hit_info hit;
     hit.d = RAY_MAX_STEP;
+    hit.material.diffuse = vec4(1, 0, 0, 1);
+
+    float d = sphereSDF(p, vec3(1, 1, 0), 1.5f);
+    hit.d = unionOp(hit.d, d);
+    d = sphereSDF(p, vec3(0, 0, 0), 1.5f);
+    hit.d = subtractOp(hit.d, d);
+    return hit;
 
     // Explicit stack to emulate tree traversal
     int stack[MAX_STACK_SIZE];
@@ -107,7 +114,7 @@ hit_info sceneSDF(vec3 p) {
         if (node_index < 0) continue;
 
         SDF_Node node = nodes[node_index];
-        float d;
+        float d = RAY_MAX_STEP;
         // Evaluate the current node
         if(node.nodeType == 0) {
             if (node.primType == 0) { // Sphere
@@ -138,7 +145,6 @@ hit_info sceneSDF(vec3 p) {
             }
         }
 
-        hit.d = d;
         hit.material = node.material;
     }
 
@@ -198,8 +204,8 @@ void main() {
         float diffuse  = clamp(dot(l, n), 0., 1.);
         float spec = pow(max(dot(v, r), 0.0), 32);
 
-		vec3 specular = hit.material.diffuse.xyz * spec;
-		vec3 diffuseColor = diffuse * hit.material.diffuse.xyz;
+        vec3 specular = hit.material.diffuse.xyz * spec;
+        vec3 diffuseColor = diffuse * hit.material.diffuse.xyz;
 
         gl_FragDepth = hit.d / RAY_MAX_STEP;
 

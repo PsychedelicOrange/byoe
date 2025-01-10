@@ -48,7 +48,7 @@ int game_main(void)
     .transform = {
         .position = {{1.0f, 2.0f, 0.0f}},
         .rotation = {0.0f, 0.0f, 0.0f, 0.0f},
-        .scale    = {{0.5f, 0.0f, 0.0f}}}, // only x is used as radius of the sphere
+        .scale    = {{1.5f, 0.0f, 0.0f}}}, // only x is used as radius of the sphere
         .material = {
             .diffuse = {0.5f, 0.7f, 0.3f, 1.0f}
         }
@@ -58,14 +58,14 @@ int game_main(void)
     int prim2 = sdf_scene_add_primitive_ref(scene, sphere1);
 
     SDF_Object obj = {
-        .type = SDF_BLEND_UNION,
+        .type = SDF_BLEND_SUBTRACTION,
         .prim_a = prim1,
         .prim_b = prim2
     };
 
     sdf_scene_add_object(scene, obj);
 
-    // TODO: edtend API to enable sdf_scene_add_object_ref to combine multiple primitives
+    // TODO: extend API to enable sdf_scene_add_object_ref to combine multiple primitives
     // sphere1.transform.position = (vec3s){0.0f, 0.0f, 0.0f};
     // int prim2 = sdf_scene_add_primitive_ref(scene, sphere1);
     // SDF_Object metaballObj = {

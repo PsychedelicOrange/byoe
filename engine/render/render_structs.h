@@ -50,7 +50,7 @@ typedef enum SDF_BlendType {
     SDF_BLEND_SUBTRACTION
 } SDF_BlendType;
 
-// TODO: If data memory gets too much, push the material to a sepearate buffer and use a bindless model
+// TODO: If data memory gets too much, push the material to a separate buffer and use a bindless model
 typedef struct SDF_Material {
     vec4 diffuse;
 } SDF_Material;
@@ -60,7 +60,7 @@ typedef struct SDF_Primitive {
     Transform transform; // Position, Rotation, Scale
     SDF_Material material;
     // add more props here combine them all or use a new struct/union to simplify primitive attributes 
-    // Or use what psyornage is doing in sdf-editor branch to represent more complex SDF props
+    // Or use what psyorange is doing in sdf-editor branch to represent more complex SDF props
     // What if we make them a union for easier user land API and pass packed info the GPU with wrapper functions to intgerpret them?
 } SDF_Primitive;
 
