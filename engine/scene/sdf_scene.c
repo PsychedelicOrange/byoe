@@ -89,15 +89,23 @@ void sdf_scene_upload_scene_nodes_to_gpu(const SDF_Scene* scene)
         const SDF_Node  node = scene->nodes[i];
         SDF_NodeGPUData data;
         data.nodeType = node.type;
+        data.is_ref_node = node.is_ref_node;
         if (node.type == SDF_NODE_PRIMITIVE) {
             data.primType = node.primitive.type;
             glm_vec4_copy((vec4){node.primitive.transform.position[0],
                               node.primitive.transform.position[1],
                               node.primitive.transform.position[2],
-                              node.primitive.transform.scale[0]
+                              0.0f
                               },
-                data.pos_scale.raw);
-                LOG_INFO("vec4:(%f, %f, %f, %f)", data.pos_scale.x, data.pos_scale.y, data.pos_scale.z, data.pos_scale.w);
+                data.pos.raw);
+            glm_vec4_copy((vec4){node.primitive.transform.scale[0],
+                            node.primitive.transform.scale[1],
+                            node.primitive.transform.scale[2],
+                            0.0f
+                            },
+            data.scale.raw);
+
+            data.material = node.primitive.material;
         } else {
             data.op    = node.operation.type;
             data.left  = node.operation.left;
@@ -106,7 +114,6 @@ void sdf_scene_upload_scene_nodes_to_gpu(const SDF_Scene* scene)
 
         glBufferSubData(GL_UNIFORM_BUFFER, i * sizeof(SDF_NodeGPUData), sizeof(SDF_NodeGPUData), &data);
     }
-    glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
 void sdf_scene_bind_scene_nodes(uint32_t shaderProgramID)

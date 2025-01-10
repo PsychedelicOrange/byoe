@@ -50,11 +50,18 @@ typedef enum SDF_OperationType {
     SDF_OP_DIFFERENCE
 } SDF_OperationType;
 
+// TODO: If data memory gets too much, push the material to a sepearate buffer and use a bindless model
+typedef struct SDF_Material {
+    vec4 diffuse;
+} SDF_Material;
+
 typedef struct SDF_Primitive {
     SDF_PrimitiveType type;
     Transform transform; // Position, Rotation, Scale
+    SDF_Material material;
     // add more props here combine them all or use a new struct/union to simplify primitive attributes 
     // Or use what psyornage is doing in sdf-editor branch to represent more complex SDF props
+    // What if we make them a union for easier user land API and pass packed info the GPU with wrapper functions to intgerpret them?
 } SDF_Primitive;
 
 typedef struct SDF_Operation {

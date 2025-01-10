@@ -16,15 +16,23 @@ struct Ray {
     vec3 rd; 
 };
 
+struct SDF_Material {
+    vec4 diffuse; // rgba
+};
+
 struct SDF_Node {
     int nodeType; 
     
     int primType;
-    vec4 pos_scale;
+    vec4 pos;
+    vec4 scale;
 
     int op;       
     int left;     // Index of the left child node
     int right;    // Index of the right child node
+
+    int is_ref_node;
+    SDF_Material material;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -45,12 +53,12 @@ in vec4 farp;
 out vec4 FragColor;
 ////////////////////////////////////////////////////////////////////////////////////////
 // SDF Primitive Functions
-float sphereSDF(vec3 p, vec4 params) {
-    return length(p - params.xyz) - params.w;
+float sphereSDF(vec3 p, vec3 pos, float scale) {
+    return length(p - pos) - scale;
 }
 
-float boxSDF(vec3 p, vec3 size) {
-    vec3 q = abs(p) - size;
+float boxSDF(vec3 p, vec3 pos, vec3 size) {
+    vec3 q = abs(p - pos) - size;
     return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
 }
 
@@ -78,13 +86,16 @@ float subtractOp(float d1, float d2) {
 // TODO: Define other operation funtions here
 ////////////////////////////////////////////////////////////////////////////////////////
 // Iterative Scene SDF Evaluation
-float sceneSDF(vec3 p) {
-    float result = RAY_MAX_STEP;
 
-    result = sphereSDF(p, vec4(0, 0, 0, 1));
-    // hit = hit + sin(2*p.x)*sin(2*p.y)*sin(2*p.z);
-    // hit = min(hit, sdCapsule(p, vec3(0.1), vec3(0.8), 0.5f));
-    //return result;
+struct hit_info
+{
+    float d;
+    SDF_Material material;
+};
+
+hit_info sceneSDF(vec3 p) {
+    hit_info hit;
+    hit.d = RAY_MAX_STEP;
 
     // Explicit stack to emulate tree traversal
     int stack[MAX_STACK_SIZE];
@@ -100,13 +111,14 @@ float sceneSDF(vec3 p) {
         // Evaluate the current node
         float d;
         if (node.primType == 1) { // Sphere
-            d = sphereSDF(p, vec4(node.pos_scale.xyz, node.pos_scale.w));
+            d = sphereSDF(p, node.pos.xyz, node.scale.x);
         } else if (node.primType == 0) { // Box
-            d = boxSDF(p, node.pos_scale.xyz);
+            d = boxSDF(p, node.pos.xyz, node.scale.xyz);
         } else {
             d = RAY_MAX_STEP; // Default for unknown types
         }
-        result = d;
+        hit.d = d;
+        hit.material = node.material;
         // break;
 
         // // Apply the operation
@@ -127,31 +139,33 @@ float sceneSDF(vec3 p) {
         // }
     // }
 
-    return result;
+    return hit;
 }
 ////////////////////////////////////////////////////////////////////////////////////////
 // Rendering related functions
 // Normal Estimation
 vec3 estimateNormal(vec3 p) {
     return normalize(vec3(
-        sceneSDF(vec3(p.x + EPSILON, p.y, p.z))  - sceneSDF(vec3(p.x - EPSILON, p.y, p.z)),
-        sceneSDF(vec3(p.x, p.y + EPSILON, p.z))  - sceneSDF(vec3(p.x, p.y - EPSILON, p.z)),
-        sceneSDF(vec3(p.x, p.y, p.z  + EPSILON)) - sceneSDF(vec3(p.x, p.y, p.z - EPSILON))
+        sceneSDF(vec3(p.x + EPSILON, p.y, p.z)).d  - sceneSDF(vec3(p.x - EPSILON, p.y, p.z)).d,
+        sceneSDF(vec3(p.x, p.y + EPSILON, p.z)).d  - sceneSDF(vec3(p.x, p.y - EPSILON, p.z)).d,
+        sceneSDF(vec3(p.x, p.y, p.z  + EPSILON)).d - sceneSDF(vec3(p.x, p.y, p.z - EPSILON)).d
     ));
 }
 ////////////////////////////////////////////////////////////////////////////////////////
 // Ray Marching
 
-float raymarch(Ray ray){
-    float depth = 0;
+hit_info raymarch(Ray ray){
+    hit_info hit;
+    hit.d = 0;
     for(int i = 0; i < MAX_STEPS; i++)
     {
-        vec3 p = ray.ro + ray.rd * depth;
-        float hit = sceneSDF(p);
-        depth += hit;
-        if(depth > RAY_MAX_STEP || depth < RAY_MIN_STEP) break;
+        vec3 p = ray.ro + ray.rd * hit.d;
+        hit_info h = sceneSDF(p);
+        hit.d += h.d;
+        hit.material = h.material;
+        if(hit.d > RAY_MAX_STEP || hit.d < RAY_MIN_STEP) break;
     }
-    return depth;
+    return hit;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -163,31 +177,30 @@ void main() {
     ray.ro = nearp.xyz / nearp.w; // Ray origin in world space
     ray.rd = normalize((farp.xyz / farp.w) - ray.ro); // Ray direction
 
-    // Perform ray marching
-    float d  = raymarch(ray);
+    hit_info hit  = raymarch(ray);
     
-    if(d < RAY_MAX_STEP)
+    if(hit.d < RAY_MAX_STEP)
     {
         vec3 lightPos = vec3(0, 5, 5);
 
-        vec3 p = ray.ro + ray.rd * d;
+        vec3 p = ray.ro + ray.rd * hit.d;
 
-        vec3 l = normalize(lightPos - p); // light vector
+        vec3 l = normalize(lightPos - p);
         vec3 n = normalize(estimateNormal(p));
         vec3 r = reflect(-l, n);
         vec3 v = normalize(ray.ro - p);
 
-        vec3 h = normalize(l + v); // the `half-angle` vector
+        vec3 h = normalize(l + v); 
 
         float diffuse  = clamp(dot(l, n), 0., 1.);
         float spec = pow(max(dot(v, r), 0.0), 32);
 
-		vec3 specular = vec3(0.3, 0.5, 0.2) * spec;
-		vec3 diffuseColor = diffuse * vec3(0.3, 0.5, 0.2);
+		vec3 specular = hit.material.diffuse.xyz * spec;
+		vec3 diffuseColor = diffuse * hit.material.diffuse.xyz;
 
-        gl_FragDepth = d / RAY_MAX_STEP;
+        gl_FragDepth = hit.d / RAY_MAX_STEP;
 
-        FragColor = vec4(diffuseColor + specular * 10,1.0);  
+        FragColor = vec4(diffuseColor + specular * 10, 1.0f);  
     }
     else
         gl_FragDepth = 1;

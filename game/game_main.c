@@ -23,16 +23,22 @@ int game_main(void)
         .transform = {
             .position = {0.0f, 2.0f, 0.0f},
             .rotation = {0.0f, 0.0f, 0.0f},
-            .scale    = {1.0f, 1.0f, 1.0f}}
+            .scale    = {0.5f, 0.0f, 0.0f}}, // only x is used as radius of the sphere
+            .material = {
+                .diffuse = {0.5f, 0.7f, 0.3f, 1.0f}
+            }
         };
     sdf_scene_add_primitive(scene, sphere);
 
     SDF_Primitive cube = {
         .type      = SDF_PRIM_Cube,
         .transform = {
-            .position = {1.0f, 1.0f, 1.0f},
+            .position = {0.0f, 0.0f, 0.0f},
             .rotation = {0.0f, 0.0f, 0.0f},
-            .scale    = {1.0f, 1.0f, 1.0f}}
+            .scale    = {1.0f, 1.0f, 1.0f}},
+            .material = {
+                .diffuse = {0.7f, 0.3f, 0.3f, 1.0f}
+            }
         };
     sdf_scene_add_primitive(scene, cube);
 
