@@ -19,7 +19,7 @@ void sdf_scene_init(SDF_Scene* scene)
     glGenBuffers(1, &s_GPUSceneNodesUBO);
     glBindBuffer(GL_UNIFORM_BUFFER, s_GPUSceneNodesUBO);
     // Initialize with NULL data
-    glBufferData(GL_UNIFORM_BUFFER, sizeof(SDF_NodeGPUData), NULL, GL_DYNAMIC_DRAW);
+    glBufferData(GL_UNIFORM_BUFFER, sizeof(SDF_NodeGPUData) * MAX_SDF_NODES, NULL, GL_DYNAMIC_DRAW);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
