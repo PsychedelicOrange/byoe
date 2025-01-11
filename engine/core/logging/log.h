@@ -2,6 +2,7 @@
 #define LOG_H
 
 #include <stdio.h>
+#include "common.h"
 
 // TODO: Add timestamp
 // TODO: Add custom stream to write (ex. file, network, etc.)
@@ -19,13 +20,13 @@
 } while(0)
 
 #define LOG_WARN(...) do { \
-    printf(COLOR_YELLOW "[BYOE] - WARNING: "); \
+    fprintf(stderr,COLOR_YELLOW "[BYOE] - WARNING: "); \
     printf(__VA_ARGS__); \
-    printf("\033[0m\n"); \
+    printf(COLOR_RESET); \
 } while(0)
 
 #define LOG_ERROR(...) do { \
-    printf(COLOR_RED "[BYOE] - ERROR: "); \
+    fprintf(stderr, "[BYOE] - ERROR: "); \
     printf(__VA_ARGS__); \
     printf(COLOR_RESET); \
 } while(0)

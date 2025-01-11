@@ -17,7 +17,7 @@ void gamestate_update(struct GLFWwindow* window)
 
     // Update keyboard state
     gGlobalGameState.isKeyDown = false;  // Reset key down flag
-    for (int i = 0; i < 256; ++i)
+    for (int i = GLFW_KEY_SPACE; i <= GLFW_KEY_LAST; ++i)
     {
         int state = glfwGetKey(window, i);
         gGlobalGameState.keycodes[i] = (state == GLFW_PRESS || state == GLFW_REPEAT);

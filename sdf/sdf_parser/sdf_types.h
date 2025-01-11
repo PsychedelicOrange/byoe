@@ -2,7 +2,7 @@
 #define SDF_TYPE_H
 #include <stddef.h>
 
-/* Sdf types */
+/* primitive types */
 typedef enum sdf_type{
     plane,
     sphere,

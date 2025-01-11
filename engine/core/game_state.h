@@ -22,7 +22,7 @@ typedef struct GameState
     bool isKeyDown;
     bool _padding1[2];
     uint32_t _padding2;
-    bool keycodes[256];
+    bool keycodes[349]; /* keycodes in GLFW are from GLFW_SPACE ( 32 ) to GLFW_LAST ( 348 ) */
     Camera camera;
     // TBD...
 } GameState;

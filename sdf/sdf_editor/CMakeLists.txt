@@ -2,8 +2,12 @@
 # sdf_editor/CMakeLists.txt
 
 file(GLOB_RECURSE editor_source 
-    "*.c"
-    "*.h"
+    "main.c"
+    "glad.c"
+    "implementations.c"
+    "menu.c"
+    "sidebar.c"
+    "file_browser.c"
 )
 
 # Set the C standard for this project
@@ -13,19 +17,19 @@ set(CMAKE_C_EXTENSIONS OFF)  # Disable compiler-specific extensions
 
 ####################################################################
 # Add executable
-add_executable(sdf_editor ${editor_source})
+add_executable(sdf-editor ${editor_source})
 ####################################################################
 # Link the engine library (either shared or static)
-target_link_libraries(sdf_editor PRIVATE engine)
+target_link_libraries(sdf-editor PRIVATE engine)
 ####################################################################
 # Platform-specific configuration
 if(WIN32)
-    set_target_properties(sdf_editor PROPERTIES
+    set_target_properties(sdf-editor PROPERTIES
         VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     )
     
 elseif(APPLE)
-    target_link_libraries(sdf_editor PRIVATE
+    target_link_libraries(sdf-editor PRIVATE
         "-framework Cocoa"
         "-framework IOKit"
         "-framework CoreVideo"
@@ -35,10 +39,10 @@ elseif(APPLE)
 set_target_properties(engine PROPERTIES C_STANDARD 11)
 
 elseif(UNIX)
-    target_link_libraries(sdf_editor PRIVATE m X11)
+    target_link_libraries(sdf-editor PRIVATE m X11)
 endif()
 
-target_include_directories(sdf_editor PUBLIC
+target_include_directories(sdf-editor PUBLIC
     ../../engine
     ../../
     $<TARGET_PROPERTY:cglm,INTERFACE_INCLUDE_DIRECTORIES>  # Automatically includes cglm headers
@@ -46,7 +50,7 @@ target_include_directories(sdf_editor PUBLIC
 )
 
 if(MSVC)
-  target_compile_options(sdf_editor PRIVATE /W4 /WX /wd4996)
+  target_compile_options(sdf-editor PRIVATE /W4 /WX /wd4996)
 else()
-  target_compile_options(sdf_editor PRIVATE )
+  target_compile_options(sdf-editor PRIVATE )
 endif()
