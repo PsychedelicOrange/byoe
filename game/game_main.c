@@ -19,6 +19,8 @@ int game_main(void)
     sdf_scene_init(scene);
 
     float demoStartX = -2.0f;
+
+    // simple sphere
     {
         SDF_Primitive sphere = {
             .type      = SDF_PRIM_Sphere,
@@ -31,6 +33,7 @@ int game_main(void)
         demoStartX += 1.0f;
     }
 
+    // simple cube
     {
         SDF_Primitive cube = {
             .type      = SDF_PRIM_Cube,
@@ -43,14 +46,14 @@ int game_main(void)
         demoStartX += 1.0f;
     }
 
+    // Meta ball of 3 spheres
     {
-        // Meta ball of 3 spheres
         SDF_Primitive sphere1 = {
             .type      = SDF_PRIM_Sphere,
             .transform = {
                 .position = {{demoStartX, 0.0f, 0.0f}},
                 .rotation = {0.0f, 0.0f, 0.0f, 0.0f},
-                .scale    = {{0.25f, 0.0f, 0.0f}}},    // only x is used as radius of the sphere
+                .scale    = {{0.25f, 0.0f, 0.0f}}},
             .material = {.diffuse = {0.5f, 0.7f, 0.3f, 1.0f}}};
         int prim1 = sdf_scene_add_primitive(scene, sphere1);
         (void) prim1;
@@ -76,6 +79,7 @@ int game_main(void)
         demoStartX += 2.0f;
     }
 
+    // more complex object (creating a mold in a cube using a smooth union of a cube and sphere)
     {
         SDF_Primitive cube_prim_def = {
             .type      = SDF_PRIM_Cube,
@@ -115,25 +119,6 @@ int game_main(void)
             .prim_b = cast_prim};
         sdf_scene_add_object(scene, cube_mold);
     }
-
-    // SDF_Object meta = {
-    //     .type = SDF_BLEND_SMOOTH_UNION,
-    //     .prim_a = prim3,
-    //     .prim_b = metaball_inter
-    // };
-
-    // int final_metaball = sdf_scene_add_object(scene, meta);
-    // (void) final_metaball;
-
-    // TODO: extend API to enable sdf_scene_add_object_ref to combine multiple primitives
-    // sphere1.transform.position = (vec3s){0.0f, 0.0f, 0.0f};
-    // int prim2 = sdf_scene_add_primitive_ref(scene, sphere1);
-    // SDF_Object metaballObj = {
-    //     .type = SDF_BLEND_UNION,
-    //     .prim_a = metaball_int,
-    //     .prim_b =
-    // }
-    // int metaball_int = sdf_scene_add_object(scene, obj);
 
     renderer_sdf_set_scene(scene);
 
