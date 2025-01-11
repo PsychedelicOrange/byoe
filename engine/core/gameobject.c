@@ -123,7 +123,7 @@ void gameobject_set_position(random_uuid_t goUUID, vec3 position)
         glm_vec3_copy(position, go->transform.position.raw);
     }
     else
-        LOG_ERROR("Failed to update position for gameobject: %s\n", uuid_to_string(&goUUID));
+        LOG_ERROR("Failed to update position for gameobject: %s", uuid_to_string(&goUUID));
 }
 
 void gameobject_set_rotation(random_uuid_t goUUID, versor rotationQuat)
@@ -133,7 +133,7 @@ void gameobject_set_rotation(random_uuid_t goUUID, versor rotationQuat)
         glm_quat_copy(rotationQuat, go->transform.rotation);
     }
     else
-        LOG_ERROR("Failed to update rotation for gameobject %s\n", uuid_to_string(&goUUID));
+        LOG_ERROR("Failed to update rotation for gameobject %s", uuid_to_string(&goUUID));
 }
 
 void gameobject_set_rotation_euler(random_uuid_t goUUID, vec3 rotationEuler)
@@ -143,7 +143,7 @@ void gameobject_set_rotation_euler(random_uuid_t goUUID, vec3 rotationEuler)
         glm_euler_xyz_quat(rotationEuler, go->transform.rotation);
     }
     else
-        LOG_ERROR("Failed to update rotation for gameobject %s\n", uuid_to_string(&goUUID));
+        LOG_ERROR("Failed to update rotation for gameobject %s", uuid_to_string(&goUUID));
 }
 
 void gameobject_set_scale(random_uuid_t goUUID, vec3 scale)
@@ -153,5 +153,5 @@ void gameobject_set_scale(random_uuid_t goUUID, vec3 scale)
         glm_vec3_copy(scale, go->transform.scale.raw);
     }
     else
-        LOG_ERROR("Failed to update scale for gameobject %s\n", uuid_to_string(&goUUID));
+        LOG_ERROR("Failed to update scale for gameobject %s", uuid_to_string(&goUUID));
 }

@@ -68,7 +68,7 @@ GameObject* game_registry_get_gameobject_by_uuid(random_uuid_t goUUID)
         return go;
     }
     else {
-        LOG_ERROR("[Game Registry] cannot find gameobject using uuid! | UUID: %s\n", uuid_to_string(&goUUID));
+        LOG_ERROR("[Game Registry] cannot find gameobject using uuid! | UUID: %s", uuid_to_string(&goUUID));
         return NULL;
     }
 }
