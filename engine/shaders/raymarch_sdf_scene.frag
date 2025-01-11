@@ -169,7 +169,7 @@ hit_info sceneSDF(vec3 p) {
             // Push child nodes onto the stack
             if (sp < MAX_STACK_SIZE - 2) {
                 if (node.prim_b >= 0) stack[sp++] = blend_node(node.blend, node.prim_b);
-                if (node.prim_a >= 0) stack[sp++] = blend_node(0, node.prim_a);
+                if (node.prim_a >= 0) stack[sp++] = blend_node(node.blend, node.prim_a);
             }
         }
 
