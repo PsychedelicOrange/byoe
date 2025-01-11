@@ -1,5 +1,5 @@
 #version 410 core
-//#extension GL_NV_uniform_buffer_std430_layout : enable
+// https://iquilezles.org/articles/distfunctions/
 ////////////////////////////////////////////////////////////////////////////////////////
 // Constants
 #define MAX_STEPS 128
@@ -83,6 +83,25 @@ float intersectOp(float d1, float d2) {
 float subtractOp(float d1, float d2) {
     return max(d1, -d2);
 }
+
+float opSmoothUnion( float d1, float d2, float k )
+{
+    float h = clamp( 0.5 + 0.5*(d2-d1)/k, 0.0, 1.0 );
+    return mix( d2, d1, h ) - k*h*(1.0-h);
+}
+
+float opSmoothSubtraction( float d1, float d2, float k )
+{
+    float h = clamp( 0.5 - 0.5*(d2+d1)/k, 0.0, 1.0 );
+    return mix( d2, -d1, h ) + k*h*(1.0-h);
+}
+
+float opSmoothIntersection( float d1, float d2, float k )
+{
+    float h = clamp( 0.5 - 0.5*(d2-d1)/k, 0.0, 1.0 );
+    return mix( d2, d1, h ) + k*h*(1.0-h);
+}
+
 // TODO: Define other operation funtions here
 ////////////////////////////////////////////////////////////////////////////////////////
 // Iterative Scene SDF Evaluation
@@ -136,8 +155,10 @@ hit_info sceneSDF(vec3 p) {
             if (node_index.blend == 0) {
                 hit.d = unionOp(hit.d, d);
             } else if (node_index.blend == 1) {
-                hit.d = intersectOp(hit.d, d);
+                hit.d = opSmoothUnion(hit.d, d, 0.5f);
             } else if (node_index.blend == 2) {
+                hit.d = subtractOp(hit.d, d);
+            } else if (node_index.blend == 3) {
                 hit.d = subtractOp(hit.d, d);
             } else {
                 hit.d = RAY_MAX_STEP;

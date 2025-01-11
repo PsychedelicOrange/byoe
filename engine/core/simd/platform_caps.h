@@ -115,15 +115,15 @@ void cpu_caps_print_info(void)
     // Windows-specific CPU info
     SYSTEM_INFO sysinfo;
     GetSystemInfo(&sysinfo);
-    LOG_INFO("Number of processors: %u\n", sysinfo.dwNumberOfProcessors);
+    LOG_INFO("Number of processors: %u", sysinfo.dwNumberOfProcessors);
 
     // Processor architecture
     if (sysinfo.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64) {
-        LOG_INFO("Processor architecture: x64 (AMD or Intel)\n");
+        LOG_INFO("Processor architecture: x64 (AMD or Intel)");
     } else if (sysinfo.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_ARM) {
-        LOG_INFO("Processor architecture: ARM\n");
+        LOG_INFO("Processor architecture: ARM");
     } else if (sysinfo.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_INTEL) {
-        LOG_INFO("Processor architecture: x86 (Intel)\n");
+        LOG_INFO("Processor architecture: x86 (Intel)");
     }
 
     // Processor name
@@ -134,7 +134,7 @@ void cpu_caps_print_info(void)
         RegQueryValueExA(hKeyProcessor, "ProcessorNameString", NULL, NULL, (LPBYTE) cpuName, &bufferSize);
         RegCloseKey(hKeyProcessor);
     }
-    LOG_INFO("Processor Name: %s\n", cpuName);
+    LOG_INFO("Processor Name: %s", cpuName);
 
 #elif defined(__linux__)
     // Linux-specific CPU info
@@ -152,7 +152,7 @@ void cpu_caps_print_info(void)
 
     struct sysinfo sysInfo;
     sysinfo(&sysInfo);
-    LOG_INFO("Uptime: %ld seconds\n", sysInfo.uptime);
+    LOG_INFO("Uptime: %ld seconds", sysInfo.uptime);
 
 #elif defined(__APPLE__)
     // https://gist.github.com/HalCanary/59d7c9c3c408ddfd55c477a992281827
@@ -160,16 +160,16 @@ void cpu_caps_print_info(void)
     char   cpuBrand[512];
     size_t size = sizeof(cpuBrand);
     sysctlbyname("machdep.cpu.brand_string", &cpuBrand, &size, NULL, 0);
-    LOG_INFO("Processor: %s\n", cpuBrand);
+    LOG_INFO("Processor: %s", cpuBrand);
 
     int frequency;
     size = sizeof(frequency);
     sysctlbyname("hw.cpufrequency", &frequency, &size, NULL, 0);
-    LOG_INFO("CPU Frequency: %d MHz\n", frequency);
+    LOG_INFO("CPU Frequency: %d MHz", frequency);
 
     int numCores;
     sysctlbyname("hw.physicalcpu", &numCores, &size, NULL, 0);
-    LOG_INFO("Number of cores: %d\n", numCores);
+    LOG_INFO("Number of cores: %d", numCores);
 
 #endif
 }
@@ -182,13 +182,13 @@ void os_caps_print_info(void)
     ZeroMemory(&osvi, sizeof(OSVERSIONINFO));
     osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
     GetVersionEx(&osvi);
-    LOG_INFO("Operating System: Windows %lu.%lu\n", osvi.dwMajorVersion, osvi.dwMinorVersion);
+    LOG_INFO("Operating System: Windows %lu.%lu", osvi.dwMajorVersion, osvi.dwMinorVersion);
 
 #elif defined(__linux__)
     // Linux OS info
     struct utsname buffer;
     if (uname(&buffer) == 0) {
-        LOG_INFO("Operating System: %s %s\n", buffer.sysname, buffer.release);
+        LOG_INFO("Operating System: %s %s", buffer.sysname, buffer.release);
     }
 
 #elif defined(__APPLE__)
@@ -196,7 +196,7 @@ void os_caps_print_info(void)
     char   osVersion[256];
     size_t size = sizeof(osVersion);
     sysctlbyname("kern.osproductversion", &osVersion, &size, NULL, 0);
-    LOG_INFO("Operating System: macOS %s\n", osVersion);
+    LOG_INFO("Operating System: macOS %s", osVersion);
 #endif
 }
 

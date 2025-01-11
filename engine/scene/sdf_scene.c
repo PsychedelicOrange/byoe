@@ -55,18 +55,17 @@ int sdf_scene_add_primitive(SDF_Scene* scene, SDF_Primitive primitive)
     return idx;
 }
 
-int sdf_scene_add_primitive_ref(SDF_Scene* scene, SDF_Primitive primitive)
-{
-    SDF_Node node = {
-        .type        = SDF_NODE_PRIMITIVE,
-        .primitive   = primitive,
-        .is_ref_node = true,
-        .is_culled   = false};
-
-    uint32_t idx      = scene->current_node_head++;
-    scene->nodes[idx] = node;
-    return idx;
-}
+// int sdf_scene_add_primitive_ref(SDF_Scene* scene, SDF_Primitive primitive)
+// {
+//     SDF_Node node = {
+//         .type        = SDF_NODE_PRIMITIVE,
+//         .primitive   = primitive,
+//         .is_ref_node = true,
+//         .is_culled   = false};
+//     uint32_t idx      = scene->current_node_head++;
+//     scene->nodes[idx] = node;
+//     return idx;
+// }
 
 int sdf_scene_add_object(SDF_Scene* scene, SDF_Object operation)
 {
@@ -76,10 +75,26 @@ int sdf_scene_add_object(SDF_Scene* scene, SDF_Object operation)
         .is_ref_node = false,
         .is_culled   = false};
 
+    // mark the hieararchy of it's nodes as ref_nodes
+    scene->nodes[operation.prim_a].is_ref_node = true;
+    scene->nodes[operation.prim_b].is_ref_node = true;
+
     uint32_t idx      = scene->current_node_head++;
     scene->nodes[idx] = node;
     return idx;
 }
+
+// int sdf_scene_add_object_ref(SDF_Scene* scene, SDF_Object operation)
+// {
+//     SDF_Node node = {
+//         .type        = SDF_NODE_OPERATION,
+//         .operation   = operation,
+//         .is_ref_node = true,
+//         .is_culled   = false};
+//     uint32_t idx      = scene->current_node_head++;
+//     scene->nodes[idx] = node;
+//     return idx;
+// }
 
 void sdf_scene_upload_scene_nodes_to_gpu(const SDF_Scene* scene)
 {

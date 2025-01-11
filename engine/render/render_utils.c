@@ -29,13 +29,13 @@ void render_utils_init_glad(void){
     }
 	const GLubyte* vendor = glGetString(GL_VENDOR); // Returns the vendor
 	const GLubyte* renderer = glGetString(GL_RENDERER); // Returns a hint to the model
-	LOG_INFO("\nVendor: %s \n",vendor);
-	LOG_INFO("\nRenderer: %s \n",renderer);
+	LOG_INFO("Vendor: %s ",vendor);
+	LOG_INFO("Renderer: %s ",renderer);
 	fflush(stdout);
 }
 
 void render_utils_crash_game(char* msg){
-	LOG_ERROR("\nGame crashed: %s\n",msg);
+	LOG_ERROR("Game crashed: %s",msg);
 	fflush(stdout);
 	exit(1);
 }

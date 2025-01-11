@@ -46,6 +46,7 @@ typedef enum SDF_PrimitiveType {
 
 typedef enum SDF_BlendType {
     SDF_BLEND_UNION,
+    SDF_BLEND_SMOOTH_UNION,
     SDF_BLEND_INTERSECTION,
     SDF_BLEND_SUBTRACTION
 } SDF_BlendType;

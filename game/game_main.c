@@ -55,17 +55,46 @@ int game_main(void)
             .diffuse = {0.5f, 0.7f, 0.3f, 1.0f}
         }
     };
-    int prim1 = sdf_scene_add_primitive_ref(scene, sphere1);
-    sphere1.transform.position = (vec3s){{1.0f, 0.0f, 0.0f}};
-    int prim2 = sdf_scene_add_primitive_ref(scene, sphere1);
+    int prim1 = sdf_scene_add_primitive(scene, sphere1);
+    (void) prim1;
 
-    SDF_Object obj = {
-        .type = SDF_BLEND_SUBTRACTION,
-        .prim_a = prim2,
-        .prim_b = prim1
+    sphere1.transform.position = (vec3s){{2.0f, -1.0f, 0.0f}};
+    int prim2 = sdf_scene_add_primitive(scene, sphere1);
+    (void) prim2;
+
+    sphere1.transform.position = (vec3s){{-1.0f, -1.0f, 0.0f}};
+    int prim3 = sdf_scene_add_primitive(scene, sphere1);
+    (void) prim3;
+
+    // SDF_Object obj = {
+    //     .type = SDF_BLEND_SMOOTH_UNION,
+    //     .prim_a = prim1,
+    //     .prim_b = prim2
+    // };
+
+    SDF_Object meta_def = {
+        .type = SDF_BLEND_SMOOTH_UNION,
+        .prim_a = sdf_scene_add_object(scene, (SDF_Object){
+            .type = SDF_BLEND_SMOOTH_UNION,
+            .prim_a = prim1,
+            .prim_b = prim2
+        }),
+        .prim_b = prim3
     };
 
-    sdf_scene_add_object(scene, obj);
+    sdf_scene_add_object(scene, meta_def);
+
+    // sphere1.transform.position = (vec3s){{1.0f, -1.0f, 0.0f}};
+    // int prim3 = sdf_scene_add_primitive_ref(scene, sphere1);
+
+    // SDF_Object meta = {
+    //     .type = SDF_BLEND_SMOOTH_UNION,
+    //     .prim_a = prim3,
+    //     .prim_b = metaball_inter
+    // };
+
+    // int final_metaball = sdf_scene_add_object(scene, meta);
+    // (void) final_metaball;
 
     // TODO: extend API to enable sdf_scene_add_object_ref to combine multiple primitives
     // sphere1.transform.position = (vec3s){0.0f, 0.0f, 0.0f};
