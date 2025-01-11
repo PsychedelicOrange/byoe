@@ -16,7 +16,7 @@ typedef struct bounding_sphere
 typedef enum SDF_NodeType
 {
     SDF_NODE_PRIMITIVE,
-    SDF_NODE_OPERATION
+    SDF_NODE_OBJECT
 } SDF_NodeType;
 
 typedef struct SDF_Node
@@ -25,7 +25,7 @@ typedef struct SDF_Node
     union
     {
         SDF_Primitive primitive;
-        SDF_Object operation;
+        SDF_Object object;
     };
     bounding_sphere bounds;
     bool            is_ref_node;

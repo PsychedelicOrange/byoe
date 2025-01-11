@@ -70,8 +70,8 @@ int sdf_scene_add_primitive(SDF_Scene* scene, SDF_Primitive primitive)
 int sdf_scene_add_object(SDF_Scene* scene, SDF_Object operation)
 {
     SDF_Node node = {
-        .type        = SDF_NODE_OPERATION,
-        .operation   = operation,
+        .type        = SDF_NODE_OBJECT,
+        .object   = operation,
         .is_ref_node = false,
         .is_culled   = false};
 
@@ -126,9 +126,9 @@ void sdf_scene_upload_scene_nodes_to_gpu(const SDF_Scene* scene)
 
             data.material = node.primitive.material;
         } else {
-            data.op    = node.operation.type;
-            data.left  = node.operation.prim_a;
-            data.right = node.operation.prim_b;
+            data.op    = node.object.type;
+            data.left  = node.object.prim_a;
+            data.right = node.object.prim_b;
         }
 
         glBufferSubData(GL_UNIFORM_BUFFER, i * sizeof(SDF_NodeGPUData), sizeof(SDF_NodeGPUData), &data);

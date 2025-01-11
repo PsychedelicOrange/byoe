@@ -218,7 +218,7 @@ void main() {
     
     if(hit.d < RAY_MAX_STEP)
     {
-        vec3 lightPos = vec3(0, 5, 5);
+        vec3 lightPos = vec3(2, 5, 5);
 
         vec3 p = ray.ro + ray.rd * hit.d;
 
@@ -238,6 +238,8 @@ void main() {
         gl_FragDepth = hit.d / RAY_MAX_STEP;
 
         FragColor = vec4(diffuseColor + specular * 10, 1.0f);  
+
+        // FragColor = vec4(p, 1.0f); 
     }
     else
         gl_FragDepth = 1;
