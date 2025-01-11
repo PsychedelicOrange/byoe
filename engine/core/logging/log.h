@@ -26,7 +26,7 @@
 } while(0)
 
 #define LOG_ERROR(...) do { \
-    fprintf(stderr, "[BYOE] - ERROR: "); \
+    fprintf(stderr,COLOR_RED "[BYOE] - ERROR: "); \
     printf(__VA_ARGS__); \
     printf(COLOR_RESET); \
 } while(0)
