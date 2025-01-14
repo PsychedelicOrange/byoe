@@ -7,7 +7,8 @@ typedef enum menu_action{
     menu_new,
     menu_save,
     menu_save_as,
-    menu_exit
+    menu_exit,
+    menu_view_sidebar
 }menu_action;
 
 typedef struct menu_state{

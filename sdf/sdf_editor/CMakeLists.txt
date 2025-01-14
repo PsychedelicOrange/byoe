@@ -52,5 +52,5 @@ target_include_directories(sdf-editor PUBLIC
 if(MSVC)
   target_compile_options(sdf-editor PRIVATE /W4 /WX /wd4996)
 else()
-  target_compile_options(sdf-editor PRIVATE )
+  target_compile_options(sdf-editor PRIVATE -g)
 endif()

@@ -45,14 +45,41 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	browser.operation = browser_save;
 	file_browser_init(&browser, &media);
     }
-    // exit dialog
+    // exit app
+    if (key == GLFW_KEY_Q && action == GLFW_PRESS && (mods & GLFW_MOD_CONTROL) ){
+	exit(1);
+    }
+    // exit ui
     if(key == GLFW_KEY_ESCAPE && action == GLFW_PRESS){
 	if(browser.show) browser.show = 0;
 	if(menu.show) menu.show = 0;
 	if(sidebar.show) sidebar.show = 0;
     }
+    // toggle menu bar
+    if(key == GLFW_KEY_LEFT_ALT && action == GLFW_RELEASE){
+	    //keyPressed=0;
+	menu.show = !menu.show;
+	if(menu.show){
+	    sidebar.y = WINDOW_HEIGHT * 0.03;
+	    sidebar.height = WINDOW_HEIGHT * 0.97;
+	}else{
+	    sidebar.height = WINDOW_HEIGHT;
+	    sidebar.y = 0;
+	}
+    }
+    // toggle sidebar
+    if(key == GLFW_KEY_TAB && action == GLFW_PRESS ){
+	sidebar.show = !sidebar.show;
+    }
 
 }
+void drop_callback(GLFWwindow* window, int count, const char** paths)
+{
+    /*int i;*/
+    /*for (i = 0;  i < count;  i++)*/
+        //handle_dropped_file(paths[0]);
+}
+
 static void error_callback(int e, const char *d)
 {fprintf(stderr,"Error %d: %s\n", e, d);}
 
@@ -61,8 +88,15 @@ void init_glad(){
     {
         LOG_ERROR("Failed to initialize glad");
     }
-}
+} 
 
+void window_size_callback(GLFWwindow* window, int width, int height)
+{
+    menu.window[0] = width;
+    menu.window[1] = height;
+    sidebar.height = height;
+    sidebar.width = width * .3;
+}
 
 GLFWwindow* create_glfw_window(){
     /* GLFW */
@@ -79,6 +113,8 @@ GLFWwindow* create_glfw_window(){
 #endif
     GLFWwindow* win = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "sdf_editor", NULL, NULL);
     glfwSetKeyCallback(win, key_callback);
+    glfwSetDropCallback(win, drop_callback);
+    glfwSetWindowSizeCallback(win, window_size_callback);
     glfwMakeContextCurrent(win);
     return win;
 }
@@ -86,7 +122,7 @@ GLFWwindow* create_glfw_window(){
 
 void load_fonts_cursor(struct nk_glfw* glfw, struct nk_context* ctx)
 {
-    int use_custom_font = 0;
+    int use_custom_font = 1;
     struct nk_font_atlas *atlas;
     nk_glfw3_font_stash_begin(glfw, &atlas);
     if(use_custom_font){
@@ -135,25 +171,11 @@ int main(void)
     /*editor layout state*/
     menu = menu_default(window);
     sidebar = sidebar_default(window);
-    /*editor input state*/
-    float keyPressed = 0;
 
     while (!glfwWindowShouldClose(win))
     {
         /* Input */
         glfwPollEvents();
-	if(glfwGetKey(win,GLFW_KEY_LEFT_ALT) == GLFW_PRESS){keyPressed = 1;}
-	if(glfwGetKey(win,GLFW_KEY_LEFT_ALT) == GLFW_RELEASE && keyPressed == 1){
-	    keyPressed=0;
-	    menu.show = !menu.show;
-	    if(menu.show){
-		sidebar.y = WINDOW_HEIGHT * 0.03;
-		sidebar.height = WINDOW_HEIGHT * 0.97;
-	    }else{
-		sidebar.height = WINDOW_HEIGHT;
-		sidebar.y = 0;
-	    }
-	}
 
 	/* Handle GUI state changes */
 	switch (menu.current_action){
@@ -167,17 +189,18 @@ int main(void)
 		    glfwTerminate();
 		    exit(1);
 		break;
-	    case menu_save:
-		break;
 	    case menu_save_as:
 		    file_browser_free(&browser);
 		    browser.operation = browser_save;
 		    file_browser_init(&browser, &media);
 		    menu.current_action = 0;
 		break;
-	    case menu_new:
+	    case menu_view_sidebar:
+		sidebar.show = !sidebar.show;
+		menu.current_action = 0;
 		break;
 	    default:
+		menu.current_action = 0;
 		break;
 	}
 	switch(browser.action){
@@ -196,8 +219,8 @@ int main(void)
 
 	/* Draw GUI */
         nk_glfw3_new_frame(&glfw);
-	menu_draw(ctx,&menu);
 	sidebar_draw(ctx,&sidebar);
+	menu_draw(ctx,&menu);
 	file_browser_run(&browser, ctx);
 
 	/* Draw */
