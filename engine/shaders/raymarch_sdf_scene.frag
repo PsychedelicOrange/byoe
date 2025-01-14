@@ -117,11 +117,14 @@ struct hit_info
     SDF_Material material;
 };
 
+struct blend_node {
+    int blend;
+    int node;
+};
+
 hit_info sceneSDF(vec3 p) {
     hit_info hit;
     hit.d = RAY_MAX_STEP;
-
-    int blend_mode = SDF_BLEND_UNION;
 
     // TEST CODE!!! TEST CODE!!! TEST CODE!!!
     // hit.material.diffuse = vec4(1, 0, 0, 1);
@@ -135,15 +138,15 @@ hit_info sceneSDF(vec3 p) {
     // TEST CODE!!! TEST CODE!!! TEST CODE!!!
 
     // Explicit stack to emulate tree traversal
-    int stack[MAX_STACK_SIZE];
+    blend_node stack[MAX_STACK_SIZE];
     int sp = 0; // Stack pointer
-    stack[sp++] = curr_draw_node_idx;
+    stack[sp++] = blend_node(SDF_BLEND_UNION, curr_draw_node_idx);
 
     while (sp > 0) {
-        int node_index = stack[--sp]; // Pop node index
-        if (node_index < 0) continue;
+        blend_node curr_blend_node = stack[--sp]; // Pop node index
+        if (curr_blend_node.node < 0) continue;
 
-        SDF_Node node = nodes[node_index];
+        SDF_Node node = nodes[curr_blend_node.node];
 
         float d = RAY_MAX_STEP;
         // Evaluate the current node
@@ -155,24 +158,22 @@ hit_info sceneSDF(vec3 p) {
             }
 
             // Apply the blend b/w primitives
-            if (blend_mode == SDF_BLEND_UNION) {
+            if (curr_blend_node.blend == SDF_BLEND_UNION) {
                 hit.d = unionOp(hit.d, d);
-            } else if (blend_mode == SDF_BLEND_SMOOTH_UNION) {
+            } else if (curr_blend_node.blend == SDF_BLEND_SMOOTH_UNION) {
                 hit.d = opSmoothUnion(hit.d, d, 0.5f);
-            } else if (blend_mode == SDF_BLEND_INTERSECTION) {
+            } else if (curr_blend_node.blend == SDF_BLEND_INTERSECTION) {
                 hit.d = intersectOp(hit.d, d);
-            } else if (blend_mode == SDF_BLEND_SUBTRACTION) {
+            } else if (curr_blend_node.blend == SDF_BLEND_SUBTRACTION) {
                 hit.d = subtractOp(hit.d, d);
             }
         }
         // it it's an Object process to blend and do stuff etc.
-        else {
-            blend_mode = node.blend;
-            
+        else {            
             // Push child nodes onto the stack
             if (sp < MAX_STACK_SIZE - 2) {
-                if (node.prim_b >= 0) stack[sp++] = node.prim_b;
-                if (node.prim_a >= 0) stack[sp++] = node.prim_a;
+                if (node.prim_b >= 0) stack[sp++] = blend_node(node.blend, node.prim_b);
+                if (node.prim_a >= 0) stack[sp++] = blend_node(node.blend, node.prim_a);
             }
         }
 
