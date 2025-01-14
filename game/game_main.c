@@ -100,23 +100,23 @@ int game_main(void)
             .material = {.diffuse = {0.25f, 0.47f, 0.34f, 1.0f}}};
         int prim1 = sdf_scene_add_primitive(scene, sphere);
 
-        sphere.type               = SDF_PRIM_Cube;
-        sphere.transform.position = (vec3s){{demoStartX, -0.2f, 0.25f}};
-        sphere.transform.scale    = (vec3s){{0.1f, 0.1f, 0.1f}};
-        int prim2                 = sdf_scene_add_primitive(scene, sphere);
+        // sphere.type               = SDF_PRIM_Cube;
+        // sphere.transform.position = (vec3s){{demoStartX, -0.2f, 0.25f}};
+        // sphere.transform.scale    = (vec3s){{0.1f, 0.1f, 0.1f}};
+        // int prim2                 = sdf_scene_add_primitive(scene, sphere);
 
-        SDF_Object meta_cast = {
-            .type   = SDF_BLEND_SMOOTH_UNION,
-            .prim_a = prim1,
-            .prim_b = prim2};
+        // SDF_Object meta_cast = {
+        //     .type   = SDF_BLEND_SMOOTH_UNION,
+        //     .prim_a = prim1,
+        //     .prim_b = prim2};
 
-        int cast_prim = sdf_scene_add_object(scene, meta_cast);
-        (void) cast_prim;
+        // int cast_prim = sdf_scene_add_object(scene, meta_cast);
+        // (void) cast_prim;
 
         SDF_Object cube_mold = {
             .type   = SDF_BLEND_SUBTRACTION,
-            .prim_a = cube_prim,
-            .prim_b = cast_prim};
+            .prim_b = cube_prim,
+            .prim_a = prim1};
         sdf_scene_add_object(scene, cube_mold);
     }
 

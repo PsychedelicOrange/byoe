@@ -9,6 +9,11 @@
 
 #define MAX_STACK_SIZE 32
 
+#define SDF_BLEND_UNION 0
+#define SDF_BLEND_SMOOTH_UNION 1
+#define SDF_BLEND_INTERSECTION 2
+#define SDF_BLEND_SUBTRACTION 3
+
 ////////////////////////////////////////////////////////////////////////////////////////
 // Types
 struct Ray {
@@ -81,7 +86,7 @@ float intersectOp(float d1, float d2) {
 }
 
 float subtractOp(float d1, float d2) {
-    return max(d1, -d2);
+    return max(-d1, d2);
 }
 
 float opSmoothUnion( float d1, float d2, float k )
@@ -112,34 +117,34 @@ struct hit_info
     SDF_Material material;
 };
 
-struct blend_node {
-    int blend;
-    int node;
-};
-
 hit_info sceneSDF(vec3 p) {
     hit_info hit;
     hit.d = RAY_MAX_STEP;
 
+    int blend_mode = SDF_BLEND_UNION;
+
     // TEST CODE!!! TEST CODE!!! TEST CODE!!!
     // hit.material.diffuse = vec4(1, 0, 0, 1);
-    // float d = sphereSDF(p, vec3(1, 1, 0), 1.5f);
+    // float d = RAY_MAX_STEP;
+    // d = sphereSDF(p, vec3(1, 1, 0), 1.5f);
     // hit.d = unionOp(hit.d, d);
-    // d = sphereSDF(p, vec3(0, 0, 0), 1.5f);
-    // hit.d = intersectOp(hit.d, d);
+    // d = RAY_MAX_STEP;
+    // d = boxSDF(p, vec3(0, 0, 0), vec3(1, 1, 1));
+    // hit.d = subtractOp(hit.d, d);
     // return hit;
     // TEST CODE!!! TEST CODE!!! TEST CODE!!!
 
     // Explicit stack to emulate tree traversal
-    blend_node stack[MAX_STACK_SIZE];
+    int stack[MAX_STACK_SIZE];
     int sp = 0; // Stack pointer
-    stack[sp++] = blend_node(0, curr_draw_node_idx);
+    stack[sp++] = curr_draw_node_idx;
 
     while (sp > 0) {
-        blend_node node_index = stack[--sp]; // Pop node index
-        if (node_index.node < 0) continue;
+        int node_index = stack[--sp]; // Pop node index
+        if (node_index < 0) continue;
 
-        SDF_Node node = nodes[node_index.node];
+        SDF_Node node = nodes[node_index];
+
         float d = RAY_MAX_STEP;
         // Evaluate the current node
         if(node.nodeType == 0) {
@@ -147,29 +152,27 @@ hit_info sceneSDF(vec3 p) {
                 d = sphereSDF(p, node.pos.xyz, node.scale.x);
             } else if (node.primType == 1) { // Box
                 d = boxSDF(p, node.pos.xyz, node.scale.xyz);
-            } else {
-                d = RAY_MAX_STEP; // Default for unknown types
             }
 
             // Apply the blend b/w primitives
-            if (node_index.blend == 0) {
+            if (blend_mode == SDF_BLEND_UNION) {
                 hit.d = unionOp(hit.d, d);
-            } else if (node_index.blend == 1) {
+            } else if (blend_mode == SDF_BLEND_SMOOTH_UNION) {
                 hit.d = opSmoothUnion(hit.d, d, 0.5f);
-            } else if (node_index.blend == 2) {
+            } else if (blend_mode == SDF_BLEND_INTERSECTION) {
+                hit.d = intersectOp(hit.d, d);
+            } else if (blend_mode == SDF_BLEND_SUBTRACTION) {
                 hit.d = subtractOp(hit.d, d);
-            } else if (node_index.blend == 3) {
-                hit.d = subtractOp(hit.d, d);
-            } else {
-                hit.d = RAY_MAX_STEP;
             }
         }
         // it it's an Object process to blend and do stuff etc.
         else {
+            blend_mode = node.blend;
+            
             // Push child nodes onto the stack
             if (sp < MAX_STACK_SIZE - 2) {
-                if (node.prim_b >= 0) stack[sp++] = blend_node(node.blend, node.prim_b);
-                if (node.prim_a >= 0) stack[sp++] = blend_node(node.blend, node.prim_a);
+                if (node.prim_b >= 0) stack[sp++] = node.prim_b;
+                if (node.prim_a >= 0) stack[sp++] = node.prim_a;
             }
         }
 
@@ -239,7 +242,7 @@ void main() {
 
         FragColor = vec4(diffuseColor + specular * 10, 1.0f);  
 
-        // FragColor = vec4(p, 1.0f); 
+        // FragColor = vec4(hit.d, hit.d, hit.d, 1.0f); 
     }
     else
         gl_FragDepth = 1;
