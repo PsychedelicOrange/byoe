@@ -115,8 +115,8 @@ int game_main(void)
 
         SDF_Object cube_mold = {
             .type   = SDF_BLEND_SUBTRACTION,
-            .prim_b = cube_prim,
-            .prim_a = prim1};
+            .prim_a = prim1,
+            .prim_b = cube_prim};
         sdf_scene_add_object(scene, cube_mold);
     }
 
