@@ -85,6 +85,7 @@ static void renderer_internal_sdf_set_raymarch_shader_global_uniforms(void)
 }
 
 //-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+
 bool renderer_sdf_init(renderer_desc desc)
 {
     // use the desc to init the internal state
@@ -173,7 +174,7 @@ void renderer_sdf_draw_scene(const SDF_Scene* scene)
     // TEST! TEST! TEST! TEST! TEST! TEST!
     // Test rendering code, move this to a internal function and hide it
     for (uint32_t i = 0; i < scene->current_node_head; ++i) {
-        // don't draw ref nodes, let the shader do that
+        // q: don't draw ref nodes? a: let the shader do that
         if (scene->nodes[i].is_ref_node) continue;
 
         setUniformInt(g_RendererSDFInternalState.raymarchShaderID, i, "curr_draw_node_idx");

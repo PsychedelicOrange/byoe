@@ -30,6 +30,8 @@ typedef struct bounding_sphere
 // SDF Renderer Structs
 //------------------------
 
+// TODO: Use macro expansion to create sahder defines/const int and enums at the same time
+
 // Add new types here as you need
 typedef enum SDF_PrimitiveType
 {
