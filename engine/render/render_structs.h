@@ -1,115 +1,105 @@
 #ifndef RENDER_STRUCTS_H
 #define RENDER_STRUCTS_H
 
-// TODO: Add defines so as to make this inlcude-able in shaders
+#include "../core/common.h"
 
-#include <stdbool.h>
-#include <stdint.h>
+// TODO: Add defines so as to make this inlcude-able in shaders
+#ifndef SHADER_INCLUDE
+    #include <stdbool.h>
+    #include <stdint.h>
+#endif
 
 #include "../scene/transform.h"
 
+//-----------------------------
+// RayMarching Settings
+#define MAX_STEPS 128
+#define RAY_MIN_STEP 0.01
+#define RAY_MAX_STEP 100.0
+#define EPSILON 0.01
+
+#define MAX_GPU_STACK_SIZE 32
+//-----------------------------
+
 // Docs: https://github.com/PsychedelicOrange/byoe/pull/10
 
-typedef struct color_rgba
-{
-    float r, g, b, a;
-} color_rgba;
+STRUCT(color_rgba,
+    float r, g, b, a;)
 
-typedef struct color_rgb
-{
-    float r, g, b;
-} color_rgb;
+STRUCT(color_rgb,
+    float r, g, b;)
 
-typedef struct bounding_sphere
-{
+STRUCT(bounding_sphere,
     vec3  pos;
-    float radius;
-} bounding_sphere;
+    float radius;)
 
 //------------------------
 // SDF Renderer Structs
 //------------------------
 
-// TODO: Use macro expansion to create sahder defines/const int and enums at the same time
-
-// Add new types here as you need
-typedef enum SDF_PrimitiveType
-{
-    SDF_PRIM_Sphere = 0,
+ENUM(SDF_PrimitiveType,
+    SDF_PRIM_Sphere,
     SDF_PRIM_Cube,
     SDF_PRIM_Capsule,
     SDF_PRIM_Cylinder,
-    // Game Specific Primitives presets!
     SDF_PRIM_Planet,
     SDF_PRIM_Spaceship,
     SDF_PRIM_Bullet,
-    SDF_PRIM_Ghost
-} SDF_PrimitiveType;
+    SDF_PRIM_Ghost)
 
-typedef enum SDF_BlendType
-{
+ENUM(SDF_BlendType,
     SDF_BLEND_UNION,
     SDF_BLEND_SMOOTH_UNION,
     SDF_BLEND_INTERSECTION,
     SDF_BLEND_SUBTRACTION,
-    SDF_BLEND_XOR
-} SDF_BlendType;
+    SDF_BLEND_XOR)
 
-typedef enum SDF_Operation
-{
+ENUM(SDF_Operation,
     SDF_OP_TRANSLATE,
     SDF_OP_ROTATE,
     SDF_OP_SCALE,
     SDF_OP_DISTORTION,
-    SDF_OP_ELONGATION
-} SDF_Operation;
+    SDF_OP_ELONGATION)
+
+ENUM(SDF_NodeType,
+    SDF_NODE_PRIMITIVE,
+    SDF_NODE_OBJECT)
 
 // TODO: If data memory gets too much, push the material to a separate buffer and use a bindless model
-typedef struct SDF_Material
-{
-    vec4 diffuse;
-} SDF_Material;
+STRUCT(SDF_Material,
+    vec4 diffuse;)
 
-typedef struct SDF_Primitive
-{
+STRUCT(SDF_Primitive,
     SDF_PrimitiveType type;
     Transform         transform;    // Position, Rotation, Scale
     SDF_Material      material;
     // add more props here combine them all or use a new struct/union to simplify primitive attributes
     // Or use what psyorange is doing in sdf-editor branch to represent more complex SDF props
     // What if we make them a union for easier user land API and pass packed info the GPU with wrapper functions to intgerpret them?
-} SDF_Primitive;
+    // ex.
+    // union
+    // {
+    //     struct { float capsuleRadius; float capsuleHeight; };
+    //     struct { float cylinderRadius; float cylinderHeight; };
+    //     // Add more shapes as needed.
+    // };
+)
 
 // Blending -> these are blending method b/w two primitives (eg. smooth union, XOR, etc. )  ( again refer iq)
-typedef struct SDF_Object
-{
+STRUCT(SDF_Object,
     SDF_BlendType type;
     int           prim_a;    // Index of the left child in the SDF node pool
     int           prim_b;    // Index of the right child in the SDF node pool
-} SDF_Object;
+)
 
-typedef enum SDF_NodeType
-{
-    SDF_NODE_PRIMITIVE,
-    SDF_NODE_OBJECT
-} SDF_NodeType;
-
-typedef struct SDF_Node
-{
-    SDF_NodeType type;
-    union
-    {
+// This struct cannot be directly translated to the GPU, we need another helper struct to flatten it (defined in sdf_scene.h)
+#ifndef SHADER_INCLUDE
+STRUCT(SDF_Node, SDF_NodeType type; union {
         SDF_Primitive primitive;
-        SDF_Object    object;
-    };
-    bounding_sphere bounds;
-    bool            is_ref_node;
-    bool            is_culled;
-} SDF_Node;
-
+        SDF_Object    object; }; bounding_sphere bounds; bool is_ref_node; bool is_culled;)
+#endif
 // TODO:
 // Operations -> operations can act on primitives and objects alike.
 // (eg. transformation, distortion, elongation, rotation, etc.)
 //( taken from https://iquilezles.org/articles/distfunctions/ )
-
 #endif

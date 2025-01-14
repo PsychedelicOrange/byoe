@@ -7,7 +7,7 @@
 #define RAY_MAX_STEP 100.0
 #define EPSILON 0.01
 
-#define MAX_STACK_SIZE 32
+#define MAX_GPU_STACK_SIZE 32
 
 #define SDF_BLEND_UNION 0
 #define SDF_BLEND_SMOOTH_UNION 1
@@ -126,7 +126,7 @@ hit_info sceneSDF(vec3 p) {
     hit.d = RAY_MAX_STEP;
 
     // Explicit stack to emulate tree traversal
-    blend_node stack[MAX_STACK_SIZE];
+    blend_node stack[MAX_GPU_STACK_SIZE];
     int sp = 0; // Stack pointer
     stack[sp++] = blend_node(SDF_BLEND_UNION, curr_draw_node_idx);
 
@@ -156,10 +156,8 @@ hit_info sceneSDF(vec3 p) {
                 hit.d = subtractOp(hit.d, d);
             }
         }
-        // it it's an Object process to blend and do stuff etc.
         else {            
-            // Push child nodes onto the stack
-            if (sp < MAX_STACK_SIZE - 2) {
+            if (sp < MAX_GPU_STACK_SIZE - 2) {
                 if (node.prim_b >= 0) stack[sp++] = blend_node(node.blend, node.prim_b);
                 if (node.prim_a >= 0) stack[sp++] = blend_node(node.blend, node.prim_a);
             }

@@ -25,3 +25,25 @@
 #define COLOR_YELLOW "\x1b[33m"
 #define COLOR_BLUE   "\x1b[34m"
 #define COLOR_PINK   "\x1b[35m"
+
+#ifdef SHADER_INCLUDE
+    #define ENUM(name, ...) enum name \
+    {                                 \
+        __VA_ARGS__                   \
+    };
+    #define STRUCT(name, ...) \
+        struct name           \
+        {                     \
+            __VA_ARGS__       \
+        };
+#else
+    #define ENUM(name, ...) typedef enum name \
+    {                                         \
+        __VA_ARGS__                           \
+    } name;
+    #define STRUCT(name, ...) \
+        typedef struct name   \
+        {                     \
+            __VA_ARGS__       \
+        } name;
+#endif
