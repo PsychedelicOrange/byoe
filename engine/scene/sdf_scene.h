@@ -9,31 +9,6 @@
 #define MAX_SDF_NODES 1024    // same as max game objects
 #define MAX_SDF_OPS   32      // Max no of SDF operations that can be done to combine complex shapes
 
-typedef struct bounding_sphere
-{
-    vec3  pos;
-    float radius;
-} bounding_sphere;
-
-typedef enum SDF_NodeType
-{
-    SDF_NODE_PRIMITIVE,
-    SDF_NODE_OBJECT
-} SDF_NodeType;
-
-typedef struct SDF_Node
-{
-    SDF_NodeType type;
-    union
-    {
-        SDF_Primitive primitive;
-        SDF_Object    object;
-    };
-    bounding_sphere bounds;
-    bool            is_ref_node;
-    bool            is_culled;
-} SDF_Node;
-
 // Wen need to flatten the SDF_Node to pass it to GPU, this structs helps with that
 typedef struct SDF_NodeGPUData
 {

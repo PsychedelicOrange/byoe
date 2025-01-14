@@ -1,25 +1,14 @@
 #ifndef RENDER_STRUCTS_H
 #define RENDER_STRUCTS_H
 
+// TODO: Add defines so as to make this inlcude-able in shaders
+
 #include <stdbool.h>
 #include <stdint.h>
 
 #include "../scene/transform.h"
 
 // Docs: https://github.com/PsychedelicOrange/byoe/pull/10
-
-typedef struct VertexBuffer
-{
-    uint32_t count;
-    uint32_t size;
-    void*    data;
-} VertexBuffer;
-
-typedef struct IndexBuffer
-{
-    uint32_t  count;
-    uint16_t* data;    // We are using 16-bit indices
-} IndexBuffer;
 
 typedef struct color_rgba
 {
@@ -30,6 +19,12 @@ typedef struct color_rgb
 {
     float r, g, b;
 } color_rgb;
+
+typedef struct bounding_sphere
+{
+    vec3  pos;
+    float radius;
+} bounding_sphere;
 
 //------------------------
 // SDF Renderer Structs
@@ -90,6 +85,25 @@ typedef struct SDF_Object
     int           prim_a;    // Index of the left child in the SDF node pool
     int           prim_b;    // Index of the right child in the SDF node pool
 } SDF_Object;
+
+typedef enum SDF_NodeType
+{
+    SDF_NODE_PRIMITIVE,
+    SDF_NODE_OBJECT
+} SDF_NodeType;
+
+typedef struct SDF_Node
+{
+    SDF_NodeType type;
+    union
+    {
+        SDF_Primitive primitive;
+        SDF_Object    object;
+    };
+    bounding_sphere bounds;
+    bool            is_ref_node;
+    bool            is_culled;
+} SDF_Node;
 
 // TODO:
 // Operations -> operations can act on primitives and objects alike.
