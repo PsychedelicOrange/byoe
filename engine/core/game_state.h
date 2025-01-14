@@ -24,9 +24,9 @@ typedef struct GameState
     bool     keycodes[512];
     Camera   camera;
     // Game context specific stuff
-    vec4     rocks[MAX_ROCKS_COUNT];
-    vec4     rocks_visible[MAX_ROCKS_COUNT];
-    int      rocks_visible_count;
+    vec4 rocks[MAX_ROCKS_COUNT];
+    vec4 rocks_visible[MAX_ROCKS_COUNT];
+    int  rocks_visible_count;
 } GameState;
 
 void       gamestate_update(struct GLFWwindow* window);

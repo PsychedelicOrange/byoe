@@ -1,10 +1,12 @@
 #include <cglm/cglm.h>   /* for inline */
 #include <cglm/struct.h> /* struct api */
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
-#include <stdbool.h>
 #include <stdlib.h>
 
+#include "../render/render_utils.h"
+#include "../render/renderer_sdf.h"
 #include "frustum.h"
 #include "game_registry.h"
 #include "game_state.h"
@@ -14,8 +16,6 @@
 #include "scripting.h"
 #include "shader.h"
 #include "simd/platform_caps.h"
-#include "../render/render_utils.h"
-#include "../render/renderer_sdf.h"
 
 #include <GLFW/glfw3.h>
 
@@ -46,11 +46,11 @@ int main(int argc, char** argv)
     render_utils_init_glad();
 
     renderer_desc desc;
-    desc.width = INIT_SCR_WIDTH;
-    desc.height = INIT_SCR_HEIGHT;
-    desc.window = g_GameWindow;
+    desc.width   = INIT_SCR_WIDTH;
+    desc.height  = INIT_SCR_HEIGHT;
+    desc.window  = g_GameWindow;
     bool success = renderer_sdf_init(desc);
-    if(!success){
+    if (!success) {
         LOG_ERROR("Error initializing SDF renderer");
         return -1;
     }

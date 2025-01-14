@@ -4,6 +4,8 @@
 #include "../render/render_structs.h"
 #include "game_state.h"    // camera
 
+// Docs: https://github.com/PsychedelicOrange/byoe/pull/10
+
 #define MAX_SDF_NODES 1024    // same as max game objects
 #define MAX_SDF_OPS   32      // Max no of SDF operations that can be done to combine complex shapes
 
@@ -25,7 +27,7 @@ typedef struct SDF_Node
     union
     {
         SDF_Primitive primitive;
-        SDF_Object object;
+        SDF_Object    object;
     };
     bounding_sphere bounds;
     bool            is_ref_node;
@@ -38,17 +40,17 @@ typedef struct SDF_NodeGPUData
     int nodeType;
 
     // SDF_Primitive GPU View
-    int   primType;
+    int primType;
     int _pad[2];
 
     vec4s pos;
     vec4s scale;
 
     // SDF_Operation GPU View
-    int op;
-    int left;     // Index of the left child node
-    int right;    // Index of the right child node
-    int is_ref_node;
+    int          op;
+    int          left;     // Index of the left child node
+    int          right;    // Index of the right child node
+    int          is_ref_node;
     SDF_Material material;
 } SDF_NodeGPUData;
 

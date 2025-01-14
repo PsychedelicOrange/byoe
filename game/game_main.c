@@ -58,22 +58,22 @@ int game_main(void)
         int prim1 = sdf_scene_add_primitive(scene, sphere1);
         (void) prim1;
 
-        sphere1.transform.position = (vec3s){{demoStartX + 0.5f, 0.5f, 0.0f}};
+        sphere1.transform.position = (vec3s) {{demoStartX + 0.5f, 0.5f, 0.0f}};
         int prim2                  = sdf_scene_add_primitive(scene, sphere1);
         (void) prim2;
 
-        sphere1.transform.position = (vec3s){{demoStartX + 1.0f, 0.0f, 0.0f}};
+        sphere1.transform.position = (vec3s) {{demoStartX + 1.0f, 0.0f, 0.0f}};
         int prim3                  = sdf_scene_add_primitive(scene, sphere1);
         (void) prim3;
 
-        sphere1.transform.position = (vec3s){{demoStartX + 0.5f, -0.5f, 0.0f}};
+        sphere1.transform.position = (vec3s) {{demoStartX + 0.5f, -0.5f, 0.0f}};
         int prim4                  = sdf_scene_add_primitive(scene, sphere1);
         (void) prim4;
 
         SDF_Object meta_def = {
             .type   = SDF_BLEND_SMOOTH_UNION,
-            .prim_a = sdf_scene_add_object(scene, (SDF_Object){.type = SDF_BLEND_SMOOTH_UNION, .prim_a = prim1, .prim_b = prim2}),
-            .prim_b = sdf_scene_add_object(scene, (SDF_Object){.type = SDF_BLEND_SMOOTH_UNION, .prim_a = prim3, .prim_b = prim4})};
+            .prim_a = sdf_scene_add_object(scene, (SDF_Object) {.type = SDF_BLEND_SMOOTH_UNION, .prim_a = prim1, .prim_b = prim2}),
+            .prim_b = sdf_scene_add_object(scene, (SDF_Object) {.type = SDF_BLEND_SMOOTH_UNION, .prim_a = prim3, .prim_b = prim4})};
 
         sdf_scene_add_object(scene, meta_def);
         demoStartX += 2.0f;
@@ -101,8 +101,8 @@ int game_main(void)
         int prim1 = sdf_scene_add_primitive(scene, sphere);
 
         sphere.type               = SDF_PRIM_Cube;
-        sphere.transform.position = (vec3s){{demoStartX, -0.2f, 0.25f}};
-        sphere.transform.scale    = (vec3s){{0.1f, 0.1f, 0.1f}};
+        sphere.transform.position = (vec3s) {{demoStartX, -0.2f, 0.25f}};
+        sphere.transform.scale    = (vec3s) {{0.1f, 0.1f, 0.1f}};
         int prim2                 = sdf_scene_add_primitive(scene, sphere);
 
         SDF_Object meta_cast = {

@@ -143,7 +143,7 @@ void renderer_sdf_render(void)
     // Scene Culling is done before any rendering begins (might move it to update part of engine loop)
 
     // clear with a pink color
-    renderer_internal_sdf_clear_screen((color_rgba){0.0f, 0.0f, 0.0f, 1.0f});
+    renderer_internal_sdf_clear_screen((color_rgba) {0.0f, 0.0f, 0.0f, 1.0f});
 
     renderer_internal_sdf_set_pipeline_settings();
 
@@ -173,9 +173,8 @@ void renderer_sdf_draw_scene(const SDF_Scene* scene)
     // TEST! TEST! TEST! TEST! TEST! TEST!
     // Test rendering code, move this to a internal function and hide it
     for (uint32_t i = 0; i < scene->current_node_head; ++i) {
-
         // don't draw ref nodes, let the shader do that
-        if(scene->nodes[i].is_ref_node) continue;
+        if (scene->nodes[i].is_ref_node) continue;
 
         setUniformInt(g_RendererSDFInternalState.raymarchShaderID, i, "curr_draw_node_idx");
         // Draw the screen quad

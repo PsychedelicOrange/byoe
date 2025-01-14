@@ -7,7 +7,7 @@
 #include <cglm/cglm.h>
 #include <glad/glad.h>
 
-#include <string.h> // memset
+#include <string.h>    // memset
 
 static uint32_t s_GPUSceneNodesUBO;
 
@@ -71,7 +71,7 @@ int sdf_scene_add_object(SDF_Scene* scene, SDF_Object operation)
 {
     SDF_Node node = {
         .type        = SDF_NODE_OBJECT,
-        .object   = operation,
+        .object      = operation,
         .is_ref_node = false,
         .is_culled   = false};
 
@@ -107,22 +107,20 @@ void sdf_scene_upload_scene_nodes_to_gpu(const SDF_Scene* scene)
         SDF_NodeGPUData data;
         memset(&data, 0, sizeof(SDF_NodeGPUData));
 
-        data.nodeType = node.type;
+        data.nodeType    = node.type;
         data.is_ref_node = node.is_ref_node;
         if (node.type == SDF_NODE_PRIMITIVE) {
             data.primType = node.primitive.type;
-            glm_vec4_copy((vec4){node.primitive.transform.position.x,
+            glm_vec4_copy((vec4) {node.primitive.transform.position.x,
                               node.primitive.transform.position.y,
                               node.primitive.transform.position.z,
-                              0.0f
-                              },
+                              0.0f},
                 data.pos.raw);
-            glm_vec4_copy((vec4){node.primitive.transform.scale.x,
-                            node.primitive.transform.scale.y,
-                            node.primitive.transform.scale.z,
-                            0.0f
-                            },
-            data.scale.raw);
+            glm_vec4_copy((vec4) {node.primitive.transform.scale.x,
+                              node.primitive.transform.scale.y,
+                              node.primitive.transform.scale.z,
+                              0.0f},
+                data.scale.raw);
 
             data.material = node.primitive.material;
         } else {

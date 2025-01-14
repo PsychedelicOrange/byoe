@@ -110,7 +110,6 @@ float opSmoothIntersection( float d1, float d2, float k )
 // TODO: Define other operation funtions here
 ////////////////////////////////////////////////////////////////////////////////////////
 // Iterative Scene SDF Evaluation
-
 struct hit_info
 {
     float d;
@@ -125,17 +124,6 @@ struct blend_node {
 hit_info sceneSDF(vec3 p) {
     hit_info hit;
     hit.d = RAY_MAX_STEP;
-
-    // TEST CODE!!! TEST CODE!!! TEST CODE!!!
-    // hit.material.diffuse = vec4(1, 0, 0, 1);
-    // float d = RAY_MAX_STEP;
-    // d = sphereSDF(p, vec3(1, 1, 0), 1.5f);
-    // hit.d = unionOp(hit.d, d);
-    // d = RAY_MAX_STEP;
-    // d = boxSDF(p, vec3(0, 0, 0), vec3(1, 1, 1));
-    // hit.d = subtractOp(hit.d, d);
-    // return hit;
-    // TEST CODE!!! TEST CODE!!! TEST CODE!!!
 
     // Explicit stack to emulate tree traversal
     blend_node stack[MAX_STACK_SIZE];

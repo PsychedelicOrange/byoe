@@ -5,8 +5,8 @@
 #include <cglm/struct.h>
 
 unsigned int create_shader_compute(char* computePath);
-unsigned int create_shader(char * vertexPath, char* shaderPath);
-unsigned int compile_shader(char * shaderCode, int shaderType);
+unsigned int create_shader(char* vertexPath, char* shaderPath);
+unsigned int compile_shader(char* shaderCode, int shaderType);
 
 unsigned int create_program_compute(unsigned int computeShader);
 unsigned int create_program(unsigned int vertexShader, unsigned int fragmentShader);

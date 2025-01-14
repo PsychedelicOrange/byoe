@@ -11,8 +11,8 @@ typedef struct SDF_Scene SDF_Scene;
 
 typedef struct renderer_desc
 {
-    uint32_t width;
-    uint32_t height;
+    uint32_t           width;
+    uint32_t           height;
     struct GLFWwindow* window;
 } renderer_desc;
 
