@@ -8,9 +8,8 @@ int main(int argc, char** argv) {
     (void)argv;
 
     // Print cpu/os info
-    cpu_caps_print_info();
-    os_caps_print_info();
-
+    // cpu_caps_print_info();
+    // os_caps_print_info();
 
     // Benchmarks
     benchmark_hash_map();

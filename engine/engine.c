@@ -16,8 +16,8 @@ void engine_init(struct GLFWwindow** gameWindow, uint32_t width, uint32_t height
     LOG_SUCCESS("Welcome to Build your own engine! BYOE!!");
     LOG_SUCCESS("\tversion: %s", engine_get_version_string());
 
-    cpu_caps_print_info();
-    os_caps_print_info();
+    // cpu_caps_print_info();
+    // os_caps_print_info();
 
     // Follow this order strictly to avoid load crashing
     render_utils_init_glfw();
@@ -47,25 +47,25 @@ void engine_init(struct GLFWwindow** gameWindow, uint32_t width, uint32_t height
     ////////////////////////////////////////////////////////
 }
 
-void engine_destroy()
+void engine_destroy(void)
 {
     renderer_sdf_destroy();
     game_registry_destroy();
     LOG_SUCCESS("Exiting BYOE...Byee!");
 }
 
-bool engine_should_quit()
+bool engine_should_quit(void)
 {
     return glfwWindowShouldClose(g_GameWindowRef);
 }
 
-void engine_request_quit()
+void engine_request_quit(void)
 {
     if (g_GameWindowRef)
         glfwSetWindowShouldClose(g_GameWindowRef, true);
 }
 
-void engine_run()
+void engine_run(void)
 {
     while (!engine_should_quit()) {
         float currentFrame = (float) glfwGetTime();

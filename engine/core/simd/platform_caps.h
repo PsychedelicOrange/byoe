@@ -109,6 +109,8 @@ static inline int cpu_detect_instruction_set(void)
     return supported;
 }
 
+#if 0
+
 static void cpu_caps_print_info(void)
 {
 #if defined(_WIN32)
@@ -199,5 +201,5 @@ static void os_caps_print_info(void)
     LOG_INFO("Operating System: macOS %s", osVersion);
 #endif
 }
-
+#endif
 #endif    // PLATFORM_DEFS_H

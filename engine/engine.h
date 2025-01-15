@@ -49,13 +49,13 @@ typedef struct engine_version
 
 void engine_init(struct GLFWwindow** gameWindow, uint32_t width, uint32_t height);
 
-void engine_destroy();
+void engine_destroy(void);
 
-bool engine_should_quit();
+bool engine_should_quit(void);
 
-void engine_request_quit();
+void engine_request_quit(void);
 
-void engine_run();
+void engine_run(void);
 
 float engine_get_delta_time(void);
 

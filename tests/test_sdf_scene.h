@@ -12,7 +12,7 @@ static const float YAW     = -90.0f;
 static const float PITCH   = 0.0f;
 static vec3s       WorldUp = {{0, 1, 0}};
 
-void setup_test_camera()
+void setup_test_camera(void)
 {
     GameState* gameState = gamestate_get_global_instance();
     Camera*    camera    = &gameState->camera;
@@ -56,7 +56,7 @@ void setup_test_camera()
     glm_look(camera->position.raw, camera->front.raw, WorldUp.raw, camera->lookAt.raw);
 }
 
-void setup_sdf_test_scene()
+void setup_sdf_test_scene(void)
 {
     setup_test_camera();
 
@@ -170,7 +170,7 @@ void setup_sdf_test_scene()
     renderer_sdf_set_scene(scene);
 }
 
-int game_main()
+int game_main(void)
 {
     setup_sdf_test_scene();
 
@@ -317,6 +317,11 @@ void test_sdf_scene(void)
 
         TEST_END();
 
-        ASSERT_CON(compare_ppm_files("./tests/test_sdf_scene_golden_image.ppm", "./tests/test_sdf_scene.ppm"), test_case, "Testing Engine Start/Render/Close and validating test scene");
+        // Since apple devices have higher DPI we need a seperate image
+        #ifndef __APPLE__
+            ASSERT_CON(compare_ppm_files("./tests/test_sdf_scene_golden_image.ppm", "./tests/test_sdf_scene.ppm"), test_case, "Testing Engine Start/Render/Close and validating test scene");
+        #else 
+            ASSERT_CON(compare_ppm_files("./tests/test_sdf_scene_golder_image_mac.ppm", "./tests/test_sdf_scene.ppm"), test_case, "Testing Engine Start/Render/Close and validating test scene");
+        #endif 
     }
 }
