@@ -17,7 +17,7 @@
 #define SDF_BLEND_XOR                   3
 #define SDF_BLEND_SMOOTH_UNION          4
 #define SDF_BLEND_SMOOTH_INTERSECTION   5
-#define SDF_BLEND_SMOOTH_SUBTRACTIO     6
+#define SDF_BLEND_SMOOTH_SUBTRACTION    6
 
 ////////////////////////////////////////////////////////////////////////////////////////
 // Types
@@ -404,13 +404,10 @@ hit_info sceneSDF(vec3 p) {
                 hit.d = xorBlend(hit.d, d);
             } else if (curr_blend_node.blend == SDF_BLEND_SMOOTH_UNION) {
                 hit.d = smoothUnionBlend(hit.d, d, 0.5f);
-            } else if (curr_blend_node.blend == SDF_BLEND_SUBTRACTION) {
-                hit.d = subtractBlend(hit.d, d);
-             } else if (curr_blend_node.blend == SDF_BLEND_SUBTRACTION) {
-                hit.d = subtractBlend(hit.d, d);
-            }
-             } else if (curr_blend_node.blend == SDF_BLEND_SUBTRACTION) {
-                hit.d = subtractBlend(hit.d, d);
+            } else if (curr_blend_node.blend == SDF_BLEND_SMOOTH_INTERSECTION) {
+                hit.d = smoothIntersectionBlend(hit.d, d, 0.5f);
+            } else if (curr_blend_node.blend == SDF_BLEND_SMOOTH_SUBTRACTION) {
+                hit.d = smoothSubtractionBlend(hit.d, d, 0.5f);
             }
         }
         else {            
