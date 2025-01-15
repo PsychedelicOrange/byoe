@@ -95,10 +95,15 @@ STRUCT(SDF_Object,
 
 // This struct cannot be directly translated to the GPU, we need another helper struct to flatten it (defined in sdf_scene.h)
 #ifndef SHADER_INCLUDE
-STRUCT(
-    SDF_Node, SDF_NodeType type; union {
+STRUCT(SDF_Node, 
+    SDF_NodeType type; 
+    union {
         SDF_Primitive primitive;
-        SDF_Object    object; }; bounding_sphere bounds; bool is_ref_node; bool is_culled;)
+        SDF_Object    object; 
+    }; 
+    bounding_sphere bounds; 
+    bool is_ref_node; 
+    bool is_culled;)
 #endif
 // TODO:
 // Operations -> operations can act on primitives and objects alike.

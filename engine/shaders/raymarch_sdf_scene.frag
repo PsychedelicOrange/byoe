@@ -2,6 +2,7 @@
 // https://iquilezles.org/articles/distfunctions/
 ////////////////////////////////////////////////////////////////////////////////////////
 // Constants
+// Ray Marching settings
 #define MAX_STEPS 128
 #define RAY_MIN_STEP 0.01
 #define RAY_MAX_STEP 100.0
@@ -9,10 +10,13 @@
 
 #define MAX_GPU_STACK_SIZE 32
 
+// Blend modes
 #define SDF_BLEND_UNION 0
 #define SDF_BLEND_SMOOTH_UNION 1
 #define SDF_BLEND_INTERSECTION 2
 #define SDF_BLEND_SUBTRACTION 3
+
+// Operations
 
 ////////////////////////////////////////////////////////////////////////////////////////
 // Types
@@ -58,20 +62,107 @@ in vec4 farp;
 out vec4 FragColor;
 ////////////////////////////////////////////////////////////////////////////////////////
 // SDF Primitive Functions
-float sphereSDF(vec3 p, vec3 pos, float scale) {
-    return length(p - pos) - scale;
+float sphereSDF(vec3 p, float radius) {
+    return length(p) - radius;
 }
 
-float boxSDF(vec3 p, vec3 pos, vec3 size) {
-    vec3 q = abs(p - pos) - size;
+float boxSDF(vec3 p, vec3 size) {
+    vec3 q = abs(p) - size;
     return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
 }
 
-float sdCapsule( vec3 p, vec3 a, vec3 b, float r )
+float roundBoxSDF( vec3 p, vec3 b, float r )
+{
+  vec3 q = abs(p) - b + r;
+  return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0) - r;
+}
+
+float boxFrameSDF( vec3 p, vec3 b, float e )
+{
+       p = abs(p  )-b;
+  vec3 q = abs(p+e)-e;
+  return min(min(
+      length(max(vec3(p.x,q.y,q.z),0.0))+min(max(p.x,max(q.y,q.z)),0.0),
+      length(max(vec3(q.x,p.y,q.z),0.0))+min(max(q.x,max(p.y,q.z)),0.0)),
+      length(max(vec3(q.x,q.y,p.z),0.0))+min(max(q.x,max(q.y,p.z)),0.0));
+}
+
+float torusSDF( vec3 p, vec2 t )
+{
+  vec2 q = vec2(length(p.xz)-t.x,p.y);
+  return length(q)-t.y;
+}
+
+float cappedTorusSDF( vec3 p, vec2 sc, float ra, float rb)
+{
+  p.x = abs(p.x);
+  float k = (sc.y*p.x>sc.x*p.y) ? dot(p.xy,sc) : length(p.xy);
+  return sqrt( dot(p,p) + ra*ra - 2.0*ra*k ) - rb;
+}
+
+float linkSDF( vec3 p, float le, float r1, float r2 )
+{
+  vec3 q = vec3( p.x, max(abs(p.y)-le,0.0), p.z );
+  return length(vec2(length(q.xy)-r1,q.z)) - r2;
+}
+
+float infCylinderSDF( vec3 p, vec3 c )
+{
+  return length(p.xz-c.xy)-c.z;
+}
+
+float coneSDF( vec3 p, vec2 c, float h )
+{
+  float q = length(p.xz);
+  return max(dot(c.xy,vec2(q,p.y)),-h-p.y);
+}
+
+float planeSDF( vec3 p, vec3 n, float h )
+{
+  // n must be normalized
+  return dot(p,n) + h;
+}
+
+float hexPrismSDF( vec3 p, vec2 h )
+{
+  const vec3 k = vec3(-0.8660254, 0.5, 0.57735);
+  p = abs(p);
+  p.xy -= 2.0*min(dot(k.xy, p.xy), 0.0)*k.xy;
+  vec2 d = vec2(
+       length(p.xy-vec2(clamp(p.x,-k.z*h.x,k.z*h.x), h.x))*sign(p.y-h.x),
+       p.z-h.y );
+  return min(max(d.x,d.y),0.0) + length(max(d,0.0));
+}
+
+float triPrismSDF( vec3 p, vec2 h )
+{
+  vec3 q = abs(p);
+  return max(q.z-h.y,max(q.x*0.866025+p.y*0.5,-p.y)-h.x*0.5);
+}
+
+float capsuleSDF( vec3 p, vec3 a, vec3 b, float r )
 {
   vec3 pa = p - a, ba = b - a;
   float h = clamp( dot(pa,ba)/dot(ba,ba), 0.0, 1.0 );
   return length( pa - ba*h ) - r;
+}
+
+float verticalCapsuleSDF( vec3 p, float h, float r )
+{
+  p.y -= clamp( p.y, 0.0, h );
+  return length( p ) - r;
+}
+
+float cappedCylinderSDF( vec3 p, float h, float r )
+{
+  vec2 d = abs(vec2(length(p.xz),p.y)) - vec2(r,h);
+  return min(max(d.x,d.y),0.0) + length(max(d,0.0));
+}
+
+float roundedCylinderSDF( vec3 p, float ra, float rb, float h )
+{
+  vec2 d = vec2( length(p.xz)-2.0*ra+rb, abs(p.y) - h );
+  return min(max(d.x,d.y),0.0) + length(max(d,0.0)) - rb;
 }
 
 // TODO: Define other SDF functions here
@@ -140,9 +231,9 @@ hit_info sceneSDF(vec3 p) {
         // Evaluate the current node
         if(node.nodeType == 0) {
             if (node.primType == 0) { // Sphere
-                d = sphereSDF(p, node.pos.xyz, node.scale.x);
+                d = sphereSDF(p, node.scale.x);
             } else if (node.primType == 1) { // Box
-                d = boxSDF(p, node.pos.xyz, node.scale.xyz);
+                d = boxSDF(p, node.scale.xyz);
             }
 
             // Apply the blend b/w primitives
