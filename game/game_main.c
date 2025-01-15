@@ -27,8 +27,9 @@ int game_main(void)
     sdf_scene_init(scene);
 
     float demoStartX = -2.0f;
+    (void) demoStartX;
 
-#if 0
+    #if 0
 
     // simple sphere
     {
@@ -88,13 +89,13 @@ int game_main(void)
         sdf_scene_add_object(scene, meta_def);
         demoStartX += 2.0f;
     }
-#endif
+    #endif
     // more complex object (creating a mold in a cube using a smooth union of a cube and sphere)
     {
         SDF_Primitive cube_prim_def = {
             .type      = SDF_PRIM_Cube,
             .transform = {
-                .position = {{demoStartX, 0.0f, 0.0f}},
+                .position = {{0.0f, 0.0f, 0.0f}},
                 .rotation = {0.0f, 0.0f, 0.0f, 1.0f},
                 .scale    = {{0.5f, 0.5f, 0.25f}}},
             .material = {.diffuse = {0.8f, 0.81f, 0.83f, 1.0f}}};
@@ -104,14 +105,14 @@ int game_main(void)
         SDF_Primitive sphere = {
             .type      = SDF_PRIM_Sphere,
             .transform = {
-                .position = {{demoStartX, 0.2f, 0.25f}},
+                .position = {{0.0f, 0.2f, 0.25f}},
                 .rotation = {0.0f, 0.0f, 0.0f, 0.0f},
                 .scale    = {{0.1f, 0.0f, 0.0f}}},
             .material = {.diffuse = {0.25f, 0.47f, 0.34f, 1.0f}}};
         int prim1 = sdf_scene_add_primitive(scene, sphere);
 
         sphere.type               = SDF_PRIM_Cube;
-        sphere.transform.position = (vec3s){{demoStartX, -0.2f, 0.25f}};
+        sphere.transform.position = (vec3s){{0.0f, -0.2f, 0.25f}};
         sphere.transform.scale    = (vec3s){{0.1f, 0.1f, 0.1f}};
         int prim2                 = sdf_scene_add_primitive(scene, sphere);
 
@@ -124,21 +125,21 @@ int game_main(void)
         (void) cast_prim;
 
         SDF_Object cube_mold = {
-            .type   = SDF_BLEND_SUBTRACTION,
+            .type      = SDF_BLEND_SUBTRACTION,
             .transform = {
-                .position = {{5.0f, 0.0f, 0.0f}},
+                .position = {{4.0f, 0.0f, 0.0f}},
                 .rotation = {0.0f, 0.0f, 0.0f, 0.0f},
-                .scale    = {{1.0f, 1.0f, 1.0f}}
-            },
+                .scale    = {{1.0f, 1.0f, 1.0f}}},
             .prim_a = cast_prim,
             .prim_b = cube_prim};
         int mold_idx = sdf_scene_add_object(scene, cube_mold);
         (void) mold_idx;
+        REGISTER_GAME_OBJECT_WITH_NODE_IDX("Player", PlayerData, Player_Start, Player_Update, mold_idx);
     }
 
     renderer_sdf_set_scene(scene);
 
-#else 
+#else
     SDF_Scene* asteroids_game_scene = malloc(sizeof(SDF_Scene));
     sdf_scene_init(asteroids_game_scene);
     renderer_sdf_set_scene(asteroids_game_scene);

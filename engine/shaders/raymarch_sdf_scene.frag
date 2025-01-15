@@ -374,6 +374,8 @@ hit_info sceneSDF(vec3 p) {
     int sp = 0; // Stack pointer
     stack[sp++] = blend_node(SDF_BLEND_UNION, curr_draw_node_idx);
 
+    SDF_Node parent_node = nodes[curr_draw_node_idx];
+
     while (sp > 0) {
         blend_node curr_blend_node = stack[--sp]; // Pop node index
         if (curr_blend_node.node < 0) continue;
@@ -385,9 +387,9 @@ hit_info sceneSDF(vec3 p) {
         // Evaluate the current node
         if(node.nodeType == 0) {
             if (node.primType == 0) { // Sphere
-                d = sphereSDF(p - node.pos.xyz, node.scale.x);
+                d = sphereSDF(p - (node.pos.xyz + parent_node.pos.xyz), node.scale.x);
             } else if (node.primType == 1) { // Box
-                d = boxSDF(p - node.pos.xyz, node.scale.xyz);
+                d = boxSDF(p - (node.pos.xyz + parent_node.pos.xyz), node.scale.xyz);
             }
 
             // Apply the blend b/w primitives
