@@ -18,8 +18,7 @@ typedef struct SDF_NodeGPUData
     int primType;
     int _pad[2];
 
-    vec4s pos;
-    vec4s scale;
+    vec4s pos_scale;
 
     // SDF_Operation GPU View
     int          op;

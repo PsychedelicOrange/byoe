@@ -47,13 +47,13 @@ mat4s gameobject_ptr_get_transform(GameObject* obj);
 void gameobject_get_position(random_uuid_t goUUID, vec3* position);
 void gameobject_get_rotation(random_uuid_t goUUID, versor* rorationQuad);
 void gameobject_get_rotation_euler(random_uuid_t goUUID, vec3* rotationEuler);
-void gameobject_get_scale(random_uuid_t goUUID, vec3* scale);
+void gameobject_get_scale(random_uuid_t goUUID, float* scale);
 
 // Transform Utils
 void gameobject_set_transform(random_uuid_t goUUID, Transform transform);
 void gameobject_set_position(random_uuid_t goUUID, vec3 position);
 void gameobject_set_rotation(random_uuid_t goUUID, versor rorationQuad);
 void gameobject_set_rotation_euler(random_uuid_t goUUID, vec3 rotationEuler);
-void gameobject_set_scale(random_uuid_t goUUID, vec3 scale);
+void gameobject_set_scale(random_uuid_t goUUID, float scale);
 
 #endif

@@ -62,7 +62,7 @@ mat4s gameobject_get_transform(random_uuid_t goUUID)
     Transform* transform = &obj->transform;
 
     mat4s result;
-    create_transform_matrix(&result, transform->position.raw, transform->rotation, transform->scale.raw);
+    create_transform_matrix(&result, transform->position.raw, transform->rotation, (vec3){transform->scale, transform->scale, transform->scale});
 
     return result;
 }
@@ -78,7 +78,7 @@ mat4s gameobject_ptr_get_transform(GameObject* obj)
     Transform* transform = &obj->transform;
 
     mat4s result;
-    create_transform_matrix(&result, transform->position.raw, transform->rotation, transform->scale.raw);
+    create_transform_matrix(&result, transform->position.raw, transform->rotation, (vec3){transform->scale, transform->scale, transform->scale});
 
     return result;
 }
@@ -113,13 +113,13 @@ void gameobject_get_rotation_euler(random_uuid_t goUUID, vec3* rotationEuler)
     }
 }
 
-void gameobject_get_scale(random_uuid_t goUUID, vec3* scale)
+void gameobject_get_scale(random_uuid_t goUUID, float* scale)
 {
     GameObject* obj = game_registry_get_gameobject_by_uuid(goUUID);
     if (obj) {
-        glm_vec3_copy(obj->transform.scale.raw, *scale);
+        *scale = obj->transform.scale;
     } else {
-        glm_vec3_zero(*scale);
+        *scale = 1.0f;
     }
 }
 
@@ -158,11 +158,11 @@ void gameobject_set_rotation_euler(random_uuid_t goUUID, vec3 rotationEuler)
         LOG_ERROR("Failed to update rotation for gameobject %s", uuid_to_string(&goUUID));
 }
 
-void gameobject_set_scale(random_uuid_t goUUID, vec3 scale)
+void gameobject_set_scale(random_uuid_t goUUID, float scale)
 {
     GameObject* go = game_registry_get_gameobject_by_uuid(goUUID);
     if (go != NULL) {
-        glm_vec3_copy(scale, go->transform.scale.raw);
+        go->transform.scale = scale;
     } else
         LOG_ERROR("Failed to update scale for gameobject %s", uuid_to_string(&goUUID));
 }

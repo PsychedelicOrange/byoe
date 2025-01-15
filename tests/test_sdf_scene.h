@@ -64,7 +64,7 @@ void setup_sdf_test_scene(void)
     SDF_Scene* scene = malloc(sizeof(SDF_Scene));
     sdf_scene_init(scene);
 
-    float demoStartX = -2.0f;
+    float demoStartX = -1.25f;
 
     // simple sphere
     {
@@ -73,23 +73,23 @@ void setup_sdf_test_scene(void)
             .transform = {
                 .position = {{demoStartX, 0.0f, 0.0f}},
                 .rotation = {0.0f, 0.0f, 0.0f, 0.0f},
-                .scale    = {{0.25f, 0.0f, 0.0f}}},    // only x is used as radius of the sphere
+                .scale    = 0.25f},    // only x is used as radius of the sphere
             .material = {.diffuse = {0.5f, 0.3f, 0.7f, 1.0f}}};
         sdf_scene_add_primitive(scene, sphere);
-        demoStartX += 1.0f;
+        demoStartX += 0.5f;
     }
 
     // simple cube
     {
         SDF_Primitive cube = {
-            .type      = SDF_PRIM_Cube,
+            .type      = SDF_PRIM_Box,
             .transform = {
                 .position = {{demoStartX, 0.0f, 0.0f}},
                 .rotation = {0.0f, 0.0f, 0.0f, 0.0f},
-                .scale    = {{0.25f, 0.25f, 0.25f}}},
+                .scale    = 0.25f},
             .material = {.diffuse = {0.7f, 0.3f, 0.3f, 1.0f}}};
         sdf_scene_add_primitive(scene, cube);
-        demoStartX += 1.0f;
+        demoStartX += 0.5f;
     }
 
     // Meta ball of 3 spheres
@@ -99,7 +99,7 @@ void setup_sdf_test_scene(void)
             .transform = {
                 .position = {{demoStartX, 0.0f, 0.0f}},
                 .rotation = {0.0f, 0.0f, 0.0f, 0.0f},
-                .scale    = {{0.25f, 0.0f, 0.0f}}},
+                .scale    = 0.25f},
             .material = {.diffuse = {0.5f, 0.7f, 0.3f, 1.0f}}};
         int prim1 = sdf_scene_add_primitive(scene, sphere1);
         (void) prim1;
@@ -122,18 +122,19 @@ void setup_sdf_test_scene(void)
             .prim_b = sdf_scene_add_object(scene, (SDF_Object){.type = SDF_BLEND_SMOOTH_UNION, .prim_a = prim3, .prim_b = prim4})};
 
         sdf_scene_add_object(scene, meta_def);
-        demoStartX += 2.0f;
+        demoStartX += 2.5f;
     }
 
     // more complex object (creating a mold in a cube using a smooth union of a cube and sphere)
     {
         SDF_Primitive cube_prim_def = {
-            .type      = SDF_PRIM_Cube,
+            .type      = SDF_PRIM_Box,
             .transform = {
-                .position = {{demoStartX, 0.0f, 0.0f}},
+                .position = {{demoStartX, 0.0f, -0.25f}},
                 .rotation = {0.0f, 0.0f, 0.0f, 1.0f},
-                .scale    = {{0.5f, 0.5f, 0.25f}}},
-            .material = {.diffuse = {0.8f, 0.81f, 0.83f, 1.0f}}};
+                .scale    = 0.5f},
+            .props.box = {.dimensions = {0.5f, 0.5f, 0.25f}},
+            .material  = {.diffuse = {0.8f, 0.81f, 0.83f, 1.0f}}};
         int cube_prim = sdf_scene_add_primitive(scene, cube_prim_def);
         (void) cube_prim;
 
@@ -142,13 +143,12 @@ void setup_sdf_test_scene(void)
             .transform = {
                 .position = {{demoStartX, 0.2f, 0.25f}},
                 .rotation = {0.0f, 0.0f, 0.0f, 0.0f},
-                .scale    = {{0.1f, 0.0f, 0.0f}}},
+                .scale    = 0.1f},
             .material = {.diffuse = {0.25f, 0.47f, 0.34f, 1.0f}}};
         int prim1 = sdf_scene_add_primitive(scene, sphere);
 
-        sphere.type               = SDF_PRIM_Cube;
+        sphere.type               = SDF_PRIM_Box;
         sphere.transform.position = (vec3s){{demoStartX, -0.2f, 0.25f}};
-        sphere.transform.scale    = (vec3s){{0.1f, 0.1f, 0.1f}};
         int prim2                 = sdf_scene_add_primitive(scene, sphere);
 
         SDF_Object meta_cast = {
@@ -321,3 +321,4 @@ void test_sdf_scene(void)
         ASSERT_CON(compare_ppm_similarity("./tests/test_sdf_scene_golden_image.ppm", "./tests/test_sdf_scene.ppm") > 95.0f, test_case, "Testing Engine Start/Render/Close and validating test scene");
     }
 }
+

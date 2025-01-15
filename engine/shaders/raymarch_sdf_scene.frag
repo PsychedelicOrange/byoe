@@ -34,8 +34,7 @@ struct SDF_Node {
     int nodeType; 
     
     int primType;
-    vec4 pos;
-    vec4 scale;
+    vec4 pos_scale;
 
     int blend;       
     int prim_a;     // Index of the left child node
@@ -388,9 +387,9 @@ hit_info sceneSDF(vec3 p) {
         // Evaluate the current node
         if(node.nodeType == 0) {
             if (node.primType == 0) { // Sphere
-                d = sphereSDF(p - (node.pos.xyz + parent_node.pos.xyz), node.scale.x);
+                d = sphereSDF(p - (node.pos_scale.xyz + parent_node.pos_scale.xyz), node.pos_scale.w);
             } else if (node.primType == 1) { // Box
-                d = boxSDF(p - (node.pos.xyz + parent_node.pos.xyz), node.scale.xyz);
+                d = boxSDF(p - (node.pos_scale.xyz + parent_node.pos_scale.xyz), vec3(node.pos_scale.w));
             }
 
             // Apply the blend b/w primitives
@@ -409,6 +408,8 @@ hit_info sceneSDF(vec3 p) {
             } else if (curr_blend_node.blend == SDF_BLEND_SMOOTH_SUBTRACTION) {
                 hit.d = smoothSubtractionBlend(hit.d, d, 0.5f);
             }
+
+            // TODO: Apply per node transformations here on the cummulative SDF result
         }
         else {            
             if (sp < MAX_GPU_STACK_SIZE - 2) {

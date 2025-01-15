@@ -90,13 +90,8 @@ void sdf_scene_upload_scene_nodes_to_gpu(const SDF_Scene* scene)
             glm_vec4_copy((vec4) {node.primitive.transform.position.x,
                               node.primitive.transform.position.y,
                               node.primitive.transform.position.z,
-                              0.0f},
-                data.pos.raw);
-            glm_vec4_copy((vec4) {node.primitive.transform.scale.x,
-                              node.primitive.transform.scale.y,
-                              node.primitive.transform.scale.z,
-                              0.0f},
-                data.scale.raw);
+                              node.primitive.transform.scale},
+                data.pos_scale.raw);
 
             data.material = node.primitive.material;
         } else {
@@ -107,13 +102,8 @@ void sdf_scene_upload_scene_nodes_to_gpu(const SDF_Scene* scene)
             glm_vec4_copy((vec4) {node.object.transform.position.x,
                               node.object.transform.position.y,
                               node.object.transform.position.z,
-                              0.0f},
-                data.pos.raw);
-            glm_vec4_copy((vec4) {node.object.transform.scale.x,
-                              node.object.transform.scale.y,
-                              node.object.transform.scale.z,
-                              0.0f},
-                data.scale.raw);
+                              node.object.transform.scale},
+                data.pos_scale.raw);
         }
 
         glBufferSubData(GL_UNIFORM_BUFFER, i * sizeof(SDF_NodeGPUData), sizeof(SDF_NodeGPUData), &data);

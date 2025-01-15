@@ -125,7 +125,7 @@ void Camera_Start(random_uuid_t* uuid)
     camera->far_plane  = 100.0f;
     camera->fov        = 45.0f;
 
-    s_cameraState.cameraMode       = PlayerTarget;
+    s_cameraState.cameraMode       = FPS;
     s_cameraState.playerGameObject = NULL;
 }
 

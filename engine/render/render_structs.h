@@ -1,3 +1,4 @@
+
 #ifndef RENDER_STRUCTS_H
 #define RENDER_STRUCTS_H
 
@@ -39,7 +40,9 @@ STRUCT(bounding_sphere,
 
 ENUM(SDF_PrimitiveType,
     SDF_PRIM_Sphere,
-    SDF_PRIM_Cube,
+    SDF_PRIM_Box,
+    SDF_PRIM_RoundedBox,
+    SDF_PRIM_BoxFrame,
     SDF_PRIM_Capsule,
     SDF_PRIM_Cylinder,
     SDF_PRIM_Planet,
@@ -71,21 +74,34 @@ ENUM(SDF_NodeType,
 STRUCT(SDF_Material,
        vec4 diffuse;)
 
-STRUCT(SDF_Primitive,
-       SDF_PrimitiveType type;
-       Transform         transform;    // Position, Rotation, Scale
-       SDF_Material      material;
-    // add more props here combine them all or use a new struct/union to simplify primitive attributes
-    // Or use what psyorange is doing in sdf-editor branch to represent more complex SDF props
-    // What if we make them a union for easier user land API and pass packed info the GPU with wrapper functions to intgerpret them?
-    // ex.
-    // union
-    // {
-    //     struct { float capsuleRadius; float capsuleHeight; };
-    //     struct { float cylinderRadius; float cylinderHeight; };
-    //     // Add more shapes as needed.
-    // };
-)
+//center is set by transform node
+STRUCT(sphere_props,
+       float radius;)
+
+STRUCT(box_props,
+       vec3s dimensions;)
+
+STRUCT(round_box_props,
+       vec3s dimensions;
+       float roundness;)
+
+STRUCT(box_frame_props,
+       vec3s dimensions;
+       float thickness;)
+
+STRUCT(
+    SDF_Primitive,
+    SDF_PrimitiveType type;
+    Transform         transform;    // Position, Rotation, Scale
+    SDF_Material      material;
+    union {
+        sphere_props    sphere;
+        box_props       box;
+        round_box_props round_box;
+        box_frame_props box_frame;
+
+        // Add more shapes as needed.
+    } props;)
 
 // Blending -> these are blending method b/w two primitives (eg. smooth union, XOR, etc. )  ( again refer iq)
 STRUCT(SDF_Object,

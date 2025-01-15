@@ -38,5 +38,5 @@ void Player_Update(random_uuid_t* uuid, float dt)
         playerPosition.z += PLAYER_SPEED * dt;
 
     gameobject_set_position(*uuid, playerPosition.raw);
-    gameobject_set_scale(*uuid, (vec3){0.25f, 0.1f, 0.5f});
+    gameobject_set_scale(*uuid, 0.25f);
 }
