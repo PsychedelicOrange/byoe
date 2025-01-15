@@ -28,10 +28,8 @@ typedef struct GameObject
 {
     random_uuid_t  uuid;
     Transform      transform;
-    random_uuid_t  meshID;
     bool           isRenderable;
     char           typeName[255];     // Type of the game object (class/type)
-    void*          gameState;         // Global game state such as Input, world info, scene data etc.
     void*          gameObjectData;    // Object-specific data that can be serialized/reflected
     uint32_t       sdfNodeIdx;        // index of the sdf node in sdf scene array
     StartFunction  startFn;           // Start function for the object

@@ -1,7 +1,6 @@
 #include "camera_controller.h"
 
 #include <logging/log.h>
-
 #include <engine/core/game_state.h>
 
 #include <GLFW/glfw3.h>
@@ -12,6 +11,15 @@ static const float PITCH       = 0.0f;
 static const float SPEED       = 2.25f;
 static const float SENSITIVITY = 0.25f;
 static vec3s       WorldUp     = {{0, 1, 0}};    // World up direction (Y axis)
+
+typedef struct camera_internal_state
+{
+    camera_mode   cameraMode;
+    random_uuid_t playerUUID;
+    GameObject*   playerGameObject;
+} camera_internal_state;
+
+camera_internal_state s_cameraState;
 
 //------------------------------------------------
 // Private
@@ -43,6 +51,9 @@ void process_keyboard(Camera* camera, enum Camera_Movement_Direction direction, 
     CameraMovement = glms_vec3_scale(CameraMovement, velocity);
 
     camera->position = glms_vec3_add(camera->position, CameraMovement);
+
+    s_cameraState.cameraMode       = PlayerTarget;
+    s_cameraState.playerGameObject = NULL;
 }
 
 void process_mouse_movement(Camera* camera, float xoffset, float yoffset)
@@ -60,6 +71,25 @@ void process_mouse_movement(Camera* camera, float xoffset, float yoffset)
 
     // Update Front, Right and Up Vectors using the updated Euler angles
     //updateCameraVectors();
+}
+
+void update_camera_vectors(Camera* camera)
+{
+    // Calculate new front vector using yaw and pitch
+    vec3s front   = {0};
+    front.x       = cosf(glm_rad(camera->yaw)) * cosf(glm_rad(camera->pitch));
+    front.y       = sinf(glm_rad(camera->pitch));
+    front.z       = sinf(glm_rad(camera->yaw)) * cosf(glm_rad(camera->pitch));
+    camera->front = glms_vec3_normalize(front);
+
+    // Recalculate the camera's right vector after the front vector is updated
+    camera->right = glms_vec3_normalize(glms_vec3_cross(camera->front, WorldUp));
+    camera->up    = glms_vec3_normalize(glms_vec3_cross(camera->right, camera->front));    // Up vector (recalculated)
+
+    // LOG_INFO("camera pos: (%f, %f, %f)\n", camera->position.x, camera->position.y, camera->position.z);
+
+    // Update the camera's lookAt matrix
+    glm_look(camera->position.raw, camera->front.raw, WorldUp.raw, camera->lookAt.raw);
 }
 
 //------------------------------------------------
@@ -105,34 +135,36 @@ void Camera_Update(random_uuid_t* uuid, float dt)
     GameState* gameState = gamestate_get_global_instance();
     Camera*    camera    = &gameState->camera;
 
-    // Update camera position with keyboard input
-    if (gameState->keycodes[GLFW_KEY_W] || gameState->keycodes[GLFW_KEY_UP])
-        process_keyboard(camera, FORWARD, dt);
-    if (gameState->keycodes[GLFW_KEY_S] || gameState->keycodes[GLFW_KEY_DOWN])
-        process_keyboard(camera, BACKWARD, dt);
+    if (s_cameraState.cameraMode == FPS) {
+        // Update camera position with keyboard input
+        if (gameState->keycodes[GLFW_KEY_W] || gameState->keycodes[GLFW_KEY_UP])
+            process_keyboard(camera, FORWARD, dt);
+        if (gameState->keycodes[GLFW_KEY_S] || gameState->keycodes[GLFW_KEY_DOWN])
+            process_keyboard(camera, BACKWARD, dt);
 
-    if (gameState->keycodes[GLFW_KEY_D] || gameState->keycodes[GLFW_KEY_RIGHT])
-        process_keyboard(camera, RIGHT, dt);
-    if (gameState->keycodes[GLFW_KEY_A] || gameState->keycodes[GLFW_KEY_LEFT])
-        process_keyboard(camera, LEFT, dt);
+        if (gameState->keycodes[GLFW_KEY_D] || gameState->keycodes[GLFW_KEY_RIGHT])
+            process_keyboard(camera, RIGHT, dt);
+        if (gameState->keycodes[GLFW_KEY_A] || gameState->keycodes[GLFW_KEY_LEFT])
+            process_keyboard(camera, LEFT, dt);
 
-    if (gameState->isMousePrimaryDown) {
-        process_mouse_movement(camera, -gameState->mouseDelta[0], gameState->mouseDelta[1]);
+        if (gameState->isMousePrimaryDown) {
+            process_mouse_movement(camera, -gameState->mouseDelta[0], gameState->mouseDelta[1]);
+        }
+    } else {    // Follow the player
+
+        if (!s_cameraState.playerGameObject)
+            s_cameraState.playerGameObject = game_registry_get_gameobject_by_uuid(s_cameraState.playerUUID);
+
+        vec3s playerPosition = {0};
+        gameobject_get_position(s_cameraState.playerUUID, &playerPosition.raw);
+        playerPosition.z += 5;
+        glm_vec3_copy(playerPosition.raw, camera->position.raw);
     }
 
-    // Calculate new front vector using yaw and pitch
-    vec3s front;
-    front.x       = cosf(glm_rad(camera->yaw)) * cosf(glm_rad(camera->pitch));
-    front.y       = sinf(glm_rad(camera->pitch));
-    front.z       = sinf(glm_rad(camera->yaw)) * cosf(glm_rad(camera->pitch));
-    camera->front = glms_vec3_normalize(front);
+    update_camera_vectors(camera);
+}
 
-    // Recalculate the camera's right vector after the front vector is updated
-    camera->right = glms_vec3_normalize(glms_vec3_cross(camera->front, WorldUp));
-    camera->up    = glms_vec3_normalize(glms_vec3_cross(camera->right, camera->front));    // Up vector (recalculated)
-
-    // LOG_INFO("camera pos: (%f, %f, %f)\n", camera->position.x, camera->position.y, camera->position.z);
-
-    // Update the camera's lookAt matrix
-    glm_look(camera->position.raw, camera->front.raw, WorldUp.raw, camera->lookAt.raw);
+void Camera_set_player_uuid(random_uuid_t goUUID)
+{
+    s_cameraState.playerUUID = goUUID;
 }

@@ -11,12 +11,13 @@
 #define MAX_GPU_STACK_SIZE 32
 
 // Blend modes
-#define SDF_BLEND_UNION 0
-#define SDF_BLEND_SMOOTH_UNION 1
-#define SDF_BLEND_INTERSECTION 2
-#define SDF_BLEND_SUBTRACTION 3
-
-
+#define SDF_BLEND_UNION                 0
+#define SDF_BLEND_INTERSECTION          1
+#define SDF_BLEND_SUBTRACTION           2
+#define SDF_BLEND_XOR                   3
+#define SDF_BLEND_SMOOTH_UNION          4
+#define SDF_BLEND_SMOOTH_INTERSECTION   5
+#define SDF_BLEND_SMOOTH_SUBTRACTIO     6
 
 ////////////////////////////////////////////////////////////////////////////////////////
 // Types
@@ -395,11 +396,20 @@ hit_info sceneSDF(vec3 p) {
             // Apply the blend b/w primitives
             if (curr_blend_node.blend == SDF_BLEND_UNION) {
                 hit.d = unionBlend(hit.d, d);
-            } else if (curr_blend_node.blend == SDF_BLEND_SMOOTH_UNION) {
-                hit.d = smoothUnionBlend(hit.d, d, 0.5f);
             } else if (curr_blend_node.blend == SDF_BLEND_INTERSECTION) {
                 hit.d = intersectBlend(hit.d, d);
             } else if (curr_blend_node.blend == SDF_BLEND_SUBTRACTION) {
+                hit.d = subtractBlend(hit.d, d);
+            } else if (curr_blend_node.blend == SDF_BLEND_XOR) {
+                hit.d = xorBlend(hit.d, d);
+            } else if (curr_blend_node.blend == SDF_BLEND_SMOOTH_UNION) {
+                hit.d = smoothUnionBlend(hit.d, d, 0.5f);
+            } else if (curr_blend_node.blend == SDF_BLEND_SUBTRACTION) {
+                hit.d = subtractBlend(hit.d, d);
+             } else if (curr_blend_node.blend == SDF_BLEND_SUBTRACTION) {
+                hit.d = subtractBlend(hit.d, d);
+            }
+             } else if (curr_blend_node.blend == SDF_BLEND_SUBTRACTION) {
                 hit.d = subtractBlend(hit.d, d);
             }
         }

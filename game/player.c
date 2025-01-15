@@ -2,9 +2,15 @@
 #include "player.h"
 
 #include <core/rng/rng.h>
+#include <engine/core/game_state.h>
 #include <logging/log.h>
 
+#include <GLFW/glfw3.h>
 #include <assert.h>
+
+#include "camera_controller.h"
+
+static int PLAYER_SPEED = 50;
 
 void Player_Start(random_uuid_t* uuid)
 {
@@ -13,6 +19,8 @@ void Player_Start(random_uuid_t* uuid)
     // Ex. API usage:
     // gameobject_mark_as_renderable(*uuid, true);
     // gameobject_set_scale(*uuid, newScale);
+
+    Camera_set_player_uuid(*uuid);
 }
 
 void Player_Update(random_uuid_t* uuid, float dt)
@@ -20,17 +28,15 @@ void Player_Update(random_uuid_t* uuid, float dt)
     (void) uuid;
     (void) dt;
 
-    // Generate random movement offsets for x, y, z
-    float offsetX = (float) ((int32_t) rng_range(0, 50) * 2 - 50) / 10.0f;
-    float offsetY = (float) ((int32_t) rng_range(0, 70) * 2 - 70) / 10.0f;
-    //float offsetZ = ((rand() % 200) - 100) / 100.0f;
+    GameState* gameState      = gamestate_get_global_instance();
+    vec3s      playerPosition = {0};
+    gameobject_get_position(*uuid, &playerPosition.raw);
 
-    // Calculate new chaotic position based on offsets and dt
-    vec3 newPosition = {
-        (float) sin(offsetX * dt * 25),
-        (float) cos(offsetY * dt * 25),
-        0.0f};
+    if (gameState->keycodes[GLFW_KEY_W] || gameState->keycodes[GLFW_KEY_UP])
+        playerPosition.z += PLAYER_SPEED * dt;
+    if (gameState->keycodes[GLFW_KEY_S] || gameState->keycodes[GLFW_KEY_DOWN])
+        playerPosition.z -= PLAYER_SPEED * dt;
 
-    gameobject_set_position(*uuid, newPosition);
-    //gameobject_set_scale(*uuid, newPosition);
+    gameobject_set_position(*uuid, playerPosition.raw);
+    gameobject_set_scale(*uuid, (vec3){0.25f, 0.1f, 0.5f});
 }
