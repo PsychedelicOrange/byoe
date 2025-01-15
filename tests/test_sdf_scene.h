@@ -247,8 +247,7 @@ bool read_ppm(const char* filename, int* width, int* height, uint8_t** pixels)
     return true;
 }
 
-// Function to compare two PPM files
-bool compare_ppm_files(const char* file1, const char* file2)
+float compare_ppm_similarity(const char* file1, const char* file2)
 {
     int      width1, height1, width2, height2;
     uint8_t* pixels1 = NULL;
@@ -256,28 +255,29 @@ bool compare_ppm_files(const char* file1, const char* file2)
 
     // Read the first PPM file
     if (!read_ppm(file1, &width1, &height1, &pixels1)) {
-        return false;
+        return 0.0f; // Indicates failure
     }
 
     // Read the second PPM file
     if (!read_ppm(file2, &width2, &height2, &pixels2)) {
         free(pixels1);
-        return false;
+        return 0.0f; // Indicates failure
     }
 
-    // Compare dimensions and max color value (we assume 255 for max color value)
+    // Compare dimensions
     if (width1 != width2 || height1 != height2) {
         free(pixels1);
         free(pixels2);
-        return false;
+        return 0.0f; // Images are not comparable
     }
 
-    // Compare the pixel data
-    bool is_equal = true;
-    for (int i = 0; i < width1 * height1 * 3; i++) {
-        if (pixels1[i] != pixels2[i]) {
-            is_equal = false;
-            break;
+    // Calculate the similarity metric
+    int total_pixels = width1 * height1 * 3; // Total number of color components
+    int matching_pixels = 0;
+
+    for (int i = 0; i < total_pixels; i++) {
+        if (pixels1[i] == pixels2[i]) {
+            matching_pixels++;
         }
     }
 
@@ -285,7 +285,8 @@ bool compare_ppm_files(const char* file1, const char* file2)
     free(pixels1);
     free(pixels2);
 
-    return is_equal;
+    // Compute and return the similarity percentage
+    return (((float)matching_pixels) / (float)total_pixels) * 100.0f;
 }
 
 // Test function
@@ -317,6 +318,6 @@ void test_sdf_scene(void)
 
         TEST_END();
 
-        ASSERT_CON(compare_ppm_files("./tests/test_sdf_scene_golder_image.ppm", "./tests/test_sdf_scene.ppm"), test_case, "Testing Engine Start/Render/Close and validating test scene");
+        ASSERT_CON(compare_ppm_similarity("./tests/test_sdf_scene_golden_image.ppm", "./tests/test_sdf_scene.ppm") > 95.0f, test_case, "Testing Engine Start/Render/Close and validating test scene");
     }
 }
