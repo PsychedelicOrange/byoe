@@ -150,7 +150,7 @@ void renderer_sdf_render(void)
     // Scene Culling is done before any rendering begins (might move it to update part of engine loop)
 
     // clear with a pink color
-    renderer_internal_sdf_clear_screen((color_rgba){0.0f, 0.0f, 0.0f, 1.0f});
+    renderer_internal_sdf_clear_screen((color_rgba) {0.0f, 0.0f, 0.0f, 1.0f});
 
     renderer_internal_sdf_set_pipeline_settings();
 

@@ -113,7 +113,7 @@ static inline int cpu_detect_instruction_set(void)
 
 static void cpu_caps_print_info(void)
 {
-#if defined(_WIN32)
+    #if defined(_WIN32)
     // Windows-specific CPU info
     SYSTEM_INFO sysinfo;
     GetSystemInfo(&sysinfo);
@@ -138,7 +138,7 @@ static void cpu_caps_print_info(void)
     }
     LOG_INFO("Processor Name: %s", cpuName);
 
-#elif defined(__linux__)
+    #elif defined(__linux__)
     // Linux-specific CPU info
     FILE* cpuInfoFile = fopen("/proc/cpuinfo", "r");
     char  buffer[256];
@@ -156,7 +156,7 @@ static void cpu_caps_print_info(void)
     sysinfo(&sysInfo);
     LOG_INFO("Uptime: %ld seconds", sysInfo.uptime);
 
-#elif defined(__APPLE__)
+    #elif defined(__APPLE__)
     // https://gist.github.com/HalCanary/59d7c9c3c408ddfd55c477a992281827
     // macOS-specific CPU info
     char   cpuBrand[512];
@@ -173,12 +173,12 @@ static void cpu_caps_print_info(void)
     sysctlbyname("hw.physicalcpu", &numCores, &size, NULL, 0);
     LOG_INFO("Number of cores: %d", numCores);
 
-#endif
+    #endif
 }
 
 static void os_caps_print_info(void)
 {
-#if defined(_WIN32)
+    #if defined(_WIN32)
     // Windows OS info
     OSVERSIONINFO osvi;
     ZeroMemory(&osvi, sizeof(OSVERSIONINFO));
@@ -186,20 +186,20 @@ static void os_caps_print_info(void)
     GetVersionEx(&osvi);
     LOG_INFO("Operating System: Windows %lu.%lu", osvi.dwMajorVersion, osvi.dwMinorVersion);
 
-#elif defined(__linux__)
+    #elif defined(__linux__)
     // Linux OS info
     struct utsname buffer;
     if (uname(&buffer) == 0) {
         LOG_INFO("Operating System: %s %s", buffer.sysname, buffer.release);
     }
 
-#elif defined(__APPLE__)
+    #elif defined(__APPLE__)
     // macOS info
     char   osVersion[256];
     size_t size = sizeof(osVersion);
     sysctlbyname("kern.osproductversion", &osVersion, &size, NULL, 0);
     LOG_INFO("Operating System: macOS %s", osVersion);
-#endif
+    #endif
 }
 #endif
 #endif    // PLATFORM_DEFS_H

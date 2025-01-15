@@ -37,6 +37,7 @@
             UNICODE_CROSS,                                                                            \
             test_case,                                                                                \
             msg);                                                                                     \
+            exit(-1);                                                                                 \
     }
 
 // Generic assert for non-string types, passing format specifier
@@ -48,6 +49,7 @@
             expected,                                                                                                   \
             actual,                                                                                                     \
             msg);                                                                                                       \
+            exit(-1);                                                                                                   \
     } else {                                                                                                            \
         printf(COLOR_GREEN "[Test Case] Passed %s : %s : STATS: (speed: %.3f ms) : %s\n" COLOR_RESET,                   \
             UNICODE_CHECKMARK,                                                                                          \
@@ -65,6 +67,7 @@
             expected,                                                                                             \
             actual,                                                                                               \
             msg);                                                                                                 \
+            exit(-1);                                                                                             \
     } else {                                                                                                      \
         printf(COLOR_GREEN "[Test Case] Passed %s : %s : STATS: (speed: %.3f ms) : %s\n" COLOR_RESET,             \
             UNICODE_CHECKMARK,                                                                                    \

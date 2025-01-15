@@ -312,11 +312,11 @@ void test_sdf_scene(void)
         texture_readback swapchain_readback = renderer_sdf_get_last_swapchain_readback();
         (void) swapchain_readback;
 
-        write_texture_to_ppm("./tests/test_sdf_scene.ppm", swapchain_readback.pixels, swapchain_readback.width, swapchain_readback.height, swapchain_readback.bits_per_pixel);
-
         engine_destroy();
 
         TEST_END();
+
+        write_texture_to_ppm("./tests/test_sdf_scene.ppm", swapchain_readback.pixels, swapchain_readback.width, swapchain_readback.height, swapchain_readback.bits_per_pixel);
 
         ASSERT_CON(compare_ppm_similarity("./tests/test_sdf_scene_golden_image.ppm", "./tests/test_sdf_scene.ppm") > 95.0f, test_case, "Testing Engine Start/Render/Close and validating test scene");
     }

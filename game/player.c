@@ -31,5 +31,5 @@ void Player_Update(random_uuid_t* uuid, float dt)
     //     0};
 
     // gameobject_set_position(*uuid, newPosition);
-    gameobject_set_scale(*uuid, (vec3){0.25f, 0.1f, 0.5f});
+    gameobject_set_scale(*uuid, (vec3) {0.25f, 0.1f, 0.5f});
 }

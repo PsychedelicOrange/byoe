@@ -103,11 +103,11 @@ void sdf_scene_upload_scene_nodes_to_gpu(const SDF_Scene* scene)
             data.op    = node.object.type;
             data.left  = node.object.prim_a;
             data.right = node.object.prim_b;
-            
+
             glm_vec4_copy((vec4) {node.object.transform.position.x,
-                    node.object.transform.position.y,
-                    node.object.transform.position.z,
-                    0.0f},
+                              node.object.transform.position.y,
+                              node.object.transform.position.z,
+                              0.0f},
                 data.pos.raw);
             glm_vec4_copy((vec4) {node.object.transform.scale.x,
                               node.object.transform.scale.y,

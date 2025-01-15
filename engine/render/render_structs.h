@@ -24,14 +24,14 @@
 // Docs: https://github.com/PsychedelicOrange/byoe/pull/10
 
 STRUCT(color_rgba,
-       float r, g, b, a;)
+    float r, g, b, a;)
 
 STRUCT(color_rgb,
-       float r, g, b;)
+    float r, g, b;)
 
 STRUCT(bounding_sphere,
-       vec3  pos;
-       float radius;)
+    vec3  pos;
+    float radius;)
 
 //------------------------
 // SDF Renderer Structs
@@ -67,12 +67,12 @@ ENUM(SDF_NodeType,
 
 // TODO: If data memory gets too much, push the material to a separate buffer and use a bindless model
 STRUCT(SDF_Material,
-       vec4 diffuse;)
+    vec4 diffuse;)
 
 STRUCT(SDF_Primitive,
-       SDF_PrimitiveType type;
-       Transform         transform;    // Position, Rotation, Scale
-       SDF_Material      material;
+    SDF_PrimitiveType type;
+    Transform         transform;    // Position, Rotation, Scale
+    SDF_Material      material;
     // add more props here combine them all or use a new struct/union to simplify primitive attributes
     // Or use what psyorange is doing in sdf-editor branch to represent more complex SDF props
     // What if we make them a union for easier user land API and pass packed info the GPU with wrapper functions to intgerpret them?
@@ -87,10 +87,10 @@ STRUCT(SDF_Primitive,
 
 // Blending -> these are blending method b/w two primitives (eg. smooth union, XOR, etc. )  ( again refer iq)
 STRUCT(SDF_Object,
-       SDF_BlendType type;
-       Transform     transform;    // Position, Rotation, Scale
-       int           prim_a;       // Index of the left child in the SDF node pool
-       int           prim_b;       // Index of the right child in the SDF node pool
+    SDF_BlendType type;
+    Transform     transform;    // Position, Rotation, Scale
+    int           prim_a;       // Index of the left child in the SDF node pool
+    int           prim_b;       // Index of the right child in the SDF node pool
 )
 
 // This struct cannot be directly translated to the GPU, we need another helper struct to flatten it (defined in sdf_scene.h)

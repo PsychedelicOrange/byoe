@@ -29,7 +29,7 @@ void gameobject_set_sdf_node_idx(random_uuid_t goUUID, uint32_t index)
 {
     GameObject* go = game_registry_get_gameobject_by_uuid(goUUID);
     if (go != NULL) {
-        go->sdfNodeIdx = index;
+        go->sdfNodeIdx   = index;
         go->isRenderable = true;
     }
 }
