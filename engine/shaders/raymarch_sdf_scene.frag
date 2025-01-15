@@ -16,7 +16,7 @@
 #define SDF_BLEND_INTERSECTION 2
 #define SDF_BLEND_SUBTRACTION 3
 
-// Operations
+
 
 ////////////////////////////////////////////////////////////////////////////////////////
 // Types
@@ -61,6 +61,12 @@ in vec4 farp;
 // Out Render Targets
 out vec4 FragColor;
 ////////////////////////////////////////////////////////////////////////////////////////
+// Helper 
+float dot2( in vec2 v ) { return dot(v,v); }
+float dot2( in vec3 v ) { return dot(v,v); }
+float ndot( in vec2 a, in vec2 b ) { return a.x*b.x - a.y*b.y; }
+
+
 // SDF Primitive Functions
 float sphereSDF(vec3 p, float radius) {
     return length(p) - radius;
@@ -165,34 +171,181 @@ float roundedCylinderSDF( vec3 p, float ra, float rb, float h )
   return min(max(d.x,d.y),0.0) + length(max(d,0.0)) - rb;
 }
 
+float cappedConeSDF( vec3 p, float h, float r1, float r2 )
+{
+  vec2 q = vec2( length(p.xz), p.y );
+  vec2 k1 = vec2(r2,h);
+  vec2 k2 = vec2(r2-r1,2.0*h);
+  vec2 ca = vec2(q.x-min(q.x,(q.y<0.0)?r1:r2), abs(q.y)-h);
+  vec2 cb = q - k1 + k2*clamp( dot(k1-q,k2)/dot2(k2), 0.0, 1.0 );
+  float s = (cb.x<0.0 && ca.y<0.0) ? -1.0 : 1.0;
+  return s*sqrt( min(dot2(ca),dot2(cb)) );
+}
+
+float cutSphereSDF( vec3 p, float r, float h )
+{
+  // sampling independent computations (only depend on shape)
+  float w = sqrt(r*r-h*h);
+
+  // sampling dependant computations
+  vec2 q = vec2( length(p.xz), p.y );
+  float s = max( (h-r)*q.x*q.x+w*w*(h+r-2.0*q.y), h*q.x-w*q.y );
+  return (s<0.0) ? length(q)-r :
+         (q.x<w) ? h - q.y     :
+                   length(q-vec2(w,h));
+}
+
+float cutHollowSphereSDF( vec3 p, float r, float h, float t )
+{
+  // sampling independent computations (only depend on shape)
+  float w = sqrt(r*r-h*h);
+  
+  // sampling dependant computations
+  vec2 q = vec2( length(p.xz), p.y );
+  return ((h*q.x<w*q.y) ? length(q-vec2(w,h)) : 
+                          abs(length(q)-r) ) - t;
+}
+
+float deathStarSDF( vec3 p2, float ra, float rb, float d )
+{
+  // sampling independent computations (only depend on shape)
+  float a = (ra*ra - rb*rb + d*d)/(2.0*d);
+  float b = sqrt(max(ra*ra-a*a,0.0));
+	
+  // sampling dependant computations
+  vec2 p = vec2( p2.x, length(p2.yz) );
+  if( p.x*b-p.y*a > d*max(b-p.y,0.0) )
+    return length(p-vec2(a,b));
+  else
+    return max( (length(p            )-ra),
+               -(length(p-vec2(d,0.0))-rb));
+}
+
+float roundConeSDF( vec3 p, float r1, float r2, float h )
+{
+  // sampling independent computations (only depend on shape)
+  float b = (r1-r2)/h;
+  float a = sqrt(1.0-b*b);
+
+  // sampling dependant computations
+  vec2 q = vec2( length(p.xz), p.y );
+  float k = dot(q,vec2(-b,a));
+  if( k<0.0 ) return length(q) - r1;
+  if( k>a*h ) return length(q-vec2(0.0,h)) - r2;
+  return dot(q, vec2(a,b) ) - r1;
+}
+
+float octahedronSDF( vec3 p, float s )
+{
+  p = abs(p);
+  float m = p.x+p.y+p.z-s;
+  vec3 q;
+       if( 3.0*p.x < m ) q = p.xyz;
+  else if( 3.0*p.y < m ) q = p.yzx;
+  else if( 3.0*p.z < m ) q = p.zxy;
+  else return m*0.57735027;
+    
+  float k = clamp(0.5*(q.z-q.y+s),0.0,s); 
+  return length(vec3(q.x,q.y-s+k,q.z-k)); 
+}
+
+float pyramidSDF( vec3 p, float h )
+{
+  float m2 = h*h + 0.25;
+    
+  p.xz = abs(p.xz);
+  p.xz = (p.z>p.x) ? p.zx : p.xz;
+  p.xz -= 0.5;
+
+  vec3 q = vec3( p.z, h*p.y - 0.5*p.x, h*p.x + 0.5*p.y);
+   
+  float s = max(-q.x,0.0);
+  float t = clamp( (q.y-0.5*p.z)/(m2+0.25), 0.0, 1.0 );
+    
+  float a = m2*(q.x+s)*(q.x+s) + q.y*q.y;
+  float b = m2*(q.x+0.5*t)*(q.x+0.5*t) + (q.y-m2*t)*(q.y-m2*t);
+    
+  float d2 = min(q.y,-q.x*m2-q.y*0.5) > 0.0 ? 0.0 : min(a,b);
+    
+  return sqrt( (d2+q.z*q.z)/m2 ) * sign(max(q.z,-p.y));
+}
+
+float triangleSDF( vec3 p, vec3 a, vec3 b, vec3 c )
+{
+  vec3 ba = b - a; vec3 pa = p - a;
+  vec3 cb = c - b; vec3 pb = p - b;
+  vec3 ac = a - c; vec3 pc = p - c;
+  vec3 nor = cross( ba, ac );
+
+  return sqrt(
+    (sign(dot(cross(ba,nor),pa)) +
+     sign(dot(cross(cb,nor),pb)) +
+     sign(dot(cross(ac,nor),pc))<2.0)
+     ?
+     min( min(
+     dot2(ba*clamp(dot(ba,pa)/dot2(ba),0.0,1.0)-pa),
+     dot2(cb*clamp(dot(cb,pb)/dot2(cb),0.0,1.0)-pb) ),
+     dot2(ac*clamp(dot(ac,pc)/dot2(ac),0.0,1.0)-pc) )
+     :
+     dot(nor,pa)*dot(nor,pa)/dot2(nor) );
+}
+
+float quadSDF( vec3 p, vec3 a, vec3 b, vec3 c, vec3 d )
+{
+  vec3 ba = b - a; vec3 pa = p - a;
+  vec3 cb = c - b; vec3 pb = p - b;
+  vec3 dc = d - c; vec3 pc = p - c;
+  vec3 ad = a - d; vec3 pd = p - d;
+  vec3 nor = cross( ba, ad );
+
+  return sqrt(
+    (sign(dot(cross(ba,nor),pa)) +
+     sign(dot(cross(cb,nor),pb)) +
+     sign(dot(cross(dc,nor),pc)) +
+     sign(dot(cross(ad,nor),pd))<3.0)
+     ?
+     min( min( min(
+     dot2(ba*clamp(dot(ba,pa)/dot2(ba),0.0,1.0)-pa),
+     dot2(cb*clamp(dot(cb,pb)/dot2(cb),0.0,1.0)-pb) ),
+     dot2(dc*clamp(dot(dc,pc)/dot2(dc),0.0,1.0)-pc) ),
+     dot2(ad*clamp(dot(ad,pd)/dot2(ad),0.0,1.0)-pd) )
+     :
+     dot(nor,pa)*dot(nor,pa)/dot2(nor) );
+}
+
 // TODO: Define other SDF functions here
 ////////////////////////////////////////////////////////////////////////////////////////
 // SDF Combination Operations
-float unionOp(float d1, float d2) {
+float unionBlend(float d1, float d2) {
     return min(d1, d2);
 }
 
-float intersectOp(float d1, float d2) {
+float intersectBlend(float d1, float d2) {
     return max(d1, d2);
 }
 
-float subtractOp(float d1, float d2) {
+float subtractBlend(float d1, float d2) {
     return max(-d1, d2);
 }
 
-float opSmoothUnion( float d1, float d2, float k )
+float xorBlend(float d1, float d2 )
+{
+    return max(min(d1,d2),-max(d1,d2));
+}
+
+float smoothUnionBlend( float d1, float d2, float k )
 {
     float h = clamp( 0.5 + 0.5*(d2-d1)/k, 0.0, 1.0 );
     return mix( d2, d1, h ) - k*h*(1.0-h);
 }
 
-float opSmoothSubtraction( float d1, float d2, float k )
+float smoothSubtractionBlend( float d1, float d2, float k )
 {
     float h = clamp( 0.5 - 0.5*(d2+d1)/k, 0.0, 1.0 );
     return mix( d2, -d1, h ) + k*h*(1.0-h);
 }
 
-float opSmoothIntersection( float d1, float d2, float k )
+float smoothIntersectionBlend( float d1, float d2, float k )
 {
     float h = clamp( 0.5 - 0.5*(d2-d1)/k, 0.0, 1.0 );
     return mix( d2, d1, h ) + k*h*(1.0-h);
@@ -226,25 +379,26 @@ hit_info sceneSDF(vec3 p) {
         if (curr_blend_node.node < 0) continue;
 
         SDF_Node node = nodes[curr_blend_node.node];
+        hit.material = node.material;
 
         float d = RAY_MAX_STEP;
         // Evaluate the current node
         if(node.nodeType == 0) {
             if (node.primType == 0) { // Sphere
-                d = sphereSDF(p, node.scale.x);
+                d = sphereSDF(p - node.pos.xyz, node.scale.x);
             } else if (node.primType == 1) { // Box
-                d = boxSDF(p, node.scale.xyz);
+                d = boxSDF(p - node.pos.xyz, node.scale.xyz);
             }
 
             // Apply the blend b/w primitives
             if (curr_blend_node.blend == SDF_BLEND_UNION) {
-                hit.d = unionOp(hit.d, d);
+                hit.d = unionBlend(hit.d, d);
             } else if (curr_blend_node.blend == SDF_BLEND_SMOOTH_UNION) {
-                hit.d = opSmoothUnion(hit.d, d, 0.5f);
+                hit.d = smoothUnionBlend(hit.d, d, 0.5f);
             } else if (curr_blend_node.blend == SDF_BLEND_INTERSECTION) {
-                hit.d = intersectOp(hit.d, d);
+                hit.d = intersectBlend(hit.d, d);
             } else if (curr_blend_node.blend == SDF_BLEND_SUBTRACTION) {
-                hit.d = subtractOp(hit.d, d);
+                hit.d = subtractBlend(hit.d, d);
             }
         }
         else {            
@@ -253,10 +407,7 @@ hit_info sceneSDF(vec3 p) {
                 if (node.prim_a >= 0) stack[sp++] = blend_node(node.blend, node.prim_a);
             }
         }
-
-        hit.material = node.material;
     }
-
     return hit;
 }
 ////////////////////////////////////////////////////////////////////////////////////////

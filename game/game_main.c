@@ -28,6 +28,8 @@ int game_main(void)
 
     float demoStartX = -2.0f;
 
+#if 0
+
     // simple sphere
     {
         SDF_Primitive sphere = {
@@ -86,7 +88,7 @@ int game_main(void)
         sdf_scene_add_object(scene, meta_def);
         demoStartX += 2.0f;
     }
-
+#endif
     // more complex object (creating a mold in a cube using a smooth union of a cube and sphere)
     {
         SDF_Primitive cube_prim_def = {
@@ -124,7 +126,7 @@ int game_main(void)
         SDF_Object cube_mold = {
             .type   = SDF_BLEND_SUBTRACTION,
             .transform = {
-                .position = {{demoStartX, 0.0f, 0.0f}},
+                .position = {{5.0f, 0.0f, 0.0f}},
                 .rotation = {0.0f, 0.0f, 0.0f, 0.0f},
                 .scale    = {{1.0f, 1.0f, 1.0f}}
             },
