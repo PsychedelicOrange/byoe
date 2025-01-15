@@ -22,7 +22,8 @@ void renderer_sdf_destroy(void);
 // this is where the drawcalls and rendering logic is handled including culling
 void renderer_sdf_render(void);
 
-void renderer_sdf_set_scene(const SDF_Scene* scene);
+const SDF_Scene* renderer_sdf_get_scene(void);
+void             renderer_sdf_set_scene(const SDF_Scene* scene);
 
 void renderer_sdf_draw_scene(const SDF_Scene* scene);
 

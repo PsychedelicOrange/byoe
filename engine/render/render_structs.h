@@ -13,10 +13,10 @@
 
 //-----------------------------
 // RayMarching Settings
-#define MAX_STEPS 128
+#define MAX_STEPS    128
 #define RAY_MIN_STEP 0.01
 #define RAY_MAX_STEP 100.0
-#define EPSILON 0.01
+#define EPSILON      0.01
 
 #define MAX_GPU_STACK_SIZE 32
 //-----------------------------
@@ -88,6 +88,7 @@ STRUCT(SDF_Primitive,
 // Blending -> these are blending method b/w two primitives (eg. smooth union, XOR, etc. )  ( again refer iq)
 STRUCT(SDF_Object,
     SDF_BlendType type;
+    Transform         transform;    // Position, Rotation, Scale
     int           prim_a;    // Index of the left child in the SDF node pool
     int           prim_b;    // Index of the right child in the SDF node pool
 )

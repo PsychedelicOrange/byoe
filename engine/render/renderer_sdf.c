@@ -155,6 +155,11 @@ void renderer_sdf_render(void)
     renderer_internal_sdf_swap_backbuffer();
 }
 
+const SDF_Scene* renderer_sdf_get_scene(void)
+{
+    return g_RendererSDFInternalState.scene;
+}
+
 void renderer_sdf_set_scene(const SDF_Scene* scene)
 {
     g_RendererSDFInternalState.scene = scene;

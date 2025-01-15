@@ -33,26 +33,23 @@ typedef struct GameObject
     char           typeName[255];     // Type of the game object (class/type)
     void*          gameState;         // Global game state such as Input, world info, scene data etc.
     void*          gameObjectData;    // Object-specific data that can be serialized/reflected
+    uint32_t       sdfNodeIdx;        // index of the sdf node in sdf scene array
     StartFunction  startFn;           // Start function for the object
     UpdateFunction updateFn;          // Update function for the object
     // TODO: Add collision callback functions here if needed
 } GameObject;
 
-// TODO
-void gameobject_set_mesh(random_uuid_t goUUID, random_uuid_t meshUUID);
-// TODO
-void gameobject_set_material(random_uuid_t goUUID, random_uuid_t materialUUID);
-// TODO
-void gameobject_set_renderable(random_uuid_t goUUID, random_uuid_t meshUUID, random_uuid_t materialUUID);
-
-void gameobject_mark_as_renderable(random_uuid_t goUUID, bool value);
+void     gameobject_set_sdf_node_idx(random_uuid_t goUUID, uint32_t index);
+uint32_t gameobject_get_sdf_node_idx(random_uuid_t goUUID);
+void     gameobject_mark_as_renderable(random_uuid_t goUUID, bool value);
 
 mat4s gameobject_get_transform(random_uuid_t goUUID);
 mat4s gameobject_ptr_get_transform(GameObject* obj);
-void  gameobject_get_position(random_uuid_t goUUID, vec3* position);
-void  gameobject_get_rotation(random_uuid_t goUUID, versor* rorationQuad);
-void  gameobject_get_rotation_euler(random_uuid_t goUUID, vec3* rotationEuler);
-void  gameobject_get_scale(random_uuid_t goUUID, vec3* scale);
+// TODO: Refactor to return values instead
+void gameobject_get_position(random_uuid_t goUUID, vec3* position);
+void gameobject_get_rotation(random_uuid_t goUUID, versor* rorationQuad);
+void gameobject_get_rotation_euler(random_uuid_t goUUID, vec3* rotationEuler);
+void gameobject_get_scale(random_uuid_t goUUID, vec3* scale);
 
 // Transform Utils
 void gameobject_set_transform(random_uuid_t goUUID, Transform transform);

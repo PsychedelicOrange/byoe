@@ -25,6 +25,23 @@ static void create_transform_matrix(mat4s* dest, vec3 position, versor rotation,
 //-------------------------------------------------------
 // Public API
 
+void gameobject_set_sdf_node_idx(random_uuid_t goUUID, uint32_t index)
+{
+    GameObject* go = game_registry_get_gameobject_by_uuid(goUUID);
+    if (go != NULL) {
+        go->sdfNodeIdx = index;
+        go->isRenderable = true;
+    }
+}
+uint32_t gameobject_get_sdf_node_idx(random_uuid_t goUUID)
+{
+    GameObject* go = game_registry_get_gameobject_by_uuid(goUUID);
+    if (go != NULL) {
+        return go->sdfNodeIdx;
+    }
+    return -1;
+}
+
 void gameobject_mark_as_renderable(random_uuid_t goUUID, bool value)
 {
     GameObject* go = game_registry_get_gameobject_by_uuid(goUUID);

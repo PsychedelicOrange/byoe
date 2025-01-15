@@ -6,12 +6,34 @@
 #include <rng/rng.h>
 #include <scene/sdf_scene.h>
 
-#define TEST_SCENE 1
+/*
+TODO: Basic Gameplay
+- [ ] Spaceship prototype and make it scriptable for gameplay programmers --> red color thingy as per discussion
+- [ ] Render Bullets (Object pooling) + Style: [SDF Bloom](https://www.shadertoy.com/view/7stGWj)
+- [ ] [Optional] _Volumetrics:_ Smoke for when asteroids are destroyed: animate noise and render some FX using SDF, no need of a particle system.
+- [ ] Ghosts[Optional]: if volumetrics are hard/time constrained, use a glass like material for ghosts with refraction and alpha. use this for ghosts: https://www.shadertoy.com/view/X32BRz
+*/
+
+#define TEST_SCENE 0
 
 int game_main(void)
 {
+
+    SDF_Scene* asteroids_game_scene = malloc(sizeof(SDF_Scene));
+    sdf_scene_init(asteroids_game_scene);
+    renderer_sdf_set_scene(asteroids_game_scene);
+
+        SDF_Primitive sphere = {
+        .type      = SDF_PRIM_Cube,
+        .transform = {
+            .position = {{0.0f, 0.0f, 0.0f}},
+            .rotation = {0.0f, 0.0f, 0.0f, 0.0f},
+            .scale    = {{0.1f, 0.0f, 0.0f}}},    // only x is used as radius of the sphere
+        .material = {.diffuse = {0.75f, 0.3f, 0.2f, 1.0f}}};
+        int player_prim_idx = sdf_scene_add_primitive(asteroids_game_scene, sphere);
+
     REGISTER_GAME_OBJECT("Camera", 0, Camera_Start, Camera_Update);
-    REGISTER_GAME_OBJECT("Player", PlayerData, Player_Start, Player_Update);
+    REGISTER_GAME_OBJECT_WITH_NODE_IDX("Player", PlayerData, Player_Start, Player_Update, player_prim_idx);
 
 #if TEST_SCENE
     // Define Test Scene
@@ -58,22 +80,22 @@ int game_main(void)
         int prim1 = sdf_scene_add_primitive(scene, sphere1);
         (void) prim1;
 
-        sphere1.transform.position = (vec3s) {{demoStartX + 0.5f, 0.5f, 0.0f}};
+        sphere1.transform.position = (vec3s){{demoStartX + 0.5f, 0.5f, 0.0f}};
         int prim2                  = sdf_scene_add_primitive(scene, sphere1);
         (void) prim2;
 
-        sphere1.transform.position = (vec3s) {{demoStartX + 1.0f, 0.0f, 0.0f}};
+        sphere1.transform.position = (vec3s){{demoStartX + 1.0f, 0.0f, 0.0f}};
         int prim3                  = sdf_scene_add_primitive(scene, sphere1);
         (void) prim3;
 
-        sphere1.transform.position = (vec3s) {{demoStartX + 0.5f, -0.5f, 0.0f}};
+        sphere1.transform.position = (vec3s){{demoStartX + 0.5f, -0.5f, 0.0f}};
         int prim4                  = sdf_scene_add_primitive(scene, sphere1);
         (void) prim4;
 
         SDF_Object meta_def = {
             .type   = SDF_BLEND_SMOOTH_UNION,
-            .prim_a = sdf_scene_add_object(scene, (SDF_Object) {.type = SDF_BLEND_SMOOTH_UNION, .prim_a = prim1, .prim_b = prim2}),
-            .prim_b = sdf_scene_add_object(scene, (SDF_Object) {.type = SDF_BLEND_SMOOTH_UNION, .prim_a = prim3, .prim_b = prim4})};
+            .prim_a = sdf_scene_add_object(scene, (SDF_Object){.type = SDF_BLEND_SMOOTH_UNION, .prim_a = prim1, .prim_b = prim2}),
+            .prim_b = sdf_scene_add_object(scene, (SDF_Object){.type = SDF_BLEND_SMOOTH_UNION, .prim_a = prim3, .prim_b = prim4})};
 
         sdf_scene_add_object(scene, meta_def);
         demoStartX += 2.0f;
@@ -101,8 +123,8 @@ int game_main(void)
         int prim1 = sdf_scene_add_primitive(scene, sphere);
 
         sphere.type               = SDF_PRIM_Cube;
-        sphere.transform.position = (vec3s) {{demoStartX, -0.2f, 0.25f}};
-        sphere.transform.scale    = (vec3s) {{0.1f, 0.1f, 0.1f}};
+        sphere.transform.position = (vec3s){{demoStartX, -0.2f, 0.25f}};
+        sphere.transform.scale    = (vec3s){{0.1f, 0.1f, 0.1f}};
         int prim2                 = sdf_scene_add_primitive(scene, sphere);
 
         SDF_Object meta_cast = {
@@ -117,12 +139,15 @@ int game_main(void)
             .type   = SDF_BLEND_SUBTRACTION,
             .prim_a = cast_prim,
             .prim_b = cube_prim};
-        sdf_scene_add_object(scene, cube_mold);
+        int mold_idx = sdf_scene_add_object(scene, cube_mold);
+        (void) mold_idx;
     }
 
     renderer_sdf_set_scene(scene);
 
 #endif
+
+
 
     return EXIT_SUCCESS;
 }

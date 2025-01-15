@@ -13,7 +13,6 @@ STRUCT(Transform,
     float  _padding1;
     versor rotation;    // glm::quat [x, y, z, w]
     vec3s  scale;
-    float  _padding2;
-)
+    float  _padding2;)
 
 #endif
