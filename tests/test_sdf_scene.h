@@ -317,11 +317,6 @@ void test_sdf_scene(void)
 
         TEST_END();
 
-        // Since apple devices have higher DPI we need a seperate image
-        #ifndef __APPLE__
-            ASSERT_CON(compare_ppm_files("./tests/test_sdf_scene_golden_image.ppm", "./tests/test_sdf_scene.ppm"), test_case, "Testing Engine Start/Render/Close and validating test scene");
-        #else 
-            ASSERT_CON(compare_ppm_files("./tests/test_sdf_scene_golder_image_mac.ppm", "./tests/test_sdf_scene.ppm"), test_case, "Testing Engine Start/Render/Close and validating test scene");
-        #endif 
+        ASSERT_CON(compare_ppm_files("./tests/test_sdf_scene_golder_image.ppm", "./tests/test_sdf_scene.ppm"), test_case, "Testing Engine Start/Render/Close and validating test scene");
     }
 }
