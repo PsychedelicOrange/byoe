@@ -4,31 +4,77 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-// Include all engine realted includes here
+// Include all engine related includes here
+#include "core/common.h"
+
+#include "core/frustum.h"
+#include "core/game_registry.h"
+#include "core/game_state.h"
 #include "core/gameobject.h"
+#include "core/shader.h"
 
-void initEngine()
-{
-    printf("Welcome to Build your own engine! BYOE!!\n");
-    printf("\t->version: 0.0.1\n");
-}
+#include "core/containers/hash_map.h"
+#include "core/logging/log.h"
+#include "core/memory/memalign.h"
+#include "core/rng/rng.h"
+#include "core/simd/compiler_defs.h"
+#include "core/simd/intrinsics.h"
+#include "core/simd/platform_caps.h"
+#include "core/uuid/uuid.h"
 
-void exitEngine()
-{
-    printf("Exiting BYOE...Byee!");
-}
+#include "render/render_structs.h"
+#include "render/render_utils.h"
+#include "render/renderer_sdf.h"
 
-// TODO: This is set by the input system. make this explicit bool enginShouldQuit()
-bool engineShouldQuit()
-{
-    return false;
-}
+#include "scene/camera.h"
+#include "scene/sdf_scene.h"
+#include "scene/transform.h"
 
-void runEngine()
+#include "scripting/scripting.h"
+
+struct GLFWwindow;
+
+// -- -- -- -- -- -- GAME MAIN -- -- -- -- -- --
+// This is called by the client (game) to register game objects and their scripts
+extern int game_main(void);
+// -- -- -- -- -- -- GAME MAIN -- -- -- -- -- --
+
+typedef struct engine_version
 {
-    while (!engineShouldQuit()) {
-        // Run the enginesystem;
-    }
-}
+    uint16_t major;
+    uint16_t minor;
+    uint16_t patch;
+    char     build[32];    // Optional build metadata (e.g., "alpha", "beta", "rc")
+} engine_version;
+
+void engine_init(struct GLFWwindow** gameWindow, uint32_t width, uint32_t height);
+
+void engine_destroy();
+
+bool engine_should_quit();
+
+void engine_request_quit();
+
+void engine_run();
+
+float engine_get_delta_time(void);
+
+float engine_get_last_frame(void);
+
+float engine_get_elapsed_time(void);
+
+int engine_get_fps(void);
+
+engine_version engine_get_version(void);
+
+const char* engine_get_version_string(void);
+
+uint16_t engine_get_major_version(void);
+
+uint16_t engine_get_minor_version(void);
+
+uint16_t engine_get_patch_version(void);
+
+const char* engine_get_build_metadata(void);
 
 #endif

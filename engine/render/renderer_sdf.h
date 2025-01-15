@@ -16,15 +16,27 @@ typedef struct renderer_desc
     struct GLFWwindow* window;
 } renderer_desc;
 
+typedef struct texture_readback
+{
+    uint32_t width;
+    uint32_t height;
+    uint32_t bits_per_pixel;
+    char*    pixels;
+} texture_readback;
+
 bool renderer_sdf_init(renderer_desc desc);
 void renderer_sdf_destroy(void);
 
-// this is where the drawcalls and rendering logic is handled including culling
+// this is where the draw calls and rendering logic is handled including culling
 void renderer_sdf_render(void);
 
 const SDF_Scene* renderer_sdf_get_scene(void);
 void             renderer_sdf_set_scene(const SDF_Scene* scene);
 
 void renderer_sdf_draw_scene(const SDF_Scene* scene);
+
+void             renderer_sdf_set_capture_swapchain_ready(void);
+texture_readback renderer_sdf_read_swapchain(void);
+texture_readback renderer_sdf_get_last_swapchain_readback(void);
 
 #endif

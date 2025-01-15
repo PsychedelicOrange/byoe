@@ -39,7 +39,7 @@ uint32_t gameobject_get_sdf_node_idx(random_uuid_t goUUID)
     if (go != NULL) {
         return go->sdfNodeIdx;
     }
-    return -1;
+    return UINT32_MAX;
 }
 
 void gameobject_mark_as_renderable(random_uuid_t goUUID, bool value)

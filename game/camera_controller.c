@@ -75,7 +75,7 @@ void Camera_Start(random_uuid_t* uuid)
     // Init some default values for the camera
     camera->position.x = 0;
     camera->position.y = 0;
-    camera->position.z = 7;
+    camera->position.z = 5;
 
     camera->front.x = 0;
     camera->front.y = 0;

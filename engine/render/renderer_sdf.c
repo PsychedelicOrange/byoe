@@ -28,6 +28,8 @@ typedef struct renderer_internal_state
     uint64_t         frameCount;
     mat4s            viewproj;
     const SDF_Scene* scene;
+    bool             captureSwapchain;
+    texture_readback lastTextureReadback;
 } renderer_internal_state;
 
 //---------------------------------------------------------
@@ -39,9 +41,10 @@ static renderer_internal_state g_RendererSDFInternalState;
 static void renderer_internal_sdf_resize(GLFWwindow* window, int width, int height)
 {
     (void) window;
-    g_RendererSDFInternalState.width      = width;
-    g_RendererSDFInternalState.height     = height;
-    g_RendererSDFInternalState.frameCount = 0;
+    g_RendererSDFInternalState.width            = width;
+    g_RendererSDFInternalState.height           = height;
+    g_RendererSDFInternalState.frameCount       = 0;
+    g_RendererSDFInternalState.captureSwapchain = false;
 
     glViewport(0, 0, width, height);
 }
@@ -124,6 +127,9 @@ bool renderer_sdf_init(renderer_desc desc)
 
 void renderer_sdf_destroy(void)
 {
+    if (g_RendererSDFInternalState.lastTextureReadback.pixels)
+        free(g_RendererSDFInternalState.lastTextureReadback.pixels);
+
     // glfw: terminate, clearing all previously allocated GLFW resources.
     // ------------------------------------------------------------------
     glfwTerminate();
@@ -144,13 +150,18 @@ void renderer_sdf_render(void)
     // Scene Culling is done before any rendering begins (might move it to update part of engine loop)
 
     // clear with a pink color
-    renderer_internal_sdf_clear_screen((color_rgba) {0.0f, 0.0f, 0.0f, 1.0f});
+    renderer_internal_sdf_clear_screen((color_rgba){0.0f, 0.0f, 0.0f, 1.0f});
 
     renderer_internal_sdf_set_pipeline_settings();
 
     renderer_internal_sdf_set_raymarch_shader_global_uniforms();
 
     renderer_sdf_draw_scene(g_RendererSDFInternalState.scene);
+
+    if (g_RendererSDFInternalState.captureSwapchain) {
+        g_RendererSDFInternalState.lastTextureReadback = renderer_sdf_read_swapchain();
+        g_RendererSDFInternalState.captureSwapchain    = false;
+    }
 
     renderer_internal_sdf_swap_backbuffer();
 }
@@ -187,4 +198,42 @@ void renderer_sdf_draw_scene(const SDF_Scene* scene)
         glDrawArrays(GL_TRIANGLES, 0, 6);
     }
     // TEST! TEST! TEST! TEST! TEST! TEST!
+}
+
+void renderer_sdf_set_capture_swapchain_ready(void)
+{
+    g_RendererSDFInternalState.captureSwapchain = true;
+}
+
+texture_readback renderer_sdf_read_swapchain(void)
+{
+    texture_readback result = {0};
+
+    glFinish();
+
+    glfwMakeContextCurrent(g_RendererSDFInternalState.window);
+
+    GLint viewport[4];
+    glGetIntegerv(GL_VIEWPORT, viewport);
+    result.width          = viewport[2];
+    result.height         = viewport[3];
+    result.bits_per_pixel = 3;
+
+    size_t pixel_data_size = result.width * result.height * result.bits_per_pixel;
+    result.pixels          = (char*) malloc(pixel_data_size);
+    if (!result.pixels) {
+        LOG_ERROR("Failed to allocate memory for pixel readback");
+        return result;
+    }
+
+    glReadBuffer(GL_COLOR_ATTACHMENT0);
+
+    glReadPixels(0, 0, result.width, result.height, GL_RGB, GL_UNSIGNED_BYTE, result.pixels);
+
+    return result;
+}
+
+texture_readback renderer_sdf_get_last_swapchain_readback(void)
+{
+    return g_RendererSDFInternalState.lastTextureReadback;
 }

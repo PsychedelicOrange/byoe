@@ -31,10 +31,15 @@ random_uuid_t game_registry_register_gameobject_type(const char* typeName, uint3
     uuid_generate(&uuid);
 
     GameObject* game_object = malloc(sizeof(GameObject));
+    if (!game_object) {
+        LOG_ERROR("Error allocating memory for GameObject");
+        return uuid;
+    }
+
     memset(game_object, 0, sizeof(GameObject));
     uuid_copy(&uuid, &game_object->uuid);
 
-    game_object->sdfNodeIdx = -1;
+    game_object->sdfNodeIdx = UINT32_MAX;
 
     // Init transform to 0
     vec3 pos = {0, 0, 0};

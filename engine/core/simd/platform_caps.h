@@ -109,7 +109,7 @@ static inline int cpu_detect_instruction_set(void)
     return supported;
 }
 
-void cpu_caps_print_info(void)
+static void cpu_caps_print_info(void)
 {
 #if defined(_WIN32)
     // Windows-specific CPU info
@@ -174,7 +174,7 @@ void cpu_caps_print_info(void)
 #endif
 }
 
-void os_caps_print_info(void)
+static void os_caps_print_info(void)
 {
 #if defined(_WIN32)
     // Windows OS info
