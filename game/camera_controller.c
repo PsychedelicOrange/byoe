@@ -52,8 +52,7 @@ void process_keyboard(Camera* camera, enum Camera_Movement_Direction direction, 
 
     camera->position = glms_vec3_add(camera->position, CameraMovement);
 
-    s_cameraState.cameraMode       = PlayerTarget;
-    s_cameraState.playerGameObject = NULL;
+    LOG_WARN("%f", camera->position.z);
 }
 
 void process_mouse_movement(Camera* camera, float xoffset, float yoffset)
@@ -125,6 +124,9 @@ void Camera_Start(random_uuid_t* uuid)
     camera->near_plane = 0.01f;
     camera->far_plane  = 100.0f;
     camera->fov        = 45.0f;
+
+    s_cameraState.cameraMode       = PlayerTarget;
+    s_cameraState.playerGameObject = NULL;
 }
 
 void Camera_Update(random_uuid_t* uuid, float dt)
@@ -137,14 +139,14 @@ void Camera_Update(random_uuid_t* uuid, float dt)
 
     if (s_cameraState.cameraMode == FPS) {
         // Update camera position with keyboard input
-        if (gameState->keycodes[GLFW_KEY_W] || gameState->keycodes[GLFW_KEY_UP])
+        if (gameState->keycodes[GLFW_KEY_W])
             process_keyboard(camera, FORWARD, dt);
-        if (gameState->keycodes[GLFW_KEY_S] || gameState->keycodes[GLFW_KEY_DOWN])
+        if (gameState->keycodes[GLFW_KEY_S])
             process_keyboard(camera, BACKWARD, dt);
 
-        if (gameState->keycodes[GLFW_KEY_D] || gameState->keycodes[GLFW_KEY_RIGHT])
+        if (gameState->keycodes[GLFW_KEY_D])
             process_keyboard(camera, RIGHT, dt);
-        if (gameState->keycodes[GLFW_KEY_A] || gameState->keycodes[GLFW_KEY_LEFT])
+        if (gameState->keycodes[GLFW_KEY_A])
             process_keyboard(camera, LEFT, dt);
 
         if (gameState->isMousePrimaryDown) {
@@ -157,8 +159,13 @@ void Camera_Update(random_uuid_t* uuid, float dt)
 
         vec3s playerPosition = {0};
         gameobject_get_position(s_cameraState.playerUUID, &playerPosition.raw);
-        playerPosition.z += 5;
+        // LOG_INFO("%f", playerPosition.z);
+        playerPosition.z += 3;
+        playerPosition.y += 1;
         glm_vec3_copy(playerPosition.raw, camera->position.raw);
+        // LOG_WARN("%f", camera->position.z);
+        camera->position = glms_vec3_add(camera->position, playerPosition);
+
     }
 
     update_camera_vectors(camera);
