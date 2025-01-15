@@ -14,11 +14,11 @@ TODO: Basic Gameplay
 - [ ] Ghosts[Optional]: if volumetrics are hard/time constrained, use a glass like material for ghosts with refraction and alpha. use this for ghosts: https://www.shadertoy.com/view/X32BRz
 */
 
-#define TEST_SCENE 0
+#define TEST_SCENE 1
 
 int game_main(void)
 {
-
+#if !TEST_SCENE
     SDF_Scene* asteroids_game_scene = malloc(sizeof(SDF_Scene));
     sdf_scene_init(asteroids_game_scene);
     renderer_sdf_set_scene(asteroids_game_scene);
@@ -35,7 +35,10 @@ int game_main(void)
     REGISTER_GAME_OBJECT("Camera", 0, Camera_Start, Camera_Update);
     REGISTER_GAME_OBJECT_WITH_NODE_IDX("Player", PlayerData, Player_Start, Player_Update, player_prim_idx);
 
-#if TEST_SCENE
+#elif TEST_SCENE
+
+    REGISTER_GAME_OBJECT("Camera", 0, Camera_Start, Camera_Update);
+
     // Define Test Scene
     SDF_Scene* scene = malloc(sizeof(SDF_Scene));
     sdf_scene_init(scene);
@@ -146,8 +149,6 @@ int game_main(void)
     renderer_sdf_set_scene(scene);
 
 #endif
-
-
 
     return EXIT_SUCCESS;
 }
