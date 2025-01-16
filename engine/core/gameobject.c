@@ -2,25 +2,7 @@
 
 #include "logging/log.h"
 
-static void create_transform_matrix(mat4s* dest, vec3 position, versor rotation, vec3 scale)
-{
-    // Create individual transformation matrices
-    mat4s translation, rotationMatrix, scaling;
-
-    // Create translation matrix
-    glm_translate_make(translation.raw, position);
-
-    // Create rotation matrix from versor (quaternion)
-    glm_mat4_identity(rotationMatrix.raw);                             // Start with identity matrix
-    glm_quat_rotate(translation.raw, rotation, rotationMatrix.raw);    // Apply rotation
-
-    // Create scaling matrix
-    glm_scale_make(scaling.raw, scale);
-
-    // Combine transformations: scaling -> rotation -> translation
-    glm_mat4_mul(translation.raw, rotationMatrix.raw, dest->raw);    // Apply rotation to translation
-    glm_mat4_mul(dest->raw, scaling.raw, dest->raw);                 // Apply scaling to the combined transformation
-}
+#include "math_util.h"
 
 //-------------------------------------------------------
 // Public API
@@ -61,8 +43,7 @@ mat4s gameobject_get_transform(random_uuid_t goUUID)
 
     Transform* transform = &obj->transform;
 
-    mat4s result;
-    create_transform_matrix(&result, transform->position.raw, transform->rotation, (vec3){transform->scale, transform->scale, transform->scale});
+    mat4s result = create_transform_matrix(transform->position.raw, transform->rotation, (vec3){transform->scale, transform->scale, transform->scale});
 
     return result;
 }
@@ -77,8 +58,7 @@ mat4s gameobject_ptr_get_transform(GameObject* obj)
 
     Transform* transform = &obj->transform;
 
-    mat4s result;
-    create_transform_matrix(&result, transform->position.raw, transform->rotation, (vec3){transform->scale, transform->scale, transform->scale});
+    mat4s result = create_transform_matrix(transform->position.raw, transform->rotation, (vec3){transform->scale, transform->scale, transform->scale});
 
     return result;
 }

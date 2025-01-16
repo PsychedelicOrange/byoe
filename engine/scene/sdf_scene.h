@@ -9,22 +9,28 @@
 #define MAX_SDF_NODES 1024    // same as max game objects
 #define MAX_SDF_OPS   32      // Max no of SDF operations that can be done to combine complex shapes
 
+
 // Wen need to flatten the SDF_Node to pass it to GPU, this structs helps with that
+// aligned at 16 bytes | total = 160 bytes
 typedef struct SDF_NodeGPUData
 {
     int nodeType;
-
-    // SDF_Primitive GPU View
     int primType;
     int _pad[2];
 
-    vec4s pos_scale;
+    mat4s transform;
+
+    float scale;
+    float _pad2[3];
+
+    vec4s packed_params[2];
 
     // SDF_Operation GPU View
-    int          op;
-    int          left;     // Index of the left child node
-    int          right;    // Index of the right child node
-    int          is_ref_node;
+    int blend;
+    int prim_a;
+    int prim_b;
+    int _pad3;
+
     SDF_Material material;
 } SDF_NodeGPUData;
 
@@ -54,8 +60,10 @@ int sdf_scene_add_primitive(SDF_Scene* scene, SDF_Primitive primitive);
 // Add a composite operation to the scene and return its node index, can be used in chain rule fashion to create more complex SDFs
 int sdf_scene_add_object(SDF_Scene* scene, SDF_Object object);
 
+// Uploads the scene nodes to GPU by flattening them using SDF_NodeGPUData struct
 void sdf_scene_upload_scene_nodes_to_gpu(const SDF_Scene* scene);
 
+// Binds the buffer that contains the flattened nodes to the given shader
 void sdf_scene_bind_scene_nodes(uint32_t shaderProgramID);
 
 #endif

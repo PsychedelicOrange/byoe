@@ -51,12 +51,14 @@ int game_main(void)
             .transform = {
                 .position = {{demoStartX, 0.0f, 0.0f}},
                 .rotation = {0.0f, 0.0f, 0.0f, 0.0f},
-                .scale    = 0.25f},    // only x is used as radius of the sphere
-            .material = {.diffuse = {0.5f, 0.3f, 0.7f, 1.0f}}};
+                .scale    = 1.0f},
+            .props.sphere = {.radius = 0.25f},
+            .material     = {.diffuse = {0.5f, 0.3f, 0.7f, 1.0f}}};
         sdf_scene_add_primitive(scene, sphere);
         demoStartX += 0.5f;
     }
 
+    #if DISABLE_THIS_SNIPPET
     // simple cube
     {
         SDF_Primitive cube = {
@@ -144,6 +146,7 @@ int game_main(void)
         int mold_idx = sdf_scene_add_object(scene, cube_mold);
         (void) mold_idx;
     }
+    #endif    // DISABLE_THIS_SNIPPET
 
     renderer_sdf_set_scene(scene);
 

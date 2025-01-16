@@ -4,7 +4,7 @@
 
 #include "../core/common.h"
 
-// TODO: Add defines so as to make this inlcude-able in shaders
+// TODO: Add defines so as to make this include-able in shaders
 #ifndef SHADER_INCLUDE
     #include <stdbool.h>
     #include <stdint.h>
@@ -45,7 +45,6 @@ ENUM(SDF_PrimitiveType,
     SDF_PRIM_BoxFrame,
     SDF_PRIM_Torus,
     SDF_PRIM_TorusCapped,
-
     SDF_PRIM_Capsule,
     SDF_PRIM_Cylinder,
     SDF_PRIM_Ellipsoid,
@@ -75,9 +74,6 @@ ENUM(SDF_BlendType,
     SDF_BLEND_SMOOTH_SUBTRACTION)
 
 ENUM(SDF_Operation,
-    SDF_OP_TRANSLATE,
-    SDF_OP_ROTATE,
-    SDF_OP_SCALE,
     SDF_OP_DISTORTION,
     SDF_OP_ELONGATION)
 
@@ -85,11 +81,14 @@ ENUM(SDF_NodeType,
     SDF_NODE_PRIMITIVE,
     SDF_NODE_OBJECT)
 
+//-----------------------------
+
 // TODO: If data memory gets too much, push the material to a separate buffer and use a bindless model
 STRUCT(SDF_Material,
        vec4 diffuse;)
 
-//center is set by transform node
+//-----------------------------
+
 STRUCT(sphere_props,
        float radius;)
 
@@ -185,9 +184,12 @@ STRUCT(capped_plane_props,
        vec2s dimensions;
        float radius;)
 
+//-----------------------------
+
 STRUCT(
     SDF_Primitive,
     SDF_PrimitiveType type;
+    int               _padding[3];
     Transform         transform;    // Position, Rotation, Scale
     SDF_Material      material;
     union {
@@ -217,32 +219,32 @@ STRUCT(
         capped_plane_props     capped_plane;
         // Add more as needed
         // Max of 8 floats are needed to pack all props in a flattened view for GPU, update this as props get larger
-        vec4s packed_props[2];
+        vec4s packed_data[2];
     } props;)
 
 // Blending -> these are blending method b/w two primitives (eg. smooth union, XOR, etc. )  ( again refer iq)
 STRUCT(SDF_Object,
        SDF_BlendType type;
-       Transform     transform;    // Position, Rotation, Scale
-       int           prim_a;       // Index of the left child in the SDF node pool
-       int           prim_b;       // Index of the right child in the SDF node pool
-)
+       Transform     transform;
+       int           prim_a;
+       int           prim_b;)
 
-// This struct cannot be directly translated to the GPU, we need another helper struct to flatten it (defined in sdf_scene.h)
 #ifndef SHADER_INCLUDE
-STRUCT(
-    SDF_Node,
+// This struct cannot be directly translated to the GPU, we need another helper struct to flatten it (defined in sdf_scene.h)
+typedef struct SDF_Node
+{
     SDF_NodeType type;
-    union {
+    int          _pad0[3];
+    union
+    {
         SDF_Primitive primitive;
         SDF_Object    object;
     };
     bounding_sphere bounds;
     bool            is_ref_node;
-    bool            is_culled;)
-#endif
-// TODO:
-// Operations -> operations can act on primitives and objects alike.
-// (eg. transformation, distortion, elongation, rotation, etc.)
-//( taken from https://iquilezles.org/articles/distfunctions/ )
-#endif
+    bool            is_culled;
+    bool            _pad[14];
+} SDF_Node;
+#endif    // SHADER_INCLUDE
+
+#endif    // RENDER_STRUCTS_H
