@@ -215,7 +215,7 @@ hit_info sceneSDF(vec3 p) {
             float SCALE = 1.0f;
             // Translate/Rotate
             p = opTx(p, node.transform);
-            //p /= SCALE;
+            p /= SCALE;
 
             if (node.primType == SDF_PRIM_Sphere) { 
                 d = sphereSDF(p, Sphere_get_radius(node.packed_params[0], node.packed_params[1]));
@@ -224,7 +224,7 @@ hit_info sceneSDF(vec3 p) {
             }
 
             // Scaling 
-            //d *= SCALE;
+            d *= SCALE;
 
             // Apply the blend b/w primitives
             if (curr_blend_node.blend == SDF_BLEND_UNION)

@@ -54,8 +54,9 @@ int game_main(void)
                 .scale    = 1.0f},
             .props.sphere = {.radius = 1.0f},
             .material     = {.diffuse = {0.5f, 0.3f, 0.7f, 1.0f}}};
-        sdf_scene_add_primitive(scene, sphere);
-        demoStartX += 2.0f;
+        int sph_prim = sdf_scene_add_primitive(scene, sphere);
+        (void) sph_prim;
+        demoStartX += 0.5f;
 
         SDF_Primitive box = {
             .type      = SDF_PRIM_Box,
@@ -65,8 +66,22 @@ int game_main(void)
                 .scale    = 1.0f},
             .props.box = {.dimensions = {0.25f, 0.10f, 0.45f}},
             .material  = {.diffuse = {0.5f, 0.3f, 0.7f, 1.0f}}};
-        sdf_scene_add_primitive(scene, box);
+        int cube_prim = sdf_scene_add_primitive(scene, box);
+        (void) cube_prim;
         demoStartX += 0.5f;
+
+        // This is the real test
+        SDF_Object sphere_cube = {
+            .type      = SDF_BLEND_SMOOTH_UNION,
+            .prim_a    = sph_prim,
+            .prim_b    = cube_prim,
+            .transform = {
+                .position = {{5.0f, 0.0f, 0.0f}},
+                .rotation = {0.0f, 0.0f, 0.0f, 0.0f},
+                .scale    = 1.0f}};
+
+        int meta_prim = sdf_scene_add_object(scene, sphere_cube);
+        (void) meta_prim;
     }
 
     #if DISABLE_THIS_SNIPPET
