@@ -171,6 +171,14 @@ float smoothIntersectionBlend( float d1, float d2, float k )
 // TODO: Define other operation funtions here
 
 ////////////////////////////////////////////////////////////////////////////////////////
+// Positioning
+// Translate, Rotate and Uniform Scaling
+vec3 opTx(vec3 p, mat4 t)
+{
+    return vec3(inverse(t) * vec4(p, 1.0f));
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
 // Iterative Scene SDF Evaluation
 struct hit_info
 {
@@ -204,12 +212,19 @@ hit_info sceneSDF(vec3 p) {
         float d = RAY_MAX_STEP;
         // Evaluate the current node
         if(node.nodeType == SDF_NODE_PRIMITIVE) {
+            float SCALE = 1.0f;
+            // Translate/Rotate
+            p = opTx(p, node.transform);
+            //p /= SCALE;
 
             if (node.primType == SDF_PRIM_Sphere) { 
                 d = sphereSDF(p, Sphere_get_radius(node.packed_params[0], node.packed_params[1]));
-            } else if (node.primType == 1) { 
+            } else if (node.primType == SDF_PRIM_Box) { 
                 d = boxSDF(p, Box_get_dimensions(node.packed_params[0], node.packed_params[1]));
             }
+
+            // Scaling 
+            //d *= SCALE;
 
             // Apply the blend b/w primitives
             if (curr_blend_node.blend == SDF_BLEND_UNION)

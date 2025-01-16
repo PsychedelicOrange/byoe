@@ -42,7 +42,7 @@ int game_main(void)
     SDF_Scene* scene = malloc(sizeof(SDF_Scene));
     sdf_scene_init(scene);
 
-    float demoStartX = -1.25f;
+    float demoStartX = 0.25f;
 
     // simple sphere
     {
@@ -52,9 +52,20 @@ int game_main(void)
                 .position = {{demoStartX, 0.0f, 0.0f}},
                 .rotation = {0.0f, 0.0f, 0.0f, 0.0f},
                 .scale    = 1.0f},
-            .props.sphere = {.radius = 0.25f},
+            .props.sphere = {.radius = 1.0f},
             .material     = {.diffuse = {0.5f, 0.3f, 0.7f, 1.0f}}};
         sdf_scene_add_primitive(scene, sphere);
+        demoStartX += 2.0f;
+
+        SDF_Primitive box = {
+            .type      = SDF_PRIM_Box,
+            .transform = {
+                .position = {{demoStartX, 0.0f, 0.0f}},
+                .rotation = {0.354f, 0.354f, 0.146f, 0.854f},
+                .scale    = 1.0f},
+            .props.box = {.dimensions = {0.25f, 0.10f, 0.45f}},
+            .material  = {.diffuse = {0.5f, 0.3f, 0.7f, 1.0f}}};
+        sdf_scene_add_primitive(scene, box);
         demoStartX += 0.5f;
     }
 
