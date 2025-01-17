@@ -88,8 +88,7 @@ void sdf_scene_upload_scene_nodes_to_gpu(const SDF_Scene* scene)
         if (node.type == SDF_NODE_PRIMITIVE) {
             data.primType = node.primitive.type;
 
-            float uniform_scale = node.primitive.transform.scale;
-            mat4s transform     = create_transform_matrix(node.primitive.transform.position.raw, node.primitive.transform.rotation, (vec3){uniform_scale, uniform_scale, uniform_scale});
+            mat4s transform     = create_transform_matrix(node.primitive.transform.position.raw, node.primitive.transform.rotation, (vec3){1.0f, 1.0f, 1.0f});
             data.transform      = transform;
             data.scale          = node.primitive.transform.scale;
 
@@ -102,8 +101,7 @@ void sdf_scene_upload_scene_nodes_to_gpu(const SDF_Scene* scene)
             data.prim_a = node.object.prim_a;
             data.prim_b = node.object.prim_b;
 
-            float uniform_scale = node.object.transform.scale;
-            mat4s transform     = create_transform_matrix(node.object.transform.position.raw, node.object.transform.rotation, (vec3){uniform_scale, uniform_scale, uniform_scale});
+            mat4s transform     = create_transform_matrix(node.object.transform.position.raw, node.object.transform.rotation, (vec3){1.0f, 1.0f, 1.0f});
             data.transform      = transform;
             data.scale          = node.object.transform.scale;
         }

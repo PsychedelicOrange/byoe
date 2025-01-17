@@ -43,13 +43,14 @@ int game_main(void)
     sdf_scene_init(scene);
 
     float demoStartX = 0.25f;
+    (void) demoStartX;
 
     // simple sphere
     {
         SDF_Primitive sphere = {
             .type      = SDF_PRIM_Sphere,
             .transform = {
-                .position = {{demoStartX, 0.0f, 0.0f}},
+                .position = {{0.0f, 0.0f, 0.0f}},
                 .rotation = {0.0f, 0.0f, 0.0f, 0.0f},
                 .scale    = 1.0f},
             .props.sphere = {.radius = 1.0f},
@@ -61,10 +62,10 @@ int game_main(void)
         SDF_Primitive box = {
             .type      = SDF_PRIM_Box,
             .transform = {
-                .position = {{demoStartX, 0.0f, 0.0f}},
-                .rotation = {0.354f, 0.354f, 0.146f, 0.854f},
+                .position = {{0.0f, 0.0f, 0.0f}},
+                .rotation = {0.0f, 0.0f, 0.0f, 0.0f},
                 .scale    = 1.0f},
-            .props.box = {.dimensions = {0.25f, 0.10f, 0.45f}},
+            .props.box = {.dimensions = {{1.0f, 1.0f, 1.0f}}}, // 0.25f, 0.10f, 0.45f
             .material  = {.diffuse = {0.5f, 0.3f, 0.7f, 1.0f}}};
         int cube_prim = sdf_scene_add_primitive(scene, box);
         (void) cube_prim;
@@ -76,7 +77,7 @@ int game_main(void)
             .prim_a    = sph_prim,
             .prim_b    = cube_prim,
             .transform = {
-                .position = {{5.0f, 0.0f, 0.0f}},
+                .position = {{2.0f, 0.0f, 0.0f}},
                 .rotation = {0.0f, 0.0f, 0.0f, 0.0f},
                 .scale    = 1.0f}};
 

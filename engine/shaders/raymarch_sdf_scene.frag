@@ -214,7 +214,7 @@ hit_info sceneSDF(vec3 p) {
         if(node.nodeType == SDF_NODE_PRIMITIVE) {
             float SCALE = 1.0f;
             // Translate/Rotate
-            p = opTx(p, node.transform);
+            p = opTx(p, node.transform * parent_node.transform);
             p /= SCALE;
 
             if (node.primType == SDF_PRIM_Sphere) { 
@@ -245,6 +245,7 @@ hit_info sceneSDF(vec3 p) {
         }
         else {            
             if (sp < MAX_GPU_STACK_SIZE - 2) {
+                // parent_node.transform = node.transform;
                 if (node.prim_b >= 0) stack[sp++] = blend_node(node.blend, node.prim_b);
                 if (node.prim_a >= 0) stack[sp++] = blend_node(node.blend, node.prim_a);
             }

@@ -133,7 +133,7 @@ void setup_sdf_test_scene(void)
                 .position = {{demoStartX, 0.0f, -0.25f}},
                 .rotation = {0.0f, 0.0f, 0.0f, 1.0f},
                 .scale    = 0.5f},
-            .props.box = {.dimensions = {0.5f, 0.5f, 0.25f}},
+            .props.box = {.dimensions = {{0.5f, 0.5f, 0.25f}}},
             .material  = {.diffuse = {0.8f, 0.81f, 0.83f, 1.0f}}};
         int cube_prim = sdf_scene_add_primitive(scene, cube_prim_def);
         (void) cube_prim;
