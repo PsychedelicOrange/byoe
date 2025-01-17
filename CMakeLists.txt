@@ -8,6 +8,7 @@ option(BUILD_SHARED_ENGINE "Build engine as shared library (DLL)" OFF)
 ####################################################################
 ## GLOBAL COMPILATION SETTINGS
 set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /MP") 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 # VS edit and continue for h0to reloading
 if(MSVC)
