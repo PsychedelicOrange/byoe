@@ -220,21 +220,25 @@ STRUCT(
         // Add more as needed
         // Max of 8 floats are needed to pack all props in a flattened view for GPU, update this as props get larger
         vec4s packed_data[2];
-    } props;)
+    } props;
+    uint32_t _pad_to_128_bytes_boundary[4];)
 
 // Blending -> these are blending method b/w two primitives (eg. smooth union, XOR, etc. )  ( again refer iq)
+// Since it's shared as union it's the same size as of SDF_Primitive
 STRUCT(SDF_Object,
        SDF_BlendType type;
+       uint32_t      _pad[3];
        Transform     transform;
-       int           prim_a;
-       int           prim_b;)
+       uint32_t      prim_a;
+       uint32_t      prim_b;
+       uint32_t      _pad_to_128_bytes_boundary[14];)
 
 #ifndef SHADER_INCLUDE
 // This struct cannot be directly translated to the GPU, we need another helper struct to flatten it (defined in sdf_scene.h)
 typedef struct SDF_Node
 {
     SDF_NodeType type;
-    int          _pad0[3];
+    uint32_t     _pad0[3];
     union
     {
         SDF_Primitive primitive;
