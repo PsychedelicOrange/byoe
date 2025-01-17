@@ -29,9 +29,9 @@ typedef struct GameObject
     random_uuid_t  uuid;
     Transform      transform;
     bool           isRenderable;
-    char           typeName[255];     // Type of the game object (class/type)
-    void*          gameObjectData;    // Object-specific data that can be serialized/reflected
+    bool           _pad0[3];
     uint32_t       sdfNodeIdx;        // index of the sdf node in sdf scene array
+    void*          gameObjectData;    // Object-specific data that can be serialized/reflected
     StartFunction  startFn;           // Start function for the object
     UpdateFunction updateFn;          // Update function for the object
     // TODO: Add collision callback functions here if needed

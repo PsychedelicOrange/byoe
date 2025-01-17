@@ -24,7 +24,7 @@ void game_registry_init(void);
 void game_registry_destroy(void);
 
 // Private methods to create game objects in the game world
-random_uuid_t game_registry_register_gameobject_type(const char* typeName, uint32_t gameObjectDataSize, StartFunction StartFn, UpdateFunction UpdateFn);
+random_uuid_t game_registry_register_gameobject_type(uint32_t gameObjectDataSize, StartFunction StartFn, UpdateFunction UpdateFn);
 
 // Unregister and remove it from the game registry
 void game_registry_unregister_gameobject_type(const random_uuid_t uuid);
@@ -41,13 +41,13 @@ uint32_t game_registry_get_num_objects(void);
 /*******************************/
 
 // Macro for quick game object registration and spawning in the game world
-#define REGISTER_GAME_OBJECT(TypeName, DataType, StartFn, UpdateFn) \
-    game_registry_register_gameobject_type(TypeName, sizeof(DataType), StartFn, UpdateFn);
+#define REGISTER_GAME_OBJECT(DataType, StartFn, UpdateFn) \
+    game_registry_register_gameobject_type(sizeof(DataType), StartFn, UpdateFn);
 
-#define REGISTER_GAME_OBJECT_WITH_NODE_IDX(TypeName, DataType, StartFn, UpdateFn, NodeIdx)                            \
+#define REGISTER_GAME_OBJECT_WITH_NODE_IDX(DataType, StartFn, UpdateFn, NodeIdx)                            \
                                                                                                                       \
     {                                                                                                                 \
-        random_uuid_t goUUID = game_registry_register_gameobject_type(TypeName, sizeof(DataType), StartFn, UpdateFn); \
+        random_uuid_t goUUID = game_registry_register_gameobject_type(sizeof(DataType), StartFn, UpdateFn); \
         gameobject_set_sdf_node_idx(goUUID, NodeIdx);                                                                 \
     }
 

@@ -41,10 +41,10 @@ extern int game_main(void);
 
 typedef struct engine_version
 {
-    uint16_t major;
-    uint16_t minor;
-    uint16_t patch;
-    char     build[32];    // Optional build metadata (e.g., "alpha", "beta", "rc")
+    alignas(16) uint8_t major;
+    uint8_t minor;
+    uint8_t patch;
+    char     build[13];    // Optional build metadata (e.g., "alpha", "beta", "rc")
 } engine_version;
 
 void engine_init(struct GLFWwindow** gameWindow, uint32_t width, uint32_t height);

@@ -19,7 +19,7 @@ void game_registry_destroy(void)
     hash_map_destroy(gGameRegistry);
 }
 
-random_uuid_t game_registry_register_gameobject_type(const char* typeName, uint32_t gameObjectDataSize, StartFunction StartFn, UpdateFunction UpdateFn)
+random_uuid_t game_registry_register_gameobject_type(uint32_t gameObjectDataSize, StartFunction StartFn, UpdateFunction UpdateFn)
 {
     random_uuid_t uuid = {{0, 0, 0, 0}};
 
@@ -48,7 +48,6 @@ random_uuid_t game_registry_register_gameobject_type(const char* typeName, uint3
     versor rotquat               = {0, 0, 0, 0};
     glm_quat_copy(rotquat, game_object->transform.rotation);
 
-    strcpy(game_object->typeName, typeName);
     if (gameObjectDataSize > 0)
         game_object->gameObjectData = malloc(gameObjectDataSize);
     game_object->startFn  = StartFn;

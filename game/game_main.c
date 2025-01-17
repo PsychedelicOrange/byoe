@@ -32,11 +32,11 @@ int game_main(void)
         .material = {.diffuse = {0.75f, 0.3f, 0.2f, 1.0f}}};
     int player_prim_idx = sdf_scene_add_primitive(asteroids_game_scene, sphere);
 
-    REGISTER_GAME_OBJECT("Camera", 0, Camera_Start, Camera_Update);
-    REGISTER_GAME_OBJECT_WITH_NODE_IDX("Player", PlayerData, Player_Start, Player_Update, player_prim_idx);
+    REGISTER_GAME_OBJECT(0, Camera_Start, Camera_Update);
+    REGISTER_GAME_OBJECT_WITH_NODE_IDX(PlayerData, Player_Start, Player_Update, player_prim_idx);
 #else
 
-    REGISTER_GAME_OBJECT("Camera", 0, Camera_Start, Camera_Update);
+    REGISTER_GAME_OBJECT(0, Camera_Start, Camera_Update);
 
     // Define Test Scene
     SDF_Scene* scene = malloc(sizeof(SDF_Scene));

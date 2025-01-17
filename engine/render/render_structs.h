@@ -186,6 +186,8 @@ STRUCT(capped_plane_props,
 
 //-----------------------------
 
+// TODO: perf-sweep with and without _pad_to_128_bytes_boundary
+
 STRUCT(
     SDF_Primitive,
     SDF_PrimitiveType type;

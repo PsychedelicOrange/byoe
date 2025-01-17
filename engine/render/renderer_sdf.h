@@ -21,6 +21,7 @@ typedef struct texture_readback
     uint32_t width;
     uint32_t height;
     uint32_t bits_per_pixel;
+    uint32_t _pad0;
     char*    pixels;
 } texture_readback;
 
