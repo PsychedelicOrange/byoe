@@ -50,7 +50,7 @@ int game_main(void)
         SDF_Primitive sphere = {
             .type      = SDF_PRIM_Sphere,
             .transform = {
-                .position = {{0.0f, 0.0f, 0.0f}},
+                .position = {{4.0f, 0.0f, 0.0f}},
                 .rotation = {0.0f, 0.0f, 0.0f, 0.0f},
                 .scale    = 1.0f},
             .props.sphere = {.radius = 1.0f},
@@ -62,7 +62,7 @@ int game_main(void)
         SDF_Primitive box = {
             .type      = SDF_PRIM_Box,
             .transform = {
-                .position = {{0.0f, 0.0f, 0.0f}},
+                .position = {{0.75f, 0.0f, 0.0f}},
                 .rotation = {0.0f, 0.0f, 0.0f, 0.0f},
                 .scale    = 1.0f},
             .props.box = {.dimensions = {{1.0f, 1.0f, 1.0f}}}, // 0.25f, 0.10f, 0.45f
@@ -77,7 +77,7 @@ int game_main(void)
             .prim_a    = sph_prim,
             .prim_b    = cube_prim,
             .transform = {
-                .position = {{2.0f, 0.0f, 0.0f}},
+                .position = {{0.0f, 0.0f, 0.0f}},
                 .rotation = {0.0f, 0.0f, 0.0f, 0.0f},
                 .scale    = 1.0f}};
 

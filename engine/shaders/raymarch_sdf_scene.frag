@@ -214,7 +214,7 @@ hit_info sceneSDF(vec3 p) {
         if(node.nodeType == SDF_NODE_PRIMITIVE) {
             float SCALE = 1.0f;
             // Translate/Rotate
-            p = opTx(p, node.transform * parent_node.transform);
+            p = opTx(p, parent_node.transform * node.transform);
             p /= SCALE;
 
             if (node.primType == SDF_PRIM_Sphere) { 

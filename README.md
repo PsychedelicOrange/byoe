@@ -30,7 +30,7 @@ More info on the editor can be found on the sdf-editor branch here: https://gith
 
 ## Building
 
-Folow these instructions to build the engine and run the game. All the dependencies such as cglm, glfw etc. will be cloned and built by CMake itself.
+Folow these instructions to build the engine and run the game. All the dependencies such as cglm, glfw etc. will be cloned and built by CMake itself. You can either use make on linux/mac and VisualStudio on Windows. We recommend using NInja on Linux/Mac for super fast compilation, windows VS project is compiled with /MP option enabled.
 
 ```
 git clone https://github.com/PsychedelicOrange/byoe.git
