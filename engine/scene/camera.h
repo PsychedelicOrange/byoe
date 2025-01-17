@@ -5,14 +5,15 @@ typedef struct Camera
 {
     mat4s lookAt;
     vec3s position;
-    vec3s right;
-    vec3s front;
-    vec3s up;
     float near_plane;
+    vec3s right;
     float far_plane;
+    vec3s front;
     float fov;
+    vec3s up;
     float yaw;
     float pitch;
+    float _pad0[3];
 } Camera;
 
 #endif

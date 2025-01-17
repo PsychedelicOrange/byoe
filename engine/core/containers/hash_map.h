@@ -28,8 +28,8 @@ typedef struct hash_map_t
 typedef struct hash_map_iterator_t
 {
     hash_map_t*     hash_map_ref;
-    hash_map_pair_t current_pair;
     size_t          index;    //current index of the iterator in the hash_map
+    hash_map_pair_t current_pair;
 } hash_map_iterator_t;
 
 hash_map_t* hash_map_create(size_t initial_capacity);

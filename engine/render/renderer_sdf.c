@@ -105,23 +105,6 @@ bool renderer_sdf_init(renderer_desc desc)
 
     glfwSetFramebufferSizeCallback(g_RendererSDFInternalState.window, renderer_internal_sdf_resize);
 
-    rng_generate();
-    for (int i = 0; i < MAX_ROCKS_COUNT; i++) {
-        gamestate_get_global_instance()->rocks[i][0] = (float) rng_range(1, 10);
-        gamestate_get_global_instance()->rocks[i][1] = (float) rng_range(1, 10);
-        gamestate_get_global_instance()->rocks[i][2] = (float) rng_range(1, 10);
-        gamestate_get_global_instance()->rocks[i][0] -= 5;
-        gamestate_get_global_instance()->rocks[i][1] -= 5;
-        gamestate_get_global_instance()->rocks[i][2] -= 5;
-        gamestate_get_global_instance()->rocks[i][3] = 0.5;
-    }
-    gamestate_get_global_instance()->rocks[1][0] = 1;
-    gamestate_get_global_instance()->rocks[1][1] = 1;
-    gamestate_get_global_instance()->rocks[1][2] = -2;
-    gamestate_get_global_instance()->rocks[0][0] = 1;
-    gamestate_get_global_instance()->rocks[0][1] = 1;
-    gamestate_get_global_instance()->rocks[0][2] = -6;
-
     return true;
 }
 

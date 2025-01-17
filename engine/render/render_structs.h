@@ -189,7 +189,7 @@ STRUCT(capped_plane_props,
 STRUCT(
     SDF_Primitive,
     SDF_PrimitiveType type;
-    int               _padding[3];
+    int               _pad0[3];
     Transform         transform;    // Position, Rotation, Scale
     SDF_Material      material;
     union {
@@ -227,7 +227,7 @@ STRUCT(
 // Since it's shared as union it's the same size as of SDF_Primitive
 STRUCT(SDF_Object,
        SDF_BlendType type;
-       uint32_t      _pad[3];
+       uint32_t      _pad0[3];
        Transform     transform;
        uint32_t      prim_a;
        uint32_t      prim_b;
@@ -247,7 +247,7 @@ typedef struct SDF_Node
     bounding_sphere bounds;
     bool            is_ref_node;
     bool            is_culled;
-    bool            _pad[14];
+    bool            _pad1[14];
 } SDF_Node;
 #endif    // SHADER_INCLUDE
 
