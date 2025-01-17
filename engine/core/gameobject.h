@@ -4,18 +4,13 @@
 // std.
 #include <stdint.h>
 
-// external
-#include <cglm/cglm.h>
-#include <cglm/struct.h>
+#include "common.h"
 
 // proj
-#include "../scripting/scripting.h"
-#include "common.h"
-#include "uuid/uuid.h"
-
 #include "../scene/transform.h"
-
+#include "../scripting/scripting.h"
 #include "game_registry.h"
+#include "uuid/uuid.h"
 
 // Q. How to solve sending/updating transform, we don't have transform component and mesh data
 // sol.1: we can manually link mesh to GameObject via registration or util functions in start itself, like game_object_set_mesh
@@ -32,8 +27,8 @@ typedef struct GameObject
     bool           _pad0[3];
     uint32_t       sdfNodeIdx;        // index of the sdf node in sdf scene array
     void*          gameObjectData;    // Object-specific data that can be serialized/reflected
-    StartFunction  startFn;           // Start function for the object
-    UpdateFunction updateFn;          // Update function for the object
+    StartFunction  startFn;
+    UpdateFunction updateFn;
     // TODO: Add collision callback functions here if needed
 } GameObject;
 
