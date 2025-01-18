@@ -79,7 +79,7 @@ int game_main(void)
             .transform = {
                 .position = {{0.0f, 0.0f, 0.0f}},
                 .rotation = {0.0f, 0.0f, 0.0f, 0.0f},
-                .scale    = 1.0f}};
+                .scale    = 2.0f}};
 
         int meta_prim = sdf_scene_add_object(scene, sphere_cube);
         (void) meta_prim;

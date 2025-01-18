@@ -249,7 +249,8 @@ typedef struct SDF_Node
     bounding_sphere bounds;
     bool            is_ref_node;
     bool            is_culled;
-    bool            _pad1[14];
+    bool            is_dirty;
+    bool            _pad1[13];
 } SDF_Node;
 #endif    // SHADER_INCLUDE
 

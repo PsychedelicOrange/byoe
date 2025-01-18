@@ -212,7 +212,7 @@ hit_info sceneSDF(vec3 p) {
         float d = RAY_MAX_STEP;
         // Evaluate the current node
         if(node.nodeType == SDF_NODE_PRIMITIVE) {
-            float SCALE = 1.0f;
+            float SCALE = node.scale;
             // Translate/Rotate
             p = opTx(p, parent_node.transform * node.transform);
             p /= SCALE;
