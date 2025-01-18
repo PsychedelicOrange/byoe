@@ -189,6 +189,7 @@ struct hit_info
 struct blend_node {
     int blend;
     int node;
+    mat4 transform;
 };
 
 hit_info sceneSDF(vec3 p) {
@@ -200,7 +201,8 @@ hit_info sceneSDF(vec3 p) {
     // Explicit stack to emulate tree traversal
     blend_node stack[MAX_GPU_STACK_SIZE];
     int sp = 0; // Stack pointer
-    stack[sp++] = blend_node(SDF_BLEND_UNION, curr_draw_node_idx);
+    // stack[sp++] = blend_node(SDF_BLEND_UNION, curr_draw_node_idx, parent_node.transform);
+    stack[sp++] = blend_node(SDF_BLEND_UNION, curr_draw_node_idx, parent_node.transform);
 
     while (sp > 0) {
         blend_node curr_blend_node = stack[--sp]; // Pop node index
@@ -214,8 +216,8 @@ hit_info sceneSDF(vec3 p) {
         if(node.nodeType == SDF_NODE_PRIMITIVE) {
             float SCALE = node.scale;
             // Translate/Rotate
-            vec3 local_p = opTx(p, node.transform);
-            // p /= SCALE;
+            vec3 local_p = opTx(p, curr_blend_node.transform * node.transform);
+            local_p /= SCALE;
 
             if (node.primType == SDF_PRIM_Sphere) { 
                 d = sphereSDF(local_p, Sphere_get_radius(node.packed_params[0], node.packed_params[1]));
@@ -224,7 +226,7 @@ hit_info sceneSDF(vec3 p) {
             }
 
             // Scaling 
-            // d *= SCALE;
+            d *= SCALE;
 
             // Apply the blend b/w primitives
             if (curr_blend_node.blend == SDF_BLEND_UNION)
@@ -245,9 +247,10 @@ hit_info sceneSDF(vec3 p) {
         }
         else {            
             if (sp < MAX_GPU_STACK_SIZE - 2) {
-                // parent_node.transform = node.transform;
-                if (node.prim_b >= 0) stack[sp++] = blend_node(node.blend, node.prim_b);
-                if (node.prim_a >= 0) stack[sp++] = blend_node(node.blend, node.prim_a);
+                mat4 child_transform = curr_blend_node.transform;
+
+                if (node.prim_b >= 0) stack[sp++] = blend_node(node.blend, node.prim_b, child_transform);
+                if (node.prim_a >= 0) stack[sp++] = blend_node(node.blend, node.prim_a, child_transform);
             }
         }
     }

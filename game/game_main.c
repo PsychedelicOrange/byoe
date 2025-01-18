@@ -77,7 +77,7 @@ int game_main(void)
             .prim_a    = sph_prim,
             .prim_b    = cube_prim,
             .transform = {
-                .position = {{0.0f, 0.0f, 0.0f}},
+                .position = {{-4.0f, 0.0f, 0.0f}},
                 .rotation = {0.0f, 0.0f, 0.0f, 0.0f},
                 .scale    = 2.0f}};
 
