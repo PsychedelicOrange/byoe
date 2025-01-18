@@ -175,7 +175,7 @@ float smoothIntersectionBlend( float d1, float d2, float k )
 // Translate, Rotate and Uniform Scaling
 vec3 opTx(vec3 p, mat4 t)
 {
-    return vec3(inverse(t) * vec4(p, 1.0f));
+    return (inverse(t) * vec4(p, 1.0f)).xyz;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -195,12 +195,12 @@ hit_info sceneSDF(vec3 p) {
     hit_info hit;
     hit.d = RAY_MAX_STEP;
 
+    SDF_Node parent_node = nodes[curr_draw_node_idx];
+
     // Explicit stack to emulate tree traversal
     blend_node stack[MAX_GPU_STACK_SIZE];
     int sp = 0; // Stack pointer
     stack[sp++] = blend_node(SDF_BLEND_UNION, curr_draw_node_idx);
-
-    SDF_Node parent_node = nodes[curr_draw_node_idx];
 
     while (sp > 0) {
         blend_node curr_blend_node = stack[--sp]; // Pop node index
@@ -214,17 +214,17 @@ hit_info sceneSDF(vec3 p) {
         if(node.nodeType == SDF_NODE_PRIMITIVE) {
             float SCALE = node.scale;
             // Translate/Rotate
-            p = opTx(p, parent_node.transform * node.transform);
-            p /= SCALE;
+            vec3 local_p = opTx(p, node.transform);
+            // p /= SCALE;
 
             if (node.primType == SDF_PRIM_Sphere) { 
-                d = sphereSDF(p, Sphere_get_radius(node.packed_params[0], node.packed_params[1]));
+                d = sphereSDF(local_p, Sphere_get_radius(node.packed_params[0], node.packed_params[1]));
             } else if (node.primType == SDF_PRIM_Box) { 
-                d = boxSDF(p, Box_get_dimensions(node.packed_params[0], node.packed_params[1]));
+                d = boxSDF(local_p, Box_get_dimensions(node.packed_params[0], node.packed_params[1]));
             }
 
             // Scaling 
-            d *= SCALE;
+            // d *= SCALE;
 
             // Apply the blend b/w primitives
             if (curr_blend_node.blend == SDF_BLEND_UNION)
