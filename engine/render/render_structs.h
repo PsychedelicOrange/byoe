@@ -48,7 +48,6 @@ ENUM(SDF_PrimitiveType,
     SDF_PRIM_Capsule,
     SDF_PRIM_Cylinder,
     SDF_PRIM_Ellipsoid,
-    SDF_PRIM_Quad,
     SDF_PRIM_HexagonalPrism,
     SDF_PRIM_TriangularPrism,
     SDF_PRIM_Cone,
@@ -124,11 +123,13 @@ STRUCT(cylinder_props,
        float radius;
        float height;)
 
+STRUCT(rounded_cylinder_props,
+       float radiusA;
+       float radiusB;
+       float height;)
+
 STRUCT(ellipsoid_props,
        vec3s radii;)
-
-STRUCT(quad_props,
-       vec2s dimensions;)
 
 STRUCT(hexagonal_prism_props,
        float radius;
@@ -139,7 +140,7 @@ STRUCT(triangular_prism_props,
        float height;)
 
 STRUCT(cone_props,
-       float radius;
+       float angle;
        float height;)
 
 STRUCT(cone_section_props,
@@ -150,11 +151,6 @@ STRUCT(cone_section_props,
 STRUCT(plane_props,
        vec3s normal;
        float distance;)
-
-STRUCT(rounded_cylinder_props,
-       float radius;
-       float height;
-       float roundness;)
 
 STRUCT(solid_angle_props,
        float angle;
@@ -203,14 +199,13 @@ STRUCT(
         capsule_props          capsule;
         vertical_capsule_props vertical_capsule;
         cylinder_props         cylinder;
+        rounded_cylinder_props rounded_cylinder;
         ellipsoid_props        ellipsoid;
-        quad_props             quad;
         hexagonal_prism_props  hexagonal_prism;
         triangular_prism_props triangular_prism;
         cone_props             cone;
         cone_section_props     cone_section;
         plane_props            plane;
-        rounded_cylinder_props rounded_cylinder;
         solid_angle_props      solid_angle;
         line_props             line;
         rounded_cone_props     rounded_cone;

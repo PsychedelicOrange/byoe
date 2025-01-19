@@ -48,7 +48,7 @@ int game_main(void)
     // Testing All Primitives here
     {
         SDF_Primitive primitive_def = {
-            .type      = SDF_PRIM_VerticalCapsule,
+            .type      = SDF_PRIM_TriangularPrism,
             .transform = {
                 .position = {{0.0f, 0.0f, 0.0f}},
                 .rotation = {0.0f, 0.0f, 0.0f, 0.0f},
@@ -60,7 +60,13 @@ int game_main(void)
             .props.torus            = {.thickness = {1.0f, 0.25f}},
             .props.torus_capped     = {.thickness = {1.0f, 0.25f}, .radiusA = 1.0f, .radiusB = 0.5f},
             .props.capsule          = {.start = {0.0f, 0.0f, 0.0f}, .end = {1.0f, 1.0f, 1.0f}, .radius = 1.0f},
-            .props.vertical_capsule = {.radius = 0.25f, .height = 2.0f},
+            .props.vertical_capsule = {.radius = 0.25f, .height = 1.0f},
+            .props.cylinder         = {.radius = 0.25f, .height = 1.0f},
+            .props.rounded_cylinder = {.radiusA = 0.15f, .radiusB = 0.75f, .height = 1.0f},
+            .props.ellipsoid        = {.radii = {1.0f, 2.0f, 1.0f}},
+            .props.hexagonal_prism  = {.height = 1.0f, .radius = 1.0f},
+            .props.cone             = {.height = 1.0f, .angle = 45.0f},
+            .props.triangular_prism = {.height = 1.0f, .radius = 1.0f},
             .material               = {.diffuse = {0.5f, 0.3f, 0.7f, 1.0f}}};
         int prim = sdf_scene_add_primitive(scene, primitive_def);
         (void) prim;

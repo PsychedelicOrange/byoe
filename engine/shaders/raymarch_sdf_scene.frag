@@ -22,21 +22,20 @@
 #define SDF_PRIM_Capsule         6
 #define SDF_PRIM_Cylinder        7
 #define SDF_PRIM_Ellipsoid       8
-#define SDF_PRIM_Quad            9
-#define SDF_PRIM_HexagonalPrism  10
-#define SDF_PRIM_TriangularPrism 11
-#define SDF_PRIM_Cone            12
-#define SDF_PRIM_ConeSection     13
-#define SDF_PRIM_Plane           14
-#define SDF_PRIM_RoundedCylinder 15
-#define SDF_PRIM_SolidAngle      16
-#define SDF_PRIM_Line            17
-#define SDF_PRIM_RoundedCone     18
-#define SDF_PRIM_VerticalCapsule 19
-#define SDF_PRIM_CappedCone      20
-#define SDF_PRIM_CappedTorus     21
-#define SDF_PRIM_CappedCylinder  22
-#define SDF_PRIM_CappedPlan      23
+#define SDF_PRIM_HexagonalPrism  9
+#define SDF_PRIM_TriangularPrism 10
+#define SDF_PRIM_Cone            11
+#define SDF_PRIM_ConeSection     12
+#define SDF_PRIM_Plane           13
+#define SDF_PRIM_RoundedCylinder 14
+#define SDF_PRIM_SolidAngle      15
+#define SDF_PRIM_Line            16
+#define SDF_PRIM_RoundedCone     17
+#define SDF_PRIM_VerticalCapsule 18
+#define SDF_PRIM_CappedCone      19
+#define SDF_PRIM_CappedTorus     20
+#define SDF_PRIM_CappedCylinder  21
+#define SDF_PRIM_CappedPlan      22
 
 // Node Type
 #define SDF_NODE_PRIMITIVE 0
@@ -154,7 +153,6 @@ float Capsule_get_radius(vec4 packed1, vec4 packed2) {
 
 //-----------------------------
 // Vertical Capsule
-
 float VerticalCapsule_get_radius(vec4 packed1, vec4 packed2) {
     return packed1.x;
 }
@@ -162,6 +160,58 @@ float VerticalCapsule_get_radius(vec4 packed1, vec4 packed2) {
 float VerticalCapsule_get_height(vec4 packed1, vec4 packed2) {
     return packed1.y;
 }
+
+//-----------------------------
+// Cylinder
+float Cylinder_get_radius(vec4 packed1, vec4 packed2) {
+    return packed1.x;
+}
+
+float Cylinder_get_height(vec4 packed1, vec4 packed2) {
+    return packed1.y;
+}
+
+float RoundedCylinder_get_radius(vec4 packed1, vec4 packed2) {
+    return packed1.x;
+}
+
+//-----------------------------
+// Rounded Cylinder
+float RoundedCylinder_get_height(vec4 packed1, vec4 packed2) {
+    return packed1.z;
+}
+
+float RoundedCylinder_get_radiusA(vec4 packed1, vec4 packed2) {
+    return packed1.x;
+}
+
+float RoundedCylinder_get_radiusB(vec4 packed1, vec4 packed2) {
+    return packed1.y;
+}
+
+//-----------------------------
+// Ellipsoid
+vec3 Ellipsoid_get_radii(vec4 packed1, vec4 packed2) {
+    return packed1.xyz;
+}
+
+//-----------------------------
+// Hexagonal Prism
+vec2 HexagonalPrism_get_radius(vec4 packed1, vec4 packed2) {
+    return packed1.xy;
+}
+
+//-----------------------------
+// Triangular Prism
+float TriangularPrism_get_radius(vec4 packed1, vec4 packed2) {
+    return packed1.x;
+}
+
+float TriangularPrism_get_height(vec4 packed1, vec4 packed2) {
+    return packed1.y;
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////////////
 // Uniforms
 uniform ivec2 resolution;              
@@ -229,6 +279,42 @@ float verticalCapsuleSDF(vec3 p, float r, float h)
 {
   p.y -= clamp( p.y, 0.0, h );
   return length( p ) - r;
+}
+
+float cappedCylinderSDF( vec3 p, float h, float r)
+{
+  vec2 d = abs(vec2(length(p.xz),p.y)) - vec2(r,h);
+  return min(max(d.x,d.y),0.0) + length(max(d,0.0));
+}
+
+float roundedCylinderSDF(vec3 p, float ra, float rb, float h)
+{
+  vec2 d = vec2( length(p.xz)-2.0*ra+rb, abs(p.y) - h );
+  return min(max(d.x,d.y),0.0) + length(max(d,0.0)) - rb;
+}
+
+float ellipsoidSDF(vec3 p, vec3 r)
+{
+  float k0 = length(p/r);
+  float k1 = length(p/(r*r));
+  return k0*(k0-1.0)/k1;
+}
+
+float hexPrismSDF(vec3 p, vec2 h)
+{
+  const vec3 k = vec3(-0.8660254, 0.5, 0.57735);
+  p = abs(p);
+  p.xy -= 2.0*min(dot(k.xy, p.xy), 0.0)*k.xy;
+  vec2 d = vec2(
+       length(p.xy-vec2(clamp(p.x,-k.z*h.x,k.z*h.x), h.x))*sign(p.y-h.x),
+       p.z-h.y );
+  return min(max(d.x,d.y),0.0) + length(max(d,0.0));
+}
+
+float triPrismSDF( vec3 p, vec2 h )
+{
+  vec3 q = abs(p);
+  return max(q.z-h.y,max(q.x*0.866025+p.y*0.5,-p.y)-h.x*0.5);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -348,13 +434,11 @@ float getPrimitiveSDF(vec3 local_p, int primType, vec4 packed1, vec4 packed2) {
                 VerticalCapsule_get_height(PARAMS)
             );
             break;
-    #if 0
-
         case SDF_PRIM_Cylinder:
             d = cappedCylinderSDF(
                 local_p,
-                Cylinder_get_height(PARAMS),
-                Cylinder_get_radius(PARAMS)
+                Cylinder_get_radius(PARAMS),
+                Cylinder_get_height(PARAMS)
             );
             break;
 
@@ -366,7 +450,26 @@ float getPrimitiveSDF(vec3 local_p, int primType, vec4 packed1, vec4 packed2) {
                 RoundedCylinder_get_height(PARAMS)
             );
             break;
-
+        case SDF_PRIM_Ellipsoid:
+            d = ellipsoidSDF(
+                local_p,
+                Ellipsoid_get_radii(PARAMS)
+            );
+            break;
+        case SDF_PRIM_HexagonalPrism:
+            d = hexPrismSDF(
+                local_p,
+                HexagonalPrism_get_radius(PARAMS)
+            );
+            break;
+        case SDF_PRIM_TriangularPrism:
+            d = triPrismSDF(
+                local_p,
+                vec2(TriangularPrism_get_radius(PARAMS),
+                TriangularPrism_get_height(PARAMS))
+            );
+            break;
+    #if 0
         case SDF_PRIM_Plane:
             d = planeSDF(
                 local_p,
@@ -398,27 +501,6 @@ float getPrimitiveSDF(vec3 local_p, int primType, vec4 packed1, vec4 packed2) {
                 RoundCone_get_bottomRadius(PARAMS),
                 RoundCone_get_topRadius(PARAMS),
                 RoundCone_get_height(PARAMS)
-            );
-            break;
-
-        case SDF_PRIM_HexagonalPrism:
-            d = hexPrismSDF(
-                local_p,
-                HexPrism_get_dimensions(PARAMS)
-            );
-            break;
-
-        case SDF_PRIM_TriangularPrism:
-            d = triPrismSDF(
-                local_p,
-                TriPrism_get_dimensions(PARAMS)
-            );
-            break;
-
-        case SDF_PRIM_Ellipsoid:
-            d = ellipsoidSDF(
-                local_p,
-                Ellipsoid_get_radii(PARAMS)
             );
             break;
 
