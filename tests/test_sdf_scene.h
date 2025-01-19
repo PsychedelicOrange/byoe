@@ -75,8 +75,8 @@ void setup_sdf_test_scene(void)
                 .position = {{demoStartX, 0.0f, 0.0f}},
                 .rotation = {0.0f, 0.0f, 0.0f, 0.0f},
                 .scale    = 1.0f},
-            .props.sphere = {.radius = 0.1f},
-            .props.box    = {.dimensions = {1.0f, 1.0f, 1.0f}},
+            // .props.sphere = {.radius = 0.1f},
+            .props.box    = {.dimensions = {{1.0f, 1.0f, 1.0f}}},
             //.props.round_box        = {.dimensions = {1.0f, 1.0f, 1.0f}, .roundness = 0.5f},                      // TEST
             //.props.box_frame        = {.dimensions = {1.0f, 1.0f, 1.0f}, .thickness = 0.025f},                    // TEST
             //.props.torus            = {.thickness = {1.0f, 0.25f}},                                               // TEST
@@ -105,7 +105,7 @@ void setup_sdf_test_scene(void)
                 .position = {{demoStartX, 0.0f, 0.0f}},
                 .rotation = {0.0f, 0.0f, 0.0f, 0.0f},
                 .scale    = 1.0f},
-            .props.box = {.dimensions = {0.5f, 0.25f, 0.5f}},
+            .props.box = {.dimensions = {{0.5f, 0.25f, 0.5f}}},
             .material  = {.diffuse = {0.7f, 0.3f, 0.3f, 1.0f}}};
         sdf_scene_add_primitive(scene, cube);
         demoStartX += 0.5f;
@@ -153,7 +153,7 @@ void setup_sdf_test_scene(void)
                 .position = {{demoStartX, 0.0f, -0.0f}},
                 .rotation = {0.0f, 0.0f, 0.0f, 1.0f},
                 .scale    = 1.0f},
-            .props.box = {.dimensions = {1.0f, 1.0f, 0.25f}},
+            .props.box = {.dimensions = {{1.0f, 1.0f, 0.25f}}},
             .material  = {.diffuse = {0.8f, 0.81f, 0.83f, 1.0f}}};
         int cube_prim = sdf_scene_add_primitive(scene, cube_prim_def);
         (void) cube_prim;
@@ -170,13 +170,13 @@ void setup_sdf_test_scene(void)
 
         sphere.type                 = SDF_PRIM_Box;
         sphere.transform.position   = (vec3s){{demoStartX, -0.125f, 0.0625f}};
-        sphere.props.box.dimensions = (vec3s){0.25f, 0.25f, 0.25f};
+        sphere.props.box.dimensions = (vec3s){{0.25f, 0.25f, 0.25f}};
         int prim2                   = sdf_scene_add_primitive(scene, sphere);
         (void) prim2;
 
         SDF_Object meta_cast = {
             .type      = SDF_BLEND_SMOOTH_UNION,
-            .transform = {.position = {demoStartX, 0.0f, 0.0f}},
+            .transform = {.position = {{demoStartX, 0.0f, 0.0f}}},
             .prim_a    = prim1,
             .prim_b    = prim2};
 
@@ -185,7 +185,7 @@ void setup_sdf_test_scene(void)
 
         SDF_Object cube_mold = {
             .type      = SDF_BLEND_SUBTRACTION,
-            .transform = {.position = {demoStartX, 0.0f, 0.0f}},
+            .transform = {.position = {{demoStartX, 0.0f, 0.0f}}},
             .prim_a    = cast_prim,
             .prim_b    = cube_prim};
         int mold_idx = sdf_scene_add_object(scene, cube_mold);
