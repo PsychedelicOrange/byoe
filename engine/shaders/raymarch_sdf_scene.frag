@@ -12,7 +12,7 @@
 
 #define MAX_PACKED_PARAM_VECS 2
 
-/// Primitives
+// Primitives
 #define SDF_PRIM_Sphere          0
 #define SDF_PRIM_Box             1
 #define SDF_PRIM_RoundedBox      2
@@ -20,22 +20,17 @@
 #define SDF_PRIM_Torus           4
 #define SDF_PRIM_TorusCapped     5
 #define SDF_PRIM_Capsule         6
-#define SDF_PRIM_Cylinder        7
-#define SDF_PRIM_Ellipsoid       8
-#define SDF_PRIM_HexagonalPrism  9
-#define SDF_PRIM_TriangularPrism 10
-#define SDF_PRIM_Cone            11
-#define SDF_PRIM_ConeSection     12
-#define SDF_PRIM_Plane           13
-#define SDF_PRIM_RoundedCylinder 14
-#define SDF_PRIM_SolidAngle      15
-#define SDF_PRIM_Line            16
-#define SDF_PRIM_RoundedCone     17
-#define SDF_PRIM_VerticalCapsule 18
-#define SDF_PRIM_CappedCone      19
-#define SDF_PRIM_CappedTorus     20
-#define SDF_PRIM_CappedCylinder  21
-#define SDF_PRIM_CappedPlan      22
+#define SDF_PRIM_VerticalCapsule 7
+#define SDF_PRIM_Cylinder        8
+#define SDF_PRIM_RoundedCylinder 9
+#define SDF_PRIM_Ellipsoid       10
+#define SDF_PRIM_HexagonalPrism  11
+#define SDF_PRIM_TriangularPrism 12
+#define SDF_PRIM_Cone            13
+#define SDF_PRIM_CappedCone      14
+#define SDF_PRIM_Plane           15
+//#define SDF_PRIM_Octahedron      16
+//#define SDF_PRIM_Pyramid         17
 
 // Node Type
 #define SDF_NODE_PRIMITIVE 0
@@ -211,6 +206,41 @@ float TriangularPrism_get_height(vec4 packed1, vec4 packed2) {
     return packed1.y;
 }
 
+//-----------------------------
+// Cone
+float Cone_get_angle(vec4 packed1, vec4 packed2) {
+    return packed1.x;
+}
+
+float Cone_get_height(vec4 packed1, vec4 packed2) {
+    return packed1.y;
+}
+
+//-----------------------------
+// Cone
+float CappedCone_get_radiusTop(vec4 packed1, vec4 packed2) {
+    return packed1.x;
+}
+
+float CappedCone_get_radiusBottom(vec4 packed1, vec4 packed2) {
+    return packed1.y;
+}
+
+float CappedCone_get_height(vec4 packed1, vec4 packed2) {
+    return packed1.z;
+}
+
+//-----------------------------
+// Plane
+vec3 Plane_get_normal(vec4 packed1, vec4 packed2) {
+    return packed1.xyz;
+}
+
+float Plane_get_distance(vec4 packed1, vec4 packed2) {
+    return packed1.w;
+}
+
+
 
 ////////////////////////////////////////////////////////////////////////////////////////
 // Uniforms
@@ -317,6 +347,29 @@ float triPrismSDF( vec3 p, vec2 h )
   return max(q.z-h.y,max(q.x*0.866025+p.y*0.5,-p.y)-h.x*0.5);
 }
 
+float coneSDF(vec3 p, float angle, float h )
+{
+  float q = length(p.xz);
+  vec2 c = vec2(sin(angle), cos(angle));
+  return max(dot(c.xy,vec2(q,p.y)),-h-p.y);
+}
+
+float cappedConeSDF( vec3 p, float h, float r1, float r2 )
+{
+  vec2 q = vec2( length(p.xz), p.y );
+  vec2 k1 = vec2(r2,h);
+  vec2 k2 = vec2(r2-r1,2.0*h);
+  vec2 ca = vec2(q.x-min(q.x,(q.y<0.0)?r1:r2), abs(q.y)-h);
+  vec2 cb = q - k1 + k2*clamp( dot(k1-q,k2)/dot2(k2), 0.0, 1.0 );
+  float s = (cb.x<0.0 && ca.y<0.0) ? -1.0 : 1.0;
+  return s*sqrt( min(dot2(ca),dot2(cb)) );
+}
+
+float planeSDF( vec3 p, vec3 n, float h )
+{
+  // n must be normalized
+  return dot(p,n) + h;
+}
 ////////////////////////////////////////////////////////////////////////////////////////
 // SDF Combination Operations
 float unionBlend(float d1, float d2) {
@@ -411,7 +464,7 @@ float getPrimitiveSDF(vec3 local_p, int primType, vec4 packed1, vec4 packed2) {
                 Torus_get_thickness(PARAMS)
             );
             break;
-        case SDF_PRIM_CappedTorus:
+        case SDF_PRIM_TorusCapped:
             d = cappedTorusSDF(
                 local_p,
                 CappedTorus_get_majorMinor(PARAMS),
@@ -469,81 +522,28 @@ float getPrimitiveSDF(vec3 local_p, int primType, vec4 packed1, vec4 packed2) {
                 TriangularPrism_get_height(PARAMS))
             );
             break;
-    #if 0
+        case SDF_PRIM_Cone:
+            d = coneSDF(
+                local_p,
+                Cone_get_angle(PARAMS),
+                Cone_get_height(PARAMS)
+            );
+            break;
+        case SDF_PRIM_CappedCone:
+            d = cappedConeSDF(
+                local_p,
+                CappedCone_get_radiusTop(PARAMS),
+                CappedCone_get_radiusBottom(PARAMS),
+                CappedCone_get_height(PARAMS)
+            );
+            break;
         case SDF_PRIM_Plane:
             d = planeSDF(
                 local_p,
                 Plane_get_normal(PARAMS),
-                Plane_get_offset(PARAMS)
+                Plane_get_distance(PARAMS)
             );
             break;
-
-        case SDF_PRIM_Cone:
-            d = coneSDF(
-                local_p,
-                Cone_get_radii(PARAMS),
-                Cone_get_height(PARAMS)
-            );
-            break;
-
-        case SDF_PRIM_CappedCone:
-            d = cappedConeSDF(
-                local_p,
-                CappedCone_get_height(PARAMS),
-                CappedCone_get_bottomRadius(PARAMS),
-                CappedCone_get_topRadius(PARAMS)
-            );
-            break;
-
-        case SDF_PRIM_RoundCone:
-            d = roundConeSDF(
-                local_p,
-                RoundCone_get_bottomRadius(PARAMS),
-                RoundCone_get_topRadius(PARAMS),
-                RoundCone_get_height(PARAMS)
-            );
-            break;
-
-        case SDF_PRIM_CutSphere:
-            d = cutSphereSDF(
-                local_p,
-                CutSphere_get_radius(PARAMS),
-                CutSphere_get_cutHeight(PARAMS)
-            );
-            break;
-
-        case SDF_PRIM_CutHollowSphere:
-            d = cutHollowSphereSDF(
-                local_p,
-                CutHollowSphere_get_radius(PARAMS),
-                CutHollowSphere_get_cutHeight(PARAMS),
-                CutHollowSphere_get_thickness(PARAMS)
-            );
-            break;
-
-        case SDF_PRIM_DeathStar:
-            d = deathStarSDF(
-                local_p,
-                DeathStar_get_radiusA(PARAMS),
-                DeathStar_get_radiusB(PARAMS),
-                DeathStar_get_distance(PARAMS)
-            );
-            break;
-
-        case SDF_PRIM_Octahedron:
-            d = octahedronSDF(
-                local_p,
-                Octahedron_get_size(PARAMS)
-            );
-            break;
-
-        case SDF_PRIM_Pyramid:
-            d = pyramidSDF(
-                local_p,
-                Pyramid_get_height(PARAMS)
-            );
-            break;
-    #endif
         default:
             d = RAY_MAX_STEP;
             break;

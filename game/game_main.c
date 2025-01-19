@@ -48,7 +48,7 @@ int game_main(void)
     // Testing All Primitives here
     {
         SDF_Primitive primitive_def = {
-            .type      = SDF_PRIM_TriangularPrism,
+            .type      = SDF_PRIM_Plane,
             .transform = {
                 .position = {{0.0f, 0.0f, 0.0f}},
                 .rotation = {0.0f, 0.0f, 0.0f, 0.0f},
@@ -65,8 +65,11 @@ int game_main(void)
             .props.rounded_cylinder = {.radiusA = 0.15f, .radiusB = 0.75f, .height = 1.0f},
             .props.ellipsoid        = {.radii = {1.0f, 2.0f, 1.0f}},
             .props.hexagonal_prism  = {.height = 1.0f, .radius = 1.0f},
-            .props.cone             = {.height = 1.0f, .angle = 45.0f},
             .props.triangular_prism = {.height = 1.0f, .radius = 1.0f},
+            .props.cone             = {.height = 1.0f, .angle = 0.78f},
+            .props.capped_cone      = {.radiusTop = 0.25, .radiusBottom = 0.5f, .height = 1.0f},
+            .props.plane            = {.distance = 0.2f, .normal = {0.0f, 1.0f, 0.0f}},
+            //.props.octahedron       = {.size = 1.0f},
             .material               = {.diffuse = {0.5f, 0.3f, 0.7f, 1.0f}}};
         int prim = sdf_scene_add_primitive(scene, primitive_def);
         (void) prim;

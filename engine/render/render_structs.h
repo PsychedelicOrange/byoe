@@ -46,22 +46,18 @@ ENUM(SDF_PrimitiveType,
     SDF_PRIM_Torus,
     SDF_PRIM_TorusCapped,
     SDF_PRIM_Capsule,
+    SDF_PRIM_VerticalCapsule,
     SDF_PRIM_Cylinder,
+    SDF_PRIM_RoundedCylinder,
     SDF_PRIM_Ellipsoid,
     SDF_PRIM_HexagonalPrism,
     SDF_PRIM_TriangularPrism,
     SDF_PRIM_Cone,
-    SDF_PRIM_ConeSection,
-    SDF_PRIM_Plane,
-    SDF_PRIM_RoundedCylinder,
-    SDF_PRIM_SolidAngle,
-    SDF_PRIM_Line,
-    SDF_PRIM_RoundedCone,
-    SDF_PRIM_VerticalCapsule,
+
     SDF_PRIM_CappedCone,
-    SDF_PRIM_CappedTorus,
-    SDF_PRIM_CappedCylinder,
-    SDF_PRIM_CappedPlane)
+    SDF_PRIM_Plane,
+    SDF_PRIM_Octahedron,
+    SDF_PRIM_Pyramid)
 
 ENUM(SDF_BlendType,
     SDF_BLEND_UNION,
@@ -143,7 +139,7 @@ STRUCT(cone_props,
        float angle;
        float height;)
 
-STRUCT(cone_section_props,
+STRUCT(capped_cone_props,
        float radiusTop;
        float radiusBottom;
        float height;)
@@ -152,32 +148,11 @@ STRUCT(plane_props,
        vec3s normal;
        float distance;)
 
-STRUCT(solid_angle_props,
-       float angle;
-       float radius;)
+STRUCT(octahedron_props,
+       float size;)
 
-STRUCT(line_props,
-       vec3s start;
-       vec3s end;
-       float radius;)
-
-STRUCT(rounded_cone_props,
-       float radiusTop;
-       float radiusBottom;
+STRUCT(pyramid_props,
        float height;)
-
-STRUCT(capped_cone_props,
-       float radiusTop;
-       float radiusBottom;
-       float height;)
-
-STRUCT(capped_cylinder_props,
-       float radius;
-       float height;)
-
-STRUCT(capped_plane_props,
-       vec2s dimensions;
-       float radius;)
 
 //-----------------------------
 
@@ -204,14 +179,11 @@ STRUCT(
         hexagonal_prism_props  hexagonal_prism;
         triangular_prism_props triangular_prism;
         cone_props             cone;
-        cone_section_props     cone_section;
         plane_props            plane;
-        solid_angle_props      solid_angle;
-        line_props             line;
-        rounded_cone_props     rounded_cone;
         capped_cone_props      capped_cone;
-        capped_cylinder_props  capped_cylinder;
-        capped_plane_props     capped_plane;
+        octahedron_props       octahedron;
+        pyramid_props          pyramid;
+
         // Add more as needed
         // Max of 8 floats are needed to pack all props in a flattened view for GPU, update this as props get larger
         vec4s packed_data[2];
