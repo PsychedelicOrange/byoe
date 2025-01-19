@@ -104,12 +104,19 @@ STRUCT(box_frame_props,
        float thickness;)
 
 STRUCT(torus_props,
-       float thickness;)
+       vec2 thickness;)
 
 STRUCT(torus_capped_props,
-       float thickness;)
+       vec2  thickness;
+       float radiusA;
+       float radiusB;)
 
 STRUCT(capsule_props,
+       vec3  start;
+       vec3  end;
+       float radius;)
+
+STRUCT(vertical_capsule_props,
        float radius;
        float height;)
 
@@ -163,18 +170,10 @@ STRUCT(rounded_cone_props,
        float radiusBottom;
        float height;)
 
-STRUCT(vertical_capsule_props,
-       float radius;
-       float height;)
-
 STRUCT(capped_cone_props,
        float radiusTop;
        float radiusBottom;
        float height;)
-
-STRUCT(capped_torus_props,
-       float radiusMajor;
-       float radiusMinor;)
 
 STRUCT(capped_cylinder_props,
        float radius;
@@ -202,6 +201,7 @@ STRUCT(
         torus_props            torus;
         torus_capped_props     torus_capped;
         capsule_props          capsule;
+        vertical_capsule_props vertical_capsule;
         cylinder_props         cylinder;
         ellipsoid_props        ellipsoid;
         quad_props             quad;
@@ -214,9 +214,7 @@ STRUCT(
         solid_angle_props      solid_angle;
         line_props             line;
         rounded_cone_props     rounded_cone;
-        vertical_capsule_props vertical_capsule;
         capped_cone_props      capped_cone;
-        capped_torus_props     capped_torus;
         capped_cylinder_props  capped_cylinder;
         capped_plane_props     capped_plane;
         // Add more as needed

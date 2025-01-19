@@ -86,17 +86,82 @@ struct SDF_Node {
 // signature: return_type (PRIM_TYPE_NAME)_get_param(XXX)();
 //-----------------------------
 // Sphere
-float Sphere_get_radius(vec4 packed1, vec4 packed2)
-{
+float Sphere_get_radius(vec4 packed1, vec4 packed2) {
     return packed1.x;
 }
+
 //-----------------------------
 // Box
-vec3 Box_get_dimensions(vec4 packed1, vec4 packed2)
-{
+vec3 Box_get_dimensions(vec4 packed1, vec4 packed2) {
     return packed1.xyz;
 }
 
+//-----------------------------
+// Round Box
+vec3 RoundBox_get_dimensions(vec4 packed1, vec4 packed2) {
+    return packed1.xyz;
+}
+
+float RoundBox_get_roundness(vec4 packed1, vec4 packed2) {
+    return packed1.w;
+}
+
+//-----------------------------
+// Box Frame
+vec3 BoxFrame_get_dimensions(vec4 packed1, vec4 packed2) {
+    return packed1.xyz;
+}
+
+float BoxFrame_get_thickness(vec4 packed1, vec4 packed2) {
+    return packed1.w;
+}
+
+//-----------------------------
+// Torus
+vec2 Torus_get_thickness(vec4 packed1, vec4 packed2) {
+    return packed1.xy;
+}
+
+//-----------------------------
+// Capped Torus
+vec2 CappedTorus_get_majorMinor(vec4 packed1, vec4 packed2)
+{
+    return packed1.xy;
+}
+float CappedTorus_get_radiusA(vec4 packed1, vec4 packed2)
+{
+    return packed1.z;
+}
+
+float CappedTorus_get_radiusB(vec4 packed1, vec4 packed2)
+{
+    return packed1.w;
+}
+
+//-----------------------------
+// Capsule
+vec3 Capsule_get_start(vec4 packed1, vec4 packed2) {
+    return packed1.xyz;
+}
+
+vec3 Capsule_get_end(vec4 packed1, vec4 packed2) {
+    return vec3(packed1.w, packed2.x, packed2.y);
+}
+
+float Capsule_get_radius(vec4 packed1, vec4 packed2) {
+    return packed2.z;
+}
+
+//-----------------------------
+// Vertical Capsule
+
+float VerticalCapsule_get_radius(vec4 packed1, vec4 packed2) {
+    return packed1.x;
+}
+
+float VerticalCapsule_get_height(vec4 packed1, vec4 packed2) {
+    return packed1.y;
+}
 ////////////////////////////////////////////////////////////////////////////////////////
 // Uniforms
 uniform ivec2 resolution;              
@@ -117,9 +182,8 @@ out vec4 FragColor;
 // Helper 
 float dot2( in vec2 v ) { return dot(v,v); }
 float dot2( in vec3 v ) { return dot(v,v); }
-float ndot( in vec2 a, in vec2 b ) { return a.x*b.x - a.y*b.y; }
-
-
+float ndot( in vec2 a, in vec2 b ) { return a.x * b.x - a.y * b.y; }
+////////////////////////////////////////////////////////////////////////////////////////
 // SDF Primitive Functions
 float sphereSDF(vec3 p, float radius) {
     return length(p) - radius;
@@ -128,6 +192,43 @@ float sphereSDF(vec3 p, float radius) {
 float boxSDF(vec3 p, vec3 size) {
     vec3 q = abs(p) - size;
     return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
+}
+
+float roundBoxSDF(vec3 p, vec3 b, float r) {
+  vec3 q = abs(p) - b + r;
+  return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0) - r;
+}
+
+float boxFrameSDF(vec3 p, vec3 b, float e) {
+       p = abs(p  )-b;
+  vec3 q = abs(p+e)-e;
+  return min(min(
+      length(max(vec3(p.x,q.y,q.z),0.0))+min(max(p.x,max(q.y,q.z)),0.0),
+      length(max(vec3(q.x,p.y,q.z),0.0))+min(max(q.x,max(p.y,q.z)),0.0)),
+      length(max(vec3(q.x,q.y,p.z),0.0))+min(max(q.x,max(q.y,p.z)),0.0));
+}
+
+float torusSDF(vec3 p, vec2 t) {
+  vec2 q = vec2(length(p.xz)-t.x,p.y);
+  return length(q)-t.y;
+}
+
+float cappedTorusSDF(vec3 p, vec2 sc, float ra, float rb) {
+  p.x = abs(p.x);
+  float k = (sc.y*p.x>sc.x*p.y) ? dot(p.xy,sc) : length(p.xy);
+  return sqrt( dot(p,p) + ra*ra - 2.0*ra*k ) - rb;
+}
+
+float capsuleSDF(vec3 p, vec3 a, vec3 b, float r) {
+  vec3 pa = p - a, ba = b - a;
+  float h = clamp( dot(pa,ba)/dot(ba,ba), 0.0, 1.0 );
+  return length( pa - ba*h ) - r;
+}
+
+float verticalCapsuleSDF(vec3 p, float r, float h)
+{
+  p.y -= clamp( p.y, 0.0, h );
+  return length( p ) - r;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -168,13 +269,12 @@ float smoothIntersectionBlend( float d1, float d2, float k )
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
-// TODO: Define other operation funtions here
+// TODO: Define other operation functions here
 
 ////////////////////////////////////////////////////////////////////////////////////////
 // Positioning
 // Translate, Rotate and Uniform Scaling
-vec3 opTx(vec3 p, mat4 t)
-{
+vec3 opTx(vec3 p, mat4 t)  {
     return (inverse(t) * vec4(p, 1.0f)).xyz;
 }
 
@@ -191,6 +291,184 @@ struct blend_node {
     int node;
     mat4 transform;
 };
+
+#define PARAMS packed1, packed2
+
+float getPrimitiveSDF(vec3 local_p, int primType, vec4 packed1, vec4 packed2) {
+    float d = 0.0;
+
+    switch (primType) {
+        case SDF_PRIM_Sphere:
+            d = sphereSDF(local_p, Sphere_get_radius(PARAMS));
+            break;
+        case SDF_PRIM_Box:
+            d = boxSDF(local_p, Box_get_dimensions(PARAMS));
+            break;
+
+        case SDF_PRIM_RoundedBox:
+            d = roundBoxSDF(
+                local_p,
+                RoundBox_get_dimensions(PARAMS),
+                RoundBox_get_roundness(PARAMS)
+            );
+            break;
+        case SDF_PRIM_BoxFrame:
+            d = boxFrameSDF(
+                local_p,
+                BoxFrame_get_dimensions(PARAMS),
+                BoxFrame_get_thickness(PARAMS)
+            );
+            break;
+        case SDF_PRIM_Torus:
+            d = torusSDF(
+                local_p,
+                Torus_get_thickness(PARAMS)
+            );
+            break;
+        case SDF_PRIM_CappedTorus:
+            d = cappedTorusSDF(
+                local_p,
+                CappedTorus_get_majorMinor(PARAMS),
+                CappedTorus_get_radiusA(PARAMS),
+                CappedTorus_get_radiusB(PARAMS)
+            );
+            break;
+        case SDF_PRIM_Capsule:
+            d = capsuleSDF(
+                local_p,
+                Capsule_get_start(PARAMS),
+                Capsule_get_end(PARAMS),
+                Capsule_get_radius(PARAMS)
+            );
+            break;
+        case SDF_PRIM_VerticalCapsule:
+            d = verticalCapsuleSDF(
+                local_p,
+                VerticalCapsule_get_radius(PARAMS),
+                VerticalCapsule_get_height(PARAMS)
+            );
+            break;
+    #if 0
+
+        case SDF_PRIM_Cylinder:
+            d = cappedCylinderSDF(
+                local_p,
+                Cylinder_get_height(PARAMS),
+                Cylinder_get_radius(PARAMS)
+            );
+            break;
+
+        case SDF_PRIM_RoundedCylinder:
+            d = roundedCylinderSDF(
+                local_p,
+                RoundedCylinder_get_radiusA(PARAMS),
+                RoundedCylinder_get_radiusB(PARAMS),
+                RoundedCylinder_get_height(PARAMS)
+            );
+            break;
+
+        case SDF_PRIM_Plane:
+            d = planeSDF(
+                local_p,
+                Plane_get_normal(PARAMS),
+                Plane_get_offset(PARAMS)
+            );
+            break;
+
+        case SDF_PRIM_Cone:
+            d = coneSDF(
+                local_p,
+                Cone_get_radii(PARAMS),
+                Cone_get_height(PARAMS)
+            );
+            break;
+
+        case SDF_PRIM_CappedCone:
+            d = cappedConeSDF(
+                local_p,
+                CappedCone_get_height(PARAMS),
+                CappedCone_get_bottomRadius(PARAMS),
+                CappedCone_get_topRadius(PARAMS)
+            );
+            break;
+
+        case SDF_PRIM_RoundCone:
+            d = roundConeSDF(
+                local_p,
+                RoundCone_get_bottomRadius(PARAMS),
+                RoundCone_get_topRadius(PARAMS),
+                RoundCone_get_height(PARAMS)
+            );
+            break;
+
+        case SDF_PRIM_HexagonalPrism:
+            d = hexPrismSDF(
+                local_p,
+                HexPrism_get_dimensions(PARAMS)
+            );
+            break;
+
+        case SDF_PRIM_TriangularPrism:
+            d = triPrismSDF(
+                local_p,
+                TriPrism_get_dimensions(PARAMS)
+            );
+            break;
+
+        case SDF_PRIM_Ellipsoid:
+            d = ellipsoidSDF(
+                local_p,
+                Ellipsoid_get_radii(PARAMS)
+            );
+            break;
+
+        case SDF_PRIM_CutSphere:
+            d = cutSphereSDF(
+                local_p,
+                CutSphere_get_radius(PARAMS),
+                CutSphere_get_cutHeight(PARAMS)
+            );
+            break;
+
+        case SDF_PRIM_CutHollowSphere:
+            d = cutHollowSphereSDF(
+                local_p,
+                CutHollowSphere_get_radius(PARAMS),
+                CutHollowSphere_get_cutHeight(PARAMS),
+                CutHollowSphere_get_thickness(PARAMS)
+            );
+            break;
+
+        case SDF_PRIM_DeathStar:
+            d = deathStarSDF(
+                local_p,
+                DeathStar_get_radiusA(PARAMS),
+                DeathStar_get_radiusB(PARAMS),
+                DeathStar_get_distance(PARAMS)
+            );
+            break;
+
+        case SDF_PRIM_Octahedron:
+            d = octahedronSDF(
+                local_p,
+                Octahedron_get_size(PARAMS)
+            );
+            break;
+
+        case SDF_PRIM_Pyramid:
+            d = pyramidSDF(
+                local_p,
+                Pyramid_get_height(PARAMS)
+            );
+            break;
+    #endif
+        default:
+            d = RAY_MAX_STEP;
+            break;
+    }
+
+    return d;
+}
 
 hit_info sceneSDF(vec3 p) {
     hit_info hit;
@@ -219,13 +497,12 @@ hit_info sceneSDF(vec3 p) {
             vec3 local_p = opTx(p, curr_blend_node.transform * node.transform);
             local_p /= SCALE;
 
-            if (node.primType == SDF_PRIM_Sphere) { 
-                d = sphereSDF(local_p, Sphere_get_radius(node.packed_params[0], node.packed_params[1]));
-            } else if (node.primType == SDF_PRIM_Box) { 
-                d = boxSDF(local_p, Box_get_dimensions(node.packed_params[0], node.packed_params[1]));
-            }
+            vec4 packed1 = node.packed_params[0];
+            vec4 packed2 = node.packed_params[1];
 
-            // Scaling 
+            d = getPrimitiveSDF(local_p, node.primType, PARAMS);
+
+            // Uniform Scaling (for non-uniform it's better to change the primitive params)
             d *= SCALE;
 
             // Apply the blend b/w primitives
@@ -243,7 +520,6 @@ hit_info sceneSDF(vec3 p) {
                 hit.d = smoothIntersectionBlend(hit.d, d, 0.5f);
             else
                 hit.d = smoothSubtractionBlend(hit.d, d, 0.5f);
-            // TODO: Apply per node transformations here on the cummulative SDF result
         }
         else {            
             if (sp < MAX_GPU_STACK_SIZE - 2) {

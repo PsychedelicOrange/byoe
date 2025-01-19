@@ -45,44 +45,51 @@ int game_main(void)
     float demoStartX = 0.25f;
     (void) demoStartX;
 
-    // simple sphere
+    // Testing All Primitives here
     {
-        SDF_Primitive sphere = {
-            .type      = SDF_PRIM_Sphere,
+        SDF_Primitive primitive_def = {
+            .type      = SDF_PRIM_VerticalCapsule,
             .transform = {
-                .position = {{2.0f, 0.0f, 0.0f}},
+                .position = {{0.0f, 0.0f, 0.0f}},
                 .rotation = {0.0f, 0.0f, 0.0f, 0.0f},
                 .scale    = 1.0f},
-            .props.sphere = {.radius = 1.0f},
-            .material     = {.diffuse = {0.5f, 0.3f, 0.7f, 1.0f}}};
-        int sph_prim = sdf_scene_add_primitive(scene, sphere);
-        (void) sph_prim;
+            .props.sphere           = {.radius = 1.0f},
+            .props.box              = {.dimensions = {1.0f, 1.0f, 1.0f}},
+            .props.round_box        = {.dimensions = {1.0f, 1.0f, 1.0f}, .roundness = 0.5f},
+            .props.box_frame        = {.dimensions = {1.0f, 1.0f, 1.0f}, .thickness = 0.025f},
+            .props.torus            = {.thickness = {1.0f, 0.25f}},
+            .props.torus_capped     = {.thickness = {1.0f, 0.25f}, .radiusA = 1.0f, .radiusB = 0.5f},
+            .props.capsule          = {.start = {0.0f, 0.0f, 0.0f}, .end = {1.0f, 1.0f, 1.0f}, .radius = 1.0f},
+            .props.vertical_capsule = {.radius = 0.25f, .height = 2.0f},
+            .material               = {.diffuse = {0.5f, 0.3f, 0.7f, 1.0f}}};
+        int prim = sdf_scene_add_primitive(scene, primitive_def);
+        (void) prim;
         demoStartX += 0.5f;
 
-        SDF_Primitive box = {
-            .type      = SDF_PRIM_Box,
-            .transform = {
-                .position = {{1.0f, 0.0f, 0.0f}},
-                .rotation = {0.0f, 0.0f, 0.0f, 0.0f},
-                .scale    = 1.0f},
-            .props.box = {.dimensions = {{1.0f, 1.0f, 1.0f}}}, // 0.25f, 0.10f, 0.45f
-            .material  = {.diffuse = {0.5f, 0.3f, 0.7f, 1.0f}}};
-        int cube_prim = sdf_scene_add_primitive(scene, box);
-        (void) cube_prim;
-        demoStartX += 0.5f;
+        //SDF_Primitive box = {
+        //    .type      = SDF_PRIM_Box,
+        //    .transform = {
+        //        .position = {{0.0f, 0.0f, 0.0f}},
+        //        .rotation = {0.0f, 0.0f, 0.0f, 0.0f},
+        //        .scale    = 1.0f},
+        //    .props.box = {.dimensions = {{1.0f, 1.0f, 1.0f}}},    // 0.25f, 0.10f, 0.45f
+        //    .material  = {.diffuse = {0.5f, 0.3f, 0.7f, 1.0f}}};
+        //int cube_prim = sdf_scene_add_primitive(scene, box);
+        //(void) cube_prim;
+        //demoStartX += 0.5f;
 
         // This is the real test
-        SDF_Object sphere_cube = {
-            .type      = SDF_BLEND_SMOOTH_UNION,
-            .prim_a    = sph_prim,
-            .prim_b    = cube_prim,
-            .transform = {
-                .position = {{-4.0f, 0.0f, 0.0f}},
-                .rotation = {0.0f, 0.0f, 0.0f, 0.0f},
-                .scale    = 2.0f}};
-
-        int meta_prim = sdf_scene_add_object(scene, sphere_cube);
-        (void) meta_prim;
+        //SDF_Object sphere_cube = {
+        //    .type      = SDF_BLEND_SMOOTH_UNION,
+        //    .prim_a    = sph_prim,
+        //    .prim_b    = cube_prim,
+        //    .transform = {
+        //        .position = {{2.0f, 0.0f, 0.0f}},
+        //        .rotation = {0.0f, 0.0f, 0.0f, 0.0f},
+        //        .scale    = 2.0f}};
+        //
+        //int meta_prim = sdf_scene_add_object(scene, sphere_cube);
+        //(void) meta_prim;
     }
 
     #if DISABLE_THIS_SNIPPET
