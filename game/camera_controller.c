@@ -103,7 +103,7 @@ void Camera_Start(random_uuid_t* uuid)
 
     camera->position.x = 0;
     camera->position.y = 0;
-    camera->position.z = 5;
+    camera->position.z = 7;
 
     camera->front.x = 0;
     camera->front.y = 0;

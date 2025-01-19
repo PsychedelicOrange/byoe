@@ -53,11 +53,8 @@ ENUM(SDF_PrimitiveType,
     SDF_PRIM_HexagonalPrism,
     SDF_PRIM_TriangularPrism,
     SDF_PRIM_Cone,
-
     SDF_PRIM_CappedCone,
-    SDF_PRIM_Plane,
-    SDF_PRIM_Octahedron,
-    SDF_PRIM_Pyramid)
+    SDF_PRIM_Plane)
 
 ENUM(SDF_BlendType,
     SDF_BLEND_UNION,
@@ -148,12 +145,6 @@ STRUCT(plane_props,
        vec3s normal;
        float distance;)
 
-STRUCT(octahedron_props,
-       float size;)
-
-STRUCT(pyramid_props,
-       float height;)
-
 //-----------------------------
 
 // TODO: perf-sweep with and without _pad_to_128_bytes_boundary
@@ -181,9 +172,6 @@ STRUCT(
         cone_props             cone;
         plane_props            plane;
         capped_cone_props      capped_cone;
-        octahedron_props       octahedron;
-        pyramid_props          pyramid;
-
         // Add more as needed
         // Max of 8 floats are needed to pack all props in a flattened view for GPU, update this as props get larger
         vec4s packed_data[2];

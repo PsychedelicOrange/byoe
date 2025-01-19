@@ -29,8 +29,6 @@
 #define SDF_PRIM_Cone            13
 #define SDF_PRIM_CappedCone      14
 #define SDF_PRIM_Plane           15
-//#define SDF_PRIM_Octahedron      16
-//#define SDF_PRIM_Pyramid         17
 
 // Node Type
 #define SDF_NODE_PRIMITIVE 0
@@ -240,8 +238,6 @@ float Plane_get_distance(vec4 packed1, vec4 packed2) {
     return packed1.w;
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////////////
 // Uniforms
 uniform ivec2 resolution;              
@@ -370,6 +366,7 @@ float planeSDF( vec3 p, vec3 n, float h )
   // n must be normalized
   return dot(p,n) + h;
 }
+
 ////////////////////////////////////////////////////////////////////////////////////////
 // SDF Combination Operations
 float unionBlend(float d1, float d2) {
