@@ -87,8 +87,8 @@ void sdf_scene_upload_scene_nodes_to_gpu(const SDF_Scene* scene)
     for (uint32_t i = 0; i < scene->current_node_head; ++i) {
         SDF_Node node = scene->nodes[i];
 
-        if (!node.is_dirty)
-            return;
+        // if (!node.is_dirty)
+        //     return;
 
         scene->nodes[i].is_dirty = false;
 

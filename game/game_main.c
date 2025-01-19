@@ -6,15 +6,7 @@
 #include <rng/rng.h>
 #include <scene/sdf_scene.h>
 
-#define TEST_SCENE 1
-
-/*
-TODO: Basic Gameplay
-- [ ] Spaceship prototype and make it scriptable for gameplay programmers --> red color thingy as per discussion
-- [ ] Render Bullets (Object pooling) + Style: [SDF Bloom](https://www.shadertoy.com/view/7stGWj)
-- [ ] [Optional] _Volumetrics:_ Smoke for when asteroids are destroyed: animate noise and render some FX using SDF, no need of a particle system.
-- [ ] Ghosts[Optional]: if volumetrics are hard/time constrained, use a glass like material for ghosts with refraction and alpha. use this for ghosts: https://www.shadertoy.com/view/X32BRz
-*/
+#define TEST_SCENE 0
 
 int game_main(void)
 {
@@ -29,6 +21,7 @@ int game_main(void)
             .position = {{0.0f, 0.0f, 0.0f}},
             .rotation = {0.0f, 0.0f, 0.0f, 0.0f},
             .scale    = 1.0f},
+            .props.box = {.dimensions = {{0.45f, 0.20f, 1.0f}}},
         .material = {.diffuse = {0.75f, 0.3f, 0.2f, 1.0f}}};
     int player_prim_idx = sdf_scene_add_primitive(asteroids_game_scene, sphere);
 
@@ -169,9 +162,10 @@ int game_main(void)
         int mold_idx = sdf_scene_add_object(scene, cube_mold);
         (void) mold_idx;
     }
-#endif    // TEST_SCENE
 
     renderer_sdf_set_scene(scene);
+#endif    // TEST_SCENE
+
 
     return EXIT_SUCCESS;
 }

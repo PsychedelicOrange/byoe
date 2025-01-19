@@ -410,6 +410,7 @@ float smoothIntersectionBlend( float d1, float d2, float k )
 ////////////////////////////////////////////////////////////////////////////////////////
 // Positioning
 // Translate, Rotate and Uniform Scaling
+// TODO: Move this to CPU, too expensive here
 vec3 opTx(vec3 p, mat4 t)  {
     return (inverse(t) * vec4(p, 1.0f)).xyz;
 }
@@ -440,7 +441,6 @@ float getPrimitiveSDF(vec3 local_p, int primType, vec4 packed1, vec4 packed2) {
         case SDF_PRIM_Box:
             d = boxSDF(local_p, Box_get_dimensions(PARAMS));
             break;
-
         case SDF_PRIM_RoundedBox:
             d = roundBoxSDF(
                 local_p,
@@ -558,7 +558,6 @@ hit_info sceneSDF(vec3 p) {
     // Explicit stack to emulate tree traversal
     blend_node stack[MAX_GPU_STACK_SIZE];
     int sp = 0; // Stack pointer
-    // stack[sp++] = blend_node(SDF_BLEND_UNION, curr_draw_node_idx, parent_node.transform);
     stack[sp++] = blend_node(SDF_BLEND_UNION, curr_draw_node_idx, parent_node.transform);
 
     while (sp > 0) {

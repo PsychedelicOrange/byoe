@@ -124,7 +124,7 @@ void Camera_Start(random_uuid_t* uuid)
     camera->far_plane  = 100.0f;
     camera->fov        = 45.0f;
 
-    s_cameraState.cameraMode       = FPS;
+    s_cameraState.cameraMode       = PlayerTarget;
     s_cameraState.playerGameObject = NULL;
 }
 
@@ -150,20 +150,19 @@ void Camera_Update(random_uuid_t* uuid, float dt)
         if (gameState->isMousePrimaryDown) {
             process_mouse_movement(camera, -gameState->mouseDelta[0], gameState->mouseDelta[1]);
         }
-    } else {    // Follow the player
+    } else { 
 
-        if (!s_cameraState.playerGameObject)
-            s_cameraState.playerGameObject = game_registry_get_gameobject_by_uuid(s_cameraState.playerUUID);
-
-        vec3s playerPosition = {0};
+        vec3s playerPosition = camera->position;
         gameobject_get_position(s_cameraState.playerUUID, &playerPosition.raw);
         playerPosition.z += 3;
         playerPosition.y += 1;
         glm_vec3_copy(playerPosition.raw, camera->position.raw);
-        camera->position = glms_vec3_add(camera->position, playerPosition);
+        // camera->position = glms_vec3_add(camera->position, playerPosition);
+        
+        LOG_ERROR("%f", camera->position.z);
     }
-
     update_camera_vectors(camera);
+
 }
 
 void Camera_set_player_uuid(random_uuid_t goUUID)
