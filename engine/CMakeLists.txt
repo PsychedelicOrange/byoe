@@ -1,20 +1,13 @@
 # engine/CMakeLists.txt
 
-file(GLOB_RECURSE engine_sources 
-    "core/*.c"
-    "scripting/*.c"
-    "external/*.c"
+
+file(GLOB_RECURSE engine_sources
+    # Core
+    ${CMAKE_SOURCE_DIR}/engine/**
 )
 
-file(GLOB_RECURSE engine_headers 
-    "core/*.h"
-    "scripting/*.h"
-)
-file(GLOB_RECURSE external_headers
-    "external/*.h"
-)
-file(GLOB_RECURSE external_sources
-    "external/*.c"
+file(GLOB_RECURSE shaders 
+    ${CMAKE_SOURCE_DIR}/engine/shaders/*
 )
 
 set_source_files_properties(
@@ -24,7 +17,28 @@ set_source_files_properties(
   COMPILE_FLAGS "-w"
 )
 
-SOURCE_GROUP(engine FILES ${engine_sources} ${engine_headers})
+# [Source]: https://stackoverflow.com/questions/31966135/cmake-source-group-not-working-correctly-with-hierarchical-project-setup
+foreach(FILE ${engine_sources}) 
+    # Get the directory of the source file
+    get_filename_component(PARENT_DIR "${FILE}" DIRECTORY)
+
+    # Remove common directory prefix to make the group
+    string(REPLACE "${CMAKE_CURRENT_SOURCE_DIR}" "" GROUP "${PARENT_DIR}")
+
+    # Make sure we are using windows slashes
+    string(REPLACE "/" "\\" GROUP "${GROUP}")
+
+    # Group into "Source Files" and "Header Files"
+    #if ("${FILE}" MATCHES ".*\\.c")
+    #   set(GROUP "engine${GROUP}")
+    #elseif("${FILE}" MATCHES ".*\\.h")
+    #   set(GROUP "engine${GROUP}")
+    #endif()
+
+    set(GROUP "engine${GROUP}")
+
+    source_group("${GROUP}" FILES "${FILE}")
+endforeach()
 
 # Set the C standard for this project
 set(CMAKE_C_STANDARD 11)   # Set C standard (11, 99, 90, etc.)
@@ -33,11 +47,11 @@ set(CMAKE_C_EXTENSIONS OFF)  # Disable compiler-specific extensions
 
 # Add library based on the BUILD_SHARED_ENGINE option
 if(BUILD_SHARED_ENGINE)
-	add_library(engine SHARED ${engine_sources} ${engine_headers} ${external_headers} ${external_sources})
+	add_library(engine SHARED ${engine_sources})
     # Define export settings for the DLL
     target_compile_definitions(engine PRIVATE BUILD_SHARED_ENGINE)
 else()
-    add_library(engine STATIC ${engine_sources} ${engine_headers} ${external_headers} ${external_sources})
+    add_library(engine STATIC ${engine_sources})
 endif()
 
 target_link_libraries(engine PRIVATE glfw cglm)

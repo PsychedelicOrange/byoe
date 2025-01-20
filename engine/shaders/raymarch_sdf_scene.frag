@@ -1,0 +1,677 @@
+#version 410 core
+// https://iquilezles.org/articles/distfunctions/
+////////////////////////////////////////////////////////////////////////////////////////
+// Constants
+// Ray Marching settings
+#define MAX_STEPS 128
+#define RAY_MIN_STEP 0.01
+#define RAY_MAX_STEP 100.0
+#define EPSILON 0.01
+
+#define MAX_GPU_STACK_SIZE 32
+
+#define MAX_PACKED_PARAM_VECS 2
+
+// Primitives
+#define SDF_PRIM_Sphere          0
+#define SDF_PRIM_Box             1
+#define SDF_PRIM_RoundedBox      2
+#define SDF_PRIM_BoxFrame        3
+#define SDF_PRIM_Torus           4
+#define SDF_PRIM_TorusCapped     5
+#define SDF_PRIM_Capsule         6
+#define SDF_PRIM_VerticalCapsule 7
+#define SDF_PRIM_Cylinder        8
+#define SDF_PRIM_RoundedCylinder 9
+#define SDF_PRIM_Ellipsoid       10
+#define SDF_PRIM_HexagonalPrism  11
+#define SDF_PRIM_TriangularPrism 12
+#define SDF_PRIM_Cone            13
+#define SDF_PRIM_CappedCone      14
+#define SDF_PRIM_Plane           15
+
+// Node Type
+#define SDF_NODE_PRIMITIVE 0
+#define SDF_NODE_OBJECT    1
+
+// Blend modes
+#define SDF_BLEND_UNION                 0
+#define SDF_BLEND_INTERSECTION          1
+#define SDF_BLEND_SUBTRACTION           2
+#define SDF_BLEND_XOR                   3
+#define SDF_BLEND_SMOOTH_UNION          4
+#define SDF_BLEND_SMOOTH_INTERSECTION   5
+#define SDF_BLEND_SMOOTH_SUBTRACTION    6
+
+// Operation Modes
+#define SDF_OP_DISTORTION 0
+#define SDF_OP_ELONGATION 1
+
+////////////////////////////////////////////////////////////////////////////////////////
+// Types
+struct Ray {
+    vec3 ro; 
+    vec3 rd; 
+};
+
+struct SDF_Material {
+    vec4 diffuse; // rgba
+};
+
+struct SDF_Node {
+    int nodeType;
+    
+    int primType;
+    mat4 transform; // Pos + Rotation only
+    float scale;    // Uniform Scaling
+
+    vec4 packed_params[2];
+
+    int blend;
+    int prim_a;
+    int prim_b;
+
+    SDF_Material material;
+};
+////////////////////////////////////////////////////////////////////////////////////////
+// Params unpacking util functions
+// signature: return_type (PRIM_TYPE_NAME)_get_param(XXX)();
+//-----------------------------
+// Sphere
+float Sphere_get_radius(vec4 packed1, vec4 packed2) {
+    return packed1.x;
+}
+
+//-----------------------------
+// Box
+vec3 Box_get_dimensions(vec4 packed1, vec4 packed2) {
+    return packed1.xyz;
+}
+
+//-----------------------------
+// Round Box
+vec3 RoundBox_get_dimensions(vec4 packed1, vec4 packed2) {
+    return packed1.xyz;
+}
+
+float RoundBox_get_roundness(vec4 packed1, vec4 packed2) {
+    return packed1.w;
+}
+
+//-----------------------------
+// Box Frame
+vec3 BoxFrame_get_dimensions(vec4 packed1, vec4 packed2) {
+    return packed1.xyz;
+}
+
+float BoxFrame_get_thickness(vec4 packed1, vec4 packed2) {
+    return packed1.w;
+}
+
+//-----------------------------
+// Torus
+vec2 Torus_get_thickness(vec4 packed1, vec4 packed2) {
+    return packed1.xy;
+}
+
+//-----------------------------
+// Capped Torus
+vec2 CappedTorus_get_majorMinor(vec4 packed1, vec4 packed2)
+{
+    return packed1.xy;
+}
+float CappedTorus_get_radiusA(vec4 packed1, vec4 packed2)
+{
+    return packed1.z;
+}
+
+float CappedTorus_get_radiusB(vec4 packed1, vec4 packed2)
+{
+    return packed1.w;
+}
+
+//-----------------------------
+// Capsule
+vec3 Capsule_get_start(vec4 packed1, vec4 packed2) {
+    return packed1.xyz;
+}
+
+vec3 Capsule_get_end(vec4 packed1, vec4 packed2) {
+    return vec3(packed1.w, packed2.x, packed2.y);
+}
+
+float Capsule_get_radius(vec4 packed1, vec4 packed2) {
+    return packed2.z;
+}
+
+//-----------------------------
+// Vertical Capsule
+float VerticalCapsule_get_radius(vec4 packed1, vec4 packed2) {
+    return packed1.x;
+}
+
+float VerticalCapsule_get_height(vec4 packed1, vec4 packed2) {
+    return packed1.y;
+}
+
+//-----------------------------
+// Cylinder
+float Cylinder_get_radius(vec4 packed1, vec4 packed2) {
+    return packed1.x;
+}
+
+float Cylinder_get_height(vec4 packed1, vec4 packed2) {
+    return packed1.y;
+}
+
+float RoundedCylinder_get_radius(vec4 packed1, vec4 packed2) {
+    return packed1.x;
+}
+
+//-----------------------------
+// Rounded Cylinder
+float RoundedCylinder_get_height(vec4 packed1, vec4 packed2) {
+    return packed1.z;
+}
+
+float RoundedCylinder_get_radiusA(vec4 packed1, vec4 packed2) {
+    return packed1.x;
+}
+
+float RoundedCylinder_get_radiusB(vec4 packed1, vec4 packed2) {
+    return packed1.y;
+}
+
+//-----------------------------
+// Ellipsoid
+vec3 Ellipsoid_get_radii(vec4 packed1, vec4 packed2) {
+    return packed1.xyz;
+}
+
+//-----------------------------
+// Hexagonal Prism
+vec2 HexagonalPrism_get_radius(vec4 packed1, vec4 packed2) {
+    return packed1.xy;
+}
+
+//-----------------------------
+// Triangular Prism
+float TriangularPrism_get_radius(vec4 packed1, vec4 packed2) {
+    return packed1.x;
+}
+
+float TriangularPrism_get_height(vec4 packed1, vec4 packed2) {
+    return packed1.y;
+}
+
+//-----------------------------
+// Cone
+float Cone_get_angle(vec4 packed1, vec4 packed2) {
+    return packed1.x;
+}
+
+float Cone_get_height(vec4 packed1, vec4 packed2) {
+    return packed1.y;
+}
+
+//-----------------------------
+// Cone
+float CappedCone_get_radiusTop(vec4 packed1, vec4 packed2) {
+    return packed1.x;
+}
+
+float CappedCone_get_radiusBottom(vec4 packed1, vec4 packed2) {
+    return packed1.y;
+}
+
+float CappedCone_get_height(vec4 packed1, vec4 packed2) {
+    return packed1.z;
+}
+
+//-----------------------------
+// Plane
+vec3 Plane_get_normal(vec4 packed1, vec4 packed2) {
+    return packed1.xyz;
+}
+
+float Plane_get_distance(vec4 packed1, vec4 packed2) {
+    return packed1.w;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// Uniforms
+uniform ivec2 resolution;              
+uniform int sdf_node_count;       
+uniform vec3 dir_light_pos;  
+uniform int curr_draw_node_idx;
+layout(std140) uniform SDFScene {
+    SDF_Node nodes[100];
+};        
+////////////////////////////////////////////////////////////////////////////////////////
+// Vertex Input vars
+in vec4 nearp;
+in vec4 farp;
+////////////////////////////////////////////////////////////////////////////////////////
+// Out Render Targets
+out vec4 FragColor;
+////////////////////////////////////////////////////////////////////////////////////////
+// Helper 
+float dot2( in vec2 v ) { return dot(v,v); }
+float dot2( in vec3 v ) { return dot(v,v); }
+float ndot( in vec2 a, in vec2 b ) { return a.x * b.x - a.y * b.y; }
+////////////////////////////////////////////////////////////////////////////////////////
+// SDF Primitive Functions
+float sphereSDF(vec3 p, float radius) {
+    return length(p) - radius;
+}
+
+float boxSDF(vec3 p, vec3 size) {
+    vec3 q = abs(p) - size;
+    return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
+}
+
+float roundBoxSDF(vec3 p, vec3 b, float r) {
+  vec3 q = abs(p) - b + r;
+  return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0) - r;
+}
+
+float boxFrameSDF(vec3 p, vec3 b, float e) {
+       p = abs(p  )-b;
+  vec3 q = abs(p+e)-e;
+  return min(min(
+      length(max(vec3(p.x,q.y,q.z),0.0))+min(max(p.x,max(q.y,q.z)),0.0),
+      length(max(vec3(q.x,p.y,q.z),0.0))+min(max(q.x,max(p.y,q.z)),0.0)),
+      length(max(vec3(q.x,q.y,p.z),0.0))+min(max(q.x,max(q.y,p.z)),0.0));
+}
+
+float torusSDF(vec3 p, vec2 t) {
+  vec2 q = vec2(length(p.xz)-t.x,p.y);
+  return length(q)-t.y;
+}
+
+float cappedTorusSDF(vec3 p, vec2 sc, float ra, float rb) {
+  p.x = abs(p.x);
+  float k = (sc.y*p.x>sc.x*p.y) ? dot(p.xy,sc) : length(p.xy);
+  return sqrt( dot(p,p) + ra*ra - 2.0*ra*k ) - rb;
+}
+
+float capsuleSDF(vec3 p, vec3 a, vec3 b, float r) {
+  vec3 pa = p - a, ba = b - a;
+  float h = clamp( dot(pa,ba)/dot(ba,ba), 0.0, 1.0 );
+  return length( pa - ba*h ) - r;
+}
+
+float verticalCapsuleSDF(vec3 p, float r, float h)
+{
+  p.y -= clamp( p.y, 0.0, h );
+  return length( p ) - r;
+}
+
+float cappedCylinderSDF( vec3 p, float h, float r)
+{
+  vec2 d = abs(vec2(length(p.xz),p.y)) - vec2(r,h);
+  return min(max(d.x,d.y),0.0) + length(max(d,0.0));
+}
+
+float roundedCylinderSDF(vec3 p, float ra, float rb, float h)
+{
+  vec2 d = vec2( length(p.xz)-2.0*ra+rb, abs(p.y) - h );
+  return min(max(d.x,d.y),0.0) + length(max(d,0.0)) - rb;
+}
+
+float ellipsoidSDF(vec3 p, vec3 r)
+{
+  float k0 = length(p/r);
+  float k1 = length(p/(r*r));
+  return k0*(k0-1.0)/k1;
+}
+
+float hexPrismSDF(vec3 p, vec2 h)
+{
+  const vec3 k = vec3(-0.8660254, 0.5, 0.57735);
+  p = abs(p);
+  p.xy -= 2.0*min(dot(k.xy, p.xy), 0.0)*k.xy;
+  vec2 d = vec2(
+       length(p.xy-vec2(clamp(p.x,-k.z*h.x,k.z*h.x), h.x))*sign(p.y-h.x),
+       p.z-h.y );
+  return min(max(d.x,d.y),0.0) + length(max(d,0.0));
+}
+
+float triPrismSDF( vec3 p, vec2 h )
+{
+  vec3 q = abs(p);
+  return max(q.z-h.y,max(q.x*0.866025+p.y*0.5,-p.y)-h.x*0.5);
+}
+
+float coneSDF(vec3 p, float angle, float h )
+{
+  float q = length(p.xz);
+  vec2 c = vec2(sin(angle), cos(angle));
+  return max(dot(c.xy,vec2(q,p.y)),-h-p.y);
+}
+
+float cappedConeSDF( vec3 p, float h, float r1, float r2 )
+{
+  vec2 q = vec2( length(p.xz), p.y );
+  vec2 k1 = vec2(r2,h);
+  vec2 k2 = vec2(r2-r1,2.0*h);
+  vec2 ca = vec2(q.x-min(q.x,(q.y<0.0)?r1:r2), abs(q.y)-h);
+  vec2 cb = q - k1 + k2*clamp( dot(k1-q,k2)/dot2(k2), 0.0, 1.0 );
+  float s = (cb.x<0.0 && ca.y<0.0) ? -1.0 : 1.0;
+  return s*sqrt( min(dot2(ca),dot2(cb)) );
+}
+
+float planeSDF( vec3 p, vec3 n, float h )
+{
+  // n must be normalized
+  return dot(p,n) + h;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// SDF Combination Operations
+float unionBlend(float d1, float d2) {
+    return min(d1, d2);
+}
+
+float intersectBlend(float d1, float d2) {
+    return max(d1, d2);
+}
+
+float subtractBlend(float d1, float d2) {
+    return max(-d1, d2);
+}
+
+float xorBlend(float d1, float d2 )
+{
+    return max(min(d1,d2),-max(d1,d2));
+}
+
+float smoothUnionBlend( float d1, float d2, float k )
+{
+    float h = clamp( 0.5 + 0.5*(d2-d1)/k, 0.0, 1.0 );
+    return mix( d2, d1, h ) - k*h*(1.0-h);
+}
+
+float smoothSubtractionBlend( float d1, float d2, float k )
+{
+    float h = clamp( 0.5 - 0.5*(d2+d1)/k, 0.0, 1.0 );
+    return mix( d2, -d1, h ) + k*h*(1.0-h);
+}
+
+float smoothIntersectionBlend( float d1, float d2, float k )
+{
+    float h = clamp( 0.5 - 0.5*(d2-d1)/k, 0.0, 1.0 );
+    return mix( d2, d1, h ) + k*h*(1.0-h);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// TODO: Define other operation functions here
+
+////////////////////////////////////////////////////////////////////////////////////////
+// Positioning
+// Translate, Rotate and Uniform Scaling
+// TODO: Move this to CPU, too expensive here
+vec3 opTx(vec3 p, mat4 t)  {
+    return (inverse(t) * vec4(p, 1.0f)).xyz;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// Iterative Scene SDF Evaluation
+struct hit_info
+{
+    float d;
+    SDF_Material material;
+};
+
+struct blend_node {
+    int blend;
+    int node;
+    mat4 transform;
+};
+
+#define PARAMS packed1, packed2
+
+float getPrimitiveSDF(vec3 local_p, int primType, vec4 packed1, vec4 packed2) {
+    float d = 0.0;
+
+    switch (primType) {
+        case SDF_PRIM_Sphere:
+            d = sphereSDF(local_p, Sphere_get_radius(PARAMS));
+            break;
+        case SDF_PRIM_Box:
+            d = boxSDF(local_p, Box_get_dimensions(PARAMS));
+            break;
+        case SDF_PRIM_RoundedBox:
+            d = roundBoxSDF(
+                local_p,
+                RoundBox_get_dimensions(PARAMS),
+                RoundBox_get_roundness(PARAMS)
+            );
+            break;
+        case SDF_PRIM_BoxFrame:
+            d = boxFrameSDF(
+                local_p,
+                BoxFrame_get_dimensions(PARAMS),
+                BoxFrame_get_thickness(PARAMS)
+            );
+            break;
+        case SDF_PRIM_Torus:
+            d = torusSDF(
+                local_p,
+                Torus_get_thickness(PARAMS)
+            );
+            break;
+        case SDF_PRIM_TorusCapped:
+            d = cappedTorusSDF(
+                local_p,
+                CappedTorus_get_majorMinor(PARAMS),
+                CappedTorus_get_radiusA(PARAMS),
+                CappedTorus_get_radiusB(PARAMS)
+            );
+            break;
+        case SDF_PRIM_Capsule:
+            d = capsuleSDF(
+                local_p,
+                Capsule_get_start(PARAMS),
+                Capsule_get_end(PARAMS),
+                Capsule_get_radius(PARAMS)
+            );
+            break;
+        case SDF_PRIM_VerticalCapsule:
+            d = verticalCapsuleSDF(
+                local_p,
+                VerticalCapsule_get_radius(PARAMS),
+                VerticalCapsule_get_height(PARAMS)
+            );
+            break;
+        case SDF_PRIM_Cylinder:
+            d = cappedCylinderSDF(
+                local_p,
+                Cylinder_get_radius(PARAMS),
+                Cylinder_get_height(PARAMS)
+            );
+            break;
+
+        case SDF_PRIM_RoundedCylinder:
+            d = roundedCylinderSDF(
+                local_p,
+                RoundedCylinder_get_radiusA(PARAMS),
+                RoundedCylinder_get_radiusB(PARAMS),
+                RoundedCylinder_get_height(PARAMS)
+            );
+            break;
+        case SDF_PRIM_Ellipsoid:
+            d = ellipsoidSDF(
+                local_p,
+                Ellipsoid_get_radii(PARAMS)
+            );
+            break;
+        case SDF_PRIM_HexagonalPrism:
+            d = hexPrismSDF(
+                local_p,
+                HexagonalPrism_get_radius(PARAMS)
+            );
+            break;
+        case SDF_PRIM_TriangularPrism:
+            d = triPrismSDF(
+                local_p,
+                vec2(TriangularPrism_get_radius(PARAMS),
+                TriangularPrism_get_height(PARAMS))
+            );
+            break;
+        case SDF_PRIM_Cone:
+            d = coneSDF(
+                local_p,
+                Cone_get_angle(PARAMS),
+                Cone_get_height(PARAMS)
+            );
+            break;
+        case SDF_PRIM_CappedCone:
+            d = cappedConeSDF(
+                local_p,
+                CappedCone_get_radiusTop(PARAMS),
+                CappedCone_get_radiusBottom(PARAMS),
+                CappedCone_get_height(PARAMS)
+            );
+            break;
+        case SDF_PRIM_Plane:
+            d = planeSDF(
+                local_p,
+                Plane_get_normal(PARAMS),
+                Plane_get_distance(PARAMS)
+            );
+            break;
+        default:
+            d = RAY_MAX_STEP;
+            break;
+    }
+
+    return d;
+}
+
+hit_info sceneSDF(vec3 p) {
+    hit_info hit;
+    hit.d = RAY_MAX_STEP;
+
+    SDF_Node parent_node = nodes[curr_draw_node_idx];
+
+    // Explicit stack to emulate tree traversal
+    blend_node stack[MAX_GPU_STACK_SIZE];
+    int sp = 0; // Stack pointer
+    stack[sp++] = blend_node(SDF_BLEND_UNION, curr_draw_node_idx, parent_node.transform);
+
+    while (sp > 0) {
+        blend_node curr_blend_node = stack[--sp]; // Pop node index
+        if (curr_blend_node.node < 0) continue;
+
+        SDF_Node node = nodes[curr_blend_node.node];
+        hit.material = node.material;
+
+        float d = RAY_MAX_STEP;
+        // Evaluate the current node
+        if(node.nodeType == SDF_NODE_PRIMITIVE) {
+            float SCALE = node.scale;
+            // Translate/Rotate
+            vec3 local_p = opTx(p, curr_blend_node.transform * node.transform);
+            local_p /= SCALE;
+
+            vec4 packed1 = node.packed_params[0];
+            vec4 packed2 = node.packed_params[1];
+
+            d = getPrimitiveSDF(local_p, node.primType, PARAMS);
+
+            // Uniform Scaling (for non-uniform it's better to change the primitive params)
+            d *= SCALE;
+
+            // Apply the blend b/w primitives
+            if (curr_blend_node.blend == SDF_BLEND_UNION)
+                hit.d = unionBlend(hit.d, d);
+            else if (curr_blend_node.blend == SDF_BLEND_INTERSECTION)
+                hit.d = intersectBlend(hit.d, d);
+            else if (curr_blend_node.blend == SDF_BLEND_SUBTRACTION)
+                hit.d = subtractBlend(hit.d, d);
+            else if (curr_blend_node.blend == SDF_BLEND_XOR)
+                hit.d = xorBlend(hit.d, d);
+            else if (curr_blend_node.blend == SDF_BLEND_SMOOTH_UNION)
+                hit.d = smoothUnionBlend(hit.d, d, 0.5f);
+            else if (curr_blend_node.blend == SDF_BLEND_SMOOTH_INTERSECTION)
+                hit.d = smoothIntersectionBlend(hit.d, d, 0.5f);
+            else
+                hit.d = smoothSubtractionBlend(hit.d, d, 0.5f);
+        }
+        else {            
+            if (sp < MAX_GPU_STACK_SIZE - 2) {
+                mat4 child_transform = curr_blend_node.transform;
+
+                if (node.prim_b >= 0) stack[sp++] = blend_node(node.blend, node.prim_b, child_transform);
+                if (node.prim_a >= 0) stack[sp++] = blend_node(node.blend, node.prim_a, child_transform);
+            }
+        }
+    }
+    return hit;
+}
+////////////////////////////////////////////////////////////////////////////////////////
+// Rendering related functions
+// Normal Estimation N = (n + delta) - (n - delta)
+vec3 estimateNormal(vec3 p) {
+    return normalize(vec3(
+        sceneSDF(vec3(p.x + EPSILON, p.y, p.z)).d  - sceneSDF(vec3(p.x - EPSILON, p.y, p.z)).d,
+        sceneSDF(vec3(p.x, p.y + EPSILON, p.z)).d  - sceneSDF(vec3(p.x, p.y - EPSILON, p.z)).d,
+        sceneSDF(vec3(p.x, p.y, p.z  + EPSILON)).d - sceneSDF(vec3(p.x, p.y, p.z - EPSILON)).d
+    ));
+}
+////////////////////////////////////////////////////////////////////////////////////////
+// Ray Marching
+hit_info raymarch(Ray ray) {
+    hit_info hit;
+    hit.d = 0;
+    for(int i = 0; i < MAX_STEPS; i++) {
+        vec3 p = ray.ro + ray.rd * hit.d;
+        hit_info h = sceneSDF(p);
+        hit.d += h.d;
+        hit.material = h.material;
+        if(hit.d > RAY_MAX_STEP || hit.d < RAY_MIN_STEP) break;
+    }
+    return hit;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// Main
+void main() {
+    vec2 uv = (gl_FragCoord.xy - 0.5 * resolution.xy) / resolution.y;
+
+    Ray ray;
+    ray.ro = nearp.xyz / nearp.w; // Ray origin in world space
+    ray.rd = normalize((farp.xyz / farp.w) - ray.ro); // Ray direction
+
+    hit_info hit  = raymarch(ray);
+    
+    if(hit.d < RAY_MAX_STEP)
+    {
+        vec3 lightPos = vec3(2, 5, 5);
+
+        vec3 p = ray.ro + ray.rd * hit.d;
+
+        vec3 l = normalize(lightPos - p);
+        vec3 n = normalize(estimateNormal(p));
+        vec3 r = reflect(-l, n);
+        vec3 v = normalize(ray.ro - p);
+
+        vec3 h = normalize(l + v); 
+
+        float diffuse  = clamp(dot(l, n), 0., 1.);
+        float spec = pow(max(dot(v, r), 0.0), 32);
+
+        vec3 specular = hit.material.diffuse.xyz * spec;
+        vec3 diffuseColor = diffuse * hit.material.diffuse.xyz;
+
+        gl_FragDepth = hit.d / RAY_MAX_STEP;
+
+        FragColor = vec4(diffuseColor + specular * 10, 1.0f);  
+
+        // FragColor = vec4(hit.d, hit.d, hit.d, 1.0f); 
+    }
+    else {
+        gl_FragDepth = 1;
+    }
+}

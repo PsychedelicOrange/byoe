@@ -1,57 +1,44 @@
+
 #include "player.h"
 
-#include <logging/log.h>
 #include <core/rng/rng.h>
+#include <engine/core/game_state.h>
+#include <logging/log.h>
 
+#include <GLFW/glfw3.h>
 #include <assert.h>
 
+#include "camera_controller.h"
 
-#define FNV_offset_basis    14695981039346656037UL
-#define FNV_prime           1099511628211UL
-
-// static uint64_t fnv1a_hash(uint8_t* key)
-// {
-//     uint64_t hash = FNV_offset_basis;
-//     while (*key) {
-//         hash ^= (uint64_t)(unsigned char*)(key); // bitwise XOR
-//         hash *= FNV_prime;                       // multiply
-//         key++;
-//     }
-//     return hash;
-// }
+static int PLAYER_SPEED = 10;
 
 void Player_Start(random_uuid_t* uuid)
 {
-    (void)uuid;
+    (void) uuid;
 
-    // Ex. API usage: 
+    // Ex. API usage:
     // gameobject_mark_as_renderable(*uuid, true);
     // gameobject_set_scale(*uuid, newScale);
+
+    Camera_set_player_uuid(*uuid);
+
+    //gameobject_set_rotation_euler( *uuid, (vec3){glm_rad(0.0f), glm_rad(0.0f), -glm_rad(45.0f/ 2.0f)});
 }
 
 void Player_Update(random_uuid_t* uuid, float dt)
 {
-    (void)uuid;
-    (void)dt;
+    (void) uuid;
+    (void) dt;
 
-    // Generate random movement offsets for x, y, z
-    float offsetX = (float)((int32_t)rng_range(0, 50) * 2 - 50) / 10.0f;
-    float offsetY = (float)((int32_t)rng_range(0, 70) * 2 - 70) / 10.0f;
-    //float offsetZ = ((rand() % 200) - 100) / 100.0f;
+    GameState* gameState      = gamestate_get_global_instance();
+    vec3s      playerPosition = {0};
+    gameobject_get_position(*uuid, &playerPosition.raw);
 
-    // Calculate new chaotic position based on offsets and dt
-    vec3 newPosition = {
-        offsetX * dt * 25,
-        offsetY * dt * 25,
-        0
-    };;
+    if (gameState->keycodes[GLFW_KEY_UP])
+        playerPosition.z -= PLAYER_SPEED * dt;
+    if (gameState->keycodes[GLFW_KEY_DOWN])
+        playerPosition.z += PLAYER_SPEED * dt;
 
-    // uint64_t hash = fnv1a_hash((uint8_t*)uuid->data);
-    // size_t index = (size_t)(hash & (uint64_t)(MAX_OBJECTS - 1));
-    // LOG_WARN("Player UUID Key index: %zu", index);
-
-    // LOG_INFO("Player pos : (%f, %f, %f)\n", newPosition[0], newPosition[1], newPosition[2]);
-
-    gameobject_set_position(*uuid, newPosition);
-    // LOG_SUCCESS("-----------------------------\n");
+    gameobject_set_position(*uuid, playerPosition.raw);
+    //gameobject_set_rotation_euler(*uuid, (vec3){glm_rad(0.0f), glm_rad(0.0f), glm_rad(45.0f)});
 }

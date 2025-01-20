@@ -4,7 +4,7 @@
 #if defined(_MSC_VER)
     // Code for MSVC on Windows
 #elif defined(__clang__)
-    // Code for Clang 
+    // Code for Clang
 #elif defined(__GNUC__)
     // Code for GCC (Linux or macOS)
 #else

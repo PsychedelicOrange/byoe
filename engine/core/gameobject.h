@@ -4,16 +4,13 @@
 // std.
 #include <stdint.h>
 
-// external
-#include <cglm/cglm.h>
-#include <cglm/struct.h>
+#include "common.h"
 
 // proj
-#include "common.h"
+#include "../scene/transform.h"
 #include "../scripting/scripting.h"
-#include "uuid/uuid.h"
-
 #include "game_registry.h"
+#include "uuid/uuid.h"
 
 // Q. How to solve sending/updating transform, we don't have transform component and mesh data
 // sol.1: we can manually link mesh to GameObject via registration or util functions in start itself, like game_object_set_mesh
@@ -22,50 +19,36 @@
 // emulating this pointer like behavior. We can hardcore stuff like Transform as it makes sense similar to uuid
 // or we already have the UUID of the scripting functions for easy access of the below game object public API
 
-typedef struct Transform
-{
-    vec3    position;
-    float _padding1;
-    versor  rotation; // glm::quat [x, y, z, w]
-    vec3    scale;
-    float _padding2;
-} Transform;
-
 typedef struct GameObject
 {
-    random_uuid_t uuid;
-    Transform transform;
-    random_uuid_t meshID;
-    bool isRenderable;
-    char typeName[255];         // Type of the game object (class/type)
-    void* gameState;            // Global game state such as Input, world info, scene data etc. 
-    void* gameObjectData;       // Object-specific data that can be serialized/reflected
-    StartFunction startFn;      // Start function for the object
-    UpdateFunction updateFn;    // Update function for the object
+    random_uuid_t  uuid;
+    Transform      transform;
+    bool           isRenderable;
+    bool           _pad0[3];
+    uint32_t       sdfNodeIdx;        // index of the sdf node in sdf scene array
+    void*          gameObjectData;    // Object-specific data that can be serialized/reflected
+    StartFunction  startFn;
+    UpdateFunction updateFn;
     // TODO: Add collision callback functions here if needed
 } GameObject;
 
-// TODO
-void gameobject_set_mesh(random_uuid_t goUUID, random_uuid_t meshUUID);
-// TODO
-void gameobject_set_material(random_uuid_t goUUID, random_uuid_t materialUUID);
-// TODO
-void gameobject_set_renderable(random_uuid_t goUUID, random_uuid_t meshUUID, random_uuid_t materialUUID);
-
-void gameobject_mark_as_renderable(random_uuid_t goUUID, bool value);
+void     gameobject_set_sdf_node_idx(random_uuid_t goUUID, uint32_t index);
+uint32_t gameobject_get_sdf_node_idx(random_uuid_t goUUID);
+void     gameobject_mark_as_renderable(random_uuid_t goUUID, bool value);
 
 mat4s gameobject_get_transform(random_uuid_t goUUID);
 mat4s gameobject_ptr_get_transform(GameObject* obj);
+// TODO: Refactor to return values instead
 void gameobject_get_position(random_uuid_t goUUID, vec3* position);
 void gameobject_get_rotation(random_uuid_t goUUID, versor* rorationQuad);
 void gameobject_get_rotation_euler(random_uuid_t goUUID, vec3* rotationEuler);
-void gameobject_get_scale(random_uuid_t goUUID, vec3* scale);
+void gameobject_get_scale(random_uuid_t goUUID, float* scale);
 
 // Transform Utils
 void gameobject_set_transform(random_uuid_t goUUID, Transform transform);
 void gameobject_set_position(random_uuid_t goUUID, vec3 position);
 void gameobject_set_rotation(random_uuid_t goUUID, versor rorationQuad);
 void gameobject_set_rotation_euler(random_uuid_t goUUID, vec3 rotationEuler);
-void gameobject_set_scale(random_uuid_t goUUID, vec3 scale);
+void gameobject_set_scale(random_uuid_t goUUID, float scale);
 
 #endif
