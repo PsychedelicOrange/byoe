@@ -14,7 +14,7 @@ typedef enum rhi_api
 //------------------------------------------
 
 int  gfx_init(rhi_api api, uint32_t width, uint32_t height);
-void gfx_destroy();
+void gfx_destroy(void);
 
 //------------------------------------------
 // RHI function pointers
@@ -27,8 +27,8 @@ typedef enum rhi_error_codes
     FailedHandleCreation
 } rhi_error_codes;
 
-rhi_error_codes (*rhi_clear)();
-rhi_error_codes (*rhi_draw)();
-rhi_error_codes (*rhi_present)();
+rhi_error_codes (*rhi_clear)(void);
+rhi_error_codes (*rhi_draw)(void);
+rhi_error_codes (*rhi_present)(void);
 
 #endif    // RHI_H

@@ -21,6 +21,6 @@ bool vulkan_ctx_init(uint32_t width, uint32_t height);
 //------------------------------------------
 // RHI
 //------------------------------------------
-rhi_error_codes vulkan_draw();
+rhi_error_codes vulkan_draw(void);
 
 #endif    // BACKEND_VULKAN_N

@@ -1,17 +1,13 @@
-#version 410 core
-layout (location = 0) in vec2 aPos;
+#version 450
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
 
-uniform mat4 viewproj;
-out vec4 nearp;
-out vec4 farp;
+layout(location = 0) in vec3 inPos;
+layout(location = 1) in vec2 inUV;
 
-void main()
-{
-	vec4 position = vec4(aPos,0,1);
-	gl_Position = position;
-	vec2 pos = gl_Position.xy/gl_Position.w;
+layout(location = 0) out vec2 outUV;
 
-	nearp = inverse(viewproj) * vec4(pos,-1,1);
-	farp = inverse(viewproj) * vec4(pos,1,1);
+void main() {
+    outUV = inUV;
+    gl_Position = vec4(inPos, 1.0f);
 }
-	

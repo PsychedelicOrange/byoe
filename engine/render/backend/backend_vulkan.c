@@ -37,7 +37,7 @@ VkBool32 vulkan_backend_debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT me
 // Context
 //--------------------------------------------------------
 
-static VkInstance vulkan_internal_create_ctx()
+static VkInstance vulkan_internal_create_ctx(void)
 {
     // Debug create info
     VkDebugUtilsMessengerCreateInfoEXT debug_ci = {
@@ -118,7 +118,7 @@ bool vulkan_ctx_init(uint32_t width, uint32_t height)
 
 //--------------------------------------------------------
 
-rhi_error_codes vulkan_draw()
+rhi_error_codes vulkan_draw(void)
 {
     return FailedUnknown;
 }

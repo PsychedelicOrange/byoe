@@ -15,6 +15,6 @@ int gfx_init(rhi_api api, uint32_t width, uint32_t height)
     return Success;
 }
 
-void gfx_destroy()
+void gfx_destroy(void)
 {
 }
