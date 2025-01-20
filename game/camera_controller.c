@@ -12,6 +12,8 @@ static const float SPEED       = 2.25f;
 static const float SENSITIVITY = 0.25f;
 static vec3s       WorldUp     = {{0, 1, 0}};    // World up direction (Y axis)
 
+static int PLAYER_SPEED = 100;
+
 enum Camera_Movement_Direction
 {
     FORWARD,
@@ -86,9 +88,13 @@ static void update_camera_vectors(Camera* camera)
     camera->front = glms_vec3_normalize(front);
 
     camera->right = glms_vec3_normalize(glms_vec3_cross(camera->front, WorldUp));
-    camera->up    = glms_vec3_normalize(glms_vec3_cross(camera->right, camera->front));    // Up vector (recalculated)
+    camera->up    = glms_vec3_normalize(glms_vec3_cross(camera->right, camera->front));
 
-    glm_look(camera->position.raw, camera->front.raw, WorldUp.raw, camera->lookAt.raw);
+    vec3 cam_dir = {0};
+    glm_vec3_add(camera->position.raw, camera->front.raw, cam_dir);
+    (void) cam_dir;
+
+    glm_lookat(camera->position.raw, cam_dir, camera->up.raw, camera->lookAt.raw);
 }
 
 //------------------------------------------------
@@ -146,23 +152,30 @@ void Camera_Update(random_uuid_t* uuid, float dt)
             process_keyboard(camera, RIGHT, dt);
         if (gameState->keycodes[GLFW_KEY_A])
             process_keyboard(camera, LEFT, dt);
-
-        if (gameState->isMousePrimaryDown) {
+         
+        if (gameState->isMousePrimaryDown)
             process_mouse_movement(camera, -gameState->mouseDelta[0], gameState->mouseDelta[1]);
-        }
-    } else { 
+    } else {
+        vec3s playerPosition = {0};
+        gameobject_get_position(s_cameraState.playerUUID , &playerPosition.raw);
+        LOG_WARN("Camera Target (Player): (%.2f, %.2f, %.2f)\n", playerPosition.x, playerPosition.y, playerPosition.z);
+        //if (gameState->keycodes[GLFW_KEY_UP])
+        //    playerPosition.z += PLAYER_SPEED * dt;
+        //if (gameState->keycodes[GLFW_KEY_DOWN])
+        //    playerPosition.z -= PLAYER_SPEED * dt;
+        //
+        ////gameobject_get_position(s_cameraState.playerUUID, &playerPosition.raw);
+        //vec3s new_cam_pos = (vec3s){playerPosition.x, playerPosition.y, playerPosition.z + 7};
+        //glm_vec3_copy(new_cam_pos.raw, camera->position.raw);
 
-        vec3s playerPosition = camera->position;
-        gameobject_get_position(s_cameraState.playerUUID, &playerPosition.raw);
-        playerPosition.z += 3;
-        playerPosition.y += 1;
-        glm_vec3_copy(playerPosition.raw, camera->position.raw);
-        // camera->position = glms_vec3_add(camera->position, playerPosition);
-        
-        LOG_ERROR("%f", camera->position.z);
+        static const float CAMERA_OFFSET_Z = 3.0f;
+
+        static float i = 0;
+        i += dt;
+        camera->position.z = (playerPosition.z * 4.0f) + CAMERA_OFFSET_Z;
+        //10.0f * (float) sin(i);
     }
     update_camera_vectors(camera);
-
 }
 
 void Camera_set_player_uuid(random_uuid_t goUUID)

@@ -21,14 +21,14 @@ int game_main(void)
             .position = {{0.0f, 0.0f, 0.0f}},
             .rotation = {0.0f, 0.0f, 0.0f, 0.0f},
             .scale    = 1.0f},
-            .props.box = {.dimensions = {{0.45f, 0.20f, 1.0f}}},
-        .material = {.diffuse = {0.75f, 0.3f, 0.2f, 1.0f}}};
+        //.props.box = {.dimensions = {{0.45f, 0.20f, 1.0f}}},
+        .props.box = {.dimensions = {{1.0f, 1.0f, 1.0f}}},
+        .material  = {.diffuse = {0.75f, 0.3f, 0.2f, 1.0f}}};
     int player_prim_idx = sdf_scene_add_primitive(asteroids_game_scene, sphere);
 
     REGISTER_GAME_OBJECT(0, Camera_Start, Camera_Update);
     REGISTER_GAME_OBJECT_WITH_NODE_IDX(PlayerData, Player_Start, Player_Update, player_prim_idx);
 #else
-
     REGISTER_GAME_OBJECT(0, Camera_Start, Camera_Update);
 
     // Define Test Scene
@@ -165,7 +165,6 @@ int game_main(void)
 
     renderer_sdf_set_scene(scene);
 #endif    // TEST_SCENE
-
 
     return EXIT_SUCCESS;
 }
