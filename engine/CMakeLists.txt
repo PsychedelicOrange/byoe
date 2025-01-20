@@ -2,7 +2,6 @@
 
 
 file(GLOB_RECURSE engine_sources
-    # Core
     ${CMAKE_SOURCE_DIR}/engine/**
 )
 
@@ -17,59 +16,87 @@ set_source_files_properties(
   COMPILE_FLAGS "-w"
 )
 
+find_program(GLSLC_EXECUTABLE glslc HINTS $ENV{VULKAN_SDK}/Bin $ENV{VULKAN_SDK}/bin)
+
+if(NOT GLSLC_EXECUTABLE)
+    message(FATAL_ERROR "Could not find glslc. Ensure the Vulkan SDK is installed and VULKAN_SDK is set.")
+endif()
+
+# Function to compile shaders
+function(compile_shader SHADER_SRC SHADER_DST)
+    add_custom_command(
+        OUTPUT ${SHADER_DST}
+        COMMAND ${GLSLC_EXECUTABLE} ${SHADER_SRC} -o ${SHADER_DST}
+        DEPENDS ${SHADER_SRC}
+        COMMENT "Compiling shader: ${SHADER_SRC}"
+        VERBATIM
+    )
+endfunction()
+
+set(COMPILED_SHADERS)
+foreach(SHADER ${shaders})
+    get_filename_component(FILE_NAME ${SHADER} NAME)
+    set(SHADER_OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${FILE_NAME}.spv)
+    compile_shader(${SHADER} ${SHADER_OUTPUT})
+    list(APPEND COMPILED_SHADERS ${SHADER_OUTPUT})
+endforeach()
+
+add_custom_target(compile_shaders ALL DEPENDS ${COMPILED_SHADERS})
+
+# Vulkan paths
+if(WIN32)
+    set(VULKAN_SDK $ENV{VULKAN_SDK})
+    include_directories(${VULKAN_SDK}/Include)
+    link_directories(${VULKAN_SDK}/Lib)
+elseif(APPLE)
+    set(VULKAN_SDK $ENV{VULKAN_SDK})
+    include_directories(${VULKAN_SDK}/include)
+    link_directories(${VULKAN_SDK}/lib)
+elseif(UNIX)
+    find_library(Vulkan_LIBRARY NAMES vulkan HINTS /usr/lib /usr/local/lib /usr/lib/x86_64-linux-gnu)
+    include_directories(/usr/include /usr/local/include)
+else()
+    message(FATAL_ERROR "Unsupported platform")
+endif()
+
 # [Source]: https://stackoverflow.com/questions/31966135/cmake-source-group-not-working-correctly-with-hierarchical-project-setup
 foreach(FILE ${engine_sources}) 
-    # Get the directory of the source file
     get_filename_component(PARENT_DIR "${FILE}" DIRECTORY)
 
-    # Remove common directory prefix to make the group
     string(REPLACE "${CMAKE_CURRENT_SOURCE_DIR}" "" GROUP "${PARENT_DIR}")
 
-    # Make sure we are using windows slashes
     string(REPLACE "/" "\\" GROUP "${GROUP}")
-
-    # Group into "Source Files" and "Header Files"
-    #if ("${FILE}" MATCHES ".*\\.c")
-    #   set(GROUP "engine${GROUP}")
-    #elseif("${FILE}" MATCHES ".*\\.h")
-    #   set(GROUP "engine${GROUP}")
-    #endif()
 
     set(GROUP "engine${GROUP}")
 
     source_group("${GROUP}" FILES "${FILE}")
 endforeach()
 
-# Set the C standard for this project
-set(CMAKE_C_STANDARD 11)   # Set C standard (11, 99, 90, etc.)
-set(CMAKE_C_STANDARD_REQUIRED ON)  # Ensure the standard is required
-set(CMAKE_C_EXTENSIONS OFF)  # Disable compiler-specific extensions
+set(CMAKE_C_STANDARD 11)          
+set(CMAKE_C_STANDARD_REQUIRED ON) 
+set(CMAKE_C_EXTENSIONS OFF)       
 
-# Add library based on the BUILD_SHARED_ENGINE option
 if(BUILD_SHARED_ENGINE)
 	add_library(engine SHARED ${engine_sources})
-    # Define export settings for the DLL
     target_compile_definitions(engine PRIVATE BUILD_SHARED_ENGINE)
 else()
     add_library(engine STATIC ${engine_sources})
 endif()
 
-target_link_libraries(engine PRIVATE glfw cglm)
-
-# Set output name for the library
+target_link_libraries(engine PRIVATE glfw cglm volk)
 set_target_properties(engine PROPERTIES OUTPUT_NAME "engine")
 set_target_properties(engine PROPERTIES C_STANDARD 11)
 
-# include directories
 target_include_directories(engine PUBLIC
     core
     scripting
     external
-    $<TARGET_PROPERTY:cglm,INTERFACE_INCLUDE_DIRECTORIES>  # Automatically includes cglm headers
-    $<TARGET_PROPERTY:glfw,INTERFACE_INCLUDE_DIRECTORIES>   # Automatically includes GLFW headers
+    $<TARGET_PROPERTY:cglm,INTERFACE_INCLUDE_DIRECTORIES> 
+    $<TARGET_PROPERTY:glfw,INTERFACE_INCLUDE_DIRECTORIES> 
+    $<TARGET_PROPERTY:volk,INTERFACE_INCLUDE_DIRECTORIES> 
 )
 
-# Platform-specific settings for exporting symbols on Windows
+
 if(WIN32 AND BUILD_SHARED_ENGINE)
     set_target_properties(engine PROPERTIES
         WINDOWS_EXPORT_ALL_SYMBOLS ON

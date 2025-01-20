@@ -25,7 +25,6 @@ typedef struct renderer_internal_state
     GLFWwindow*      window;
     const SDF_Scene* scene;
     uint64_t         frameCount;
-    uint32_t         screen_quad_vao;
     bool             captureSwapchain;
     bool             _pad0[3];
     color_rgba       clearColor;
@@ -103,7 +102,6 @@ bool renderer_sdf_init(renderer_desc desc)
     s_RendererSDFInternalState.clearColor    = (color_rgba){0.0f, 0.0f, 0.0f, 1.0f};
 
     renderer_internal_sdf_hot_reload_shaders();
-    s_RendererSDFInternalState.screen_quad_vao = render_utils_setup_screen_quad();
 
     glfwSetFramebufferSizeCallback(s_RendererSDFInternalState.window, renderer_internal_sdf_resize);
 
@@ -199,6 +197,8 @@ texture_readback renderer_sdf_read_swapchain(void)
 {
     texture_readback result = {0};
 
+#ifdef BYOE_OPENGL
+
     glFinish();
 
     glfwMakeContextCurrent(s_RendererSDFInternalState.window);
@@ -219,6 +219,7 @@ texture_readback renderer_sdf_read_swapchain(void)
     glReadBuffer(GL_COLOR_ATTACHMENT0);
 
     glReadPixels(0, 0, result.width, result.height, GL_RGB, GL_UNSIGNED_BYTE, result.pixels);
+#endif
 
     return result;
 }

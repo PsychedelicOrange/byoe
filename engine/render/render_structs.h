@@ -3,6 +3,7 @@
 #define RENDER_STRUCTS_H
 
 #include "../core/common.h"
+#include "../core/uuid/uuid.h"
 
 // TODO: Add defines so as to make this include-able in shaders
 #ifndef SHADER_INCLUDE
@@ -206,5 +207,71 @@ typedef struct SDF_Node
     bool            _pad1[13];
 } SDF_Node;
 #endif    // SHADER_INCLUDE
+
+//------------------------
+// Graphics API
+//------------------------
+
+typedef enum gfx_format
+{
+    r8int,
+    r8uint,
+    r8f,
+    r16f,
+    r32f,
+    r32uint,
+    r32unorm,
+    r32int,
+    rgbint,
+    rgbuint,
+    rgbunorm,
+    rgb32f,
+    rgbaint,
+    rgbauint,
+    rgbaunorm,
+    rgba32f,
+    depth32f,
+    depth16f,
+    depth16unorm,
+    depthstencil,
+    screen
+} gfx_format;
+
+typedef struct gfx_vertex_buffer
+{
+    random_uuid_t uuid;
+    uint32_t      num_elements;
+    uint32_t      size;
+    uint32_t      offset;
+    void*         backend;    // points to an internal api specific handles struct
+} gfx_vertex_buffer;
+
+typedef struct gfx_index_buffer
+{
+    random_uuid_t uuid;
+    uint32_t      count;
+    uint32_t      offset;
+    void*         backend;    // points to an internal api specific handles struct
+} gfx_index_buffer;
+
+typedef struct gfx_uniform_buffer
+{
+    random_uuid_t uuid;
+    uint32_t      size;
+    uint32_t      offset;
+} gfx_uniform_buffer;
+
+typedef struct gfx_texture
+{
+    union
+    {
+        bool is_read_write;
+        bool is_read_only;
+        bool is_write_only;
+    } rw_rules;
+
+    gfx_format format;
+
+} gfx_texture;
 
 #endif    // RENDER_STRUCTS_H

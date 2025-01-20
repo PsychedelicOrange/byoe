@@ -2,6 +2,8 @@
 
 #include <GLFW/glfw3.h>
 
+#include "../render/frontend/gfx_frontend.h"
+
 static float       deltaTime;
 static float       lastFrame       = 0.0f;
 static float       elapsedTime     = 0;
@@ -22,7 +24,8 @@ void engine_init(struct GLFWwindow** gameWindow, uint32_t width, uint32_t height
     // Follow this order strictly to avoid load crashing
     render_utils_init_glfw();
     *gameWindow = render_utils_create_glfw_window("BYOE Game: Spooky Asteroids!", width, height);
-    render_utils_init_glad();
+
+    gfx_init(Vulkan, width, height);
 
     renderer_desc desc = {0};
     desc.width         = width;
