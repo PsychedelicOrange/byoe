@@ -15,14 +15,17 @@ int game_main(void)
     sdf_scene_init(asteroids_game_scene);
     renderer_sdf_set_scene(asteroids_game_scene);
 
+    versor init_quat;
+    glm_euler_xyz_quat((vec3){0.0f, glm_rad(45.0f), 0.0f}, init_quat);
+
     SDF_Primitive sphere = {
         .type      = SDF_PRIM_Box,
         .transform = {
             .position = {{0.0f, 0.0f, 0.0f}},
+            //.rotation = {0.0f, 0.383f, 0.0f, 0.924f},
             .rotation = {0.0f, 0.0f, 0.0f, 0.0f},
             .scale    = 1.0f},
-        //.props.box = {.dimensions = {{0.45f, 0.20f, 1.0f}}},
-        .props.box = {.dimensions = {{1.0f, 1.0f, 1.0f}}},
+        .props.box = {.dimensions = {{0.45f, 0.20f, 1.0f}}},
         .material  = {.diffuse = {0.75f, 0.3f, 0.2f, 1.0f}}};
     int player_prim_idx = sdf_scene_add_primitive(asteroids_game_scene, sphere);
 

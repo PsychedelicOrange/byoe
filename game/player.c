@@ -21,6 +21,8 @@ void Player_Start(random_uuid_t* uuid)
     // gameobject_set_scale(*uuid, newScale);
 
     Camera_set_player_uuid(*uuid);
+
+    //gameobject_set_rotation_euler( *uuid, (vec3){glm_rad(0.0f), glm_rad(0.0f), -glm_rad(45.0f/ 2.0f)});
 }
 
 void Player_Update(random_uuid_t* uuid, float dt)
@@ -31,12 +33,12 @@ void Player_Update(random_uuid_t* uuid, float dt)
     GameState* gameState      = gamestate_get_global_instance();
     vec3s      playerPosition = {0};
     gameobject_get_position(*uuid, &playerPosition.raw);
-    if (gameState->keycodes[GLFW_KEY_DOWN])
-        playerPosition.z += PLAYER_SPEED * dt;
+
     if (gameState->keycodes[GLFW_KEY_UP])
         playerPosition.z -= PLAYER_SPEED * dt;
-
-    //playerPosition.z = -5.0f;
+    if (gameState->keycodes[GLFW_KEY_DOWN])
+        playerPosition.z += PLAYER_SPEED * dt;
 
     gameobject_set_position(*uuid, playerPosition.raw);
+    //gameobject_set_rotation_euler(*uuid, (vec3){glm_rad(0.0f), glm_rad(0.0f), glm_rad(45.0f)});
 }

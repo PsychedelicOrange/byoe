@@ -12,7 +12,10 @@ static const float SPEED       = 2.25f;
 static const float SENSITIVITY = 0.25f;
 static vec3s       WorldUp     = {{0, 1, 0}};    // World up direction (Y axis)
 
-static int PLAYER_SPEED = 100;
+static const float CAMERA_OFFSET_Z                  = 7.0f;
+static const float CAMERA_OFFSET_Y                  = 2.0f;
+static const float CAMERA_TO_WORLD_TRX_SCALE_FACTOR = 4.0f;    // IDK why this needs to be done, To be figured out!
+// weirdly this is constant despite the changes in player/camera variables
 
 enum Camera_Movement_Direction
 {
@@ -152,28 +155,16 @@ void Camera_Update(random_uuid_t* uuid, float dt)
             process_keyboard(camera, RIGHT, dt);
         if (gameState->keycodes[GLFW_KEY_A])
             process_keyboard(camera, LEFT, dt);
-         
+
         if (gameState->isMousePrimaryDown)
             process_mouse_movement(camera, -gameState->mouseDelta[0], gameState->mouseDelta[1]);
     } else {
         vec3s playerPosition = {0};
-        gameobject_get_position(s_cameraState.playerUUID , &playerPosition.raw);
+        gameobject_get_position(s_cameraState.playerUUID, &playerPosition.raw);
         LOG_WARN("Camera Target (Player): (%.2f, %.2f, %.2f)\n", playerPosition.x, playerPosition.y, playerPosition.z);
-        //if (gameState->keycodes[GLFW_KEY_UP])
-        //    playerPosition.z += PLAYER_SPEED * dt;
-        //if (gameState->keycodes[GLFW_KEY_DOWN])
-        //    playerPosition.z -= PLAYER_SPEED * dt;
-        //
-        ////gameobject_get_position(s_cameraState.playerUUID, &playerPosition.raw);
-        //vec3s new_cam_pos = (vec3s){playerPosition.x, playerPosition.y, playerPosition.z + 7};
-        //glm_vec3_copy(new_cam_pos.raw, camera->position.raw);
 
-        static const float CAMERA_OFFSET_Z = 3.0f;
-
-        static float i = 0;
-        i += dt;
-        camera->position.z = (playerPosition.z * 4.0f) + CAMERA_OFFSET_Z;
-        //10.0f * (float) sin(i);
+        camera->position.y = (playerPosition.y * CAMERA_TO_WORLD_TRX_SCALE_FACTOR) + CAMERA_OFFSET_Y;
+        camera->position.z = (playerPosition.z * CAMERA_TO_WORLD_TRX_SCALE_FACTOR) + CAMERA_OFFSET_Z;
     }
     update_camera_vectors(camera);
 }
