@@ -1,17 +1,12 @@
-#version 410 core
-layout (location = 0) in vec2 aPos;
+#version 450
 
-uniform mat4 viewproj;
-out vec4 nearp;
-out vec4 farp;
+layout(location = 0) in vec2 inUV;
 
-void main()
-{
-	vec4 position = vec4(aPos,0,1);
-	gl_Position = position;
-	vec2 pos = gl_Position.xy/gl_Position.w;
+layout(location = 0) out vec4 outColorRenderTarget;
 
-	nearp = inverse(viewproj) * vec4(pos,-1,1);
-	farp = inverse(viewproj) * vec4(pos,1,1);
+layout(binding = 0, set = 0) uniform sampler2D sceneTexture;
+
+void main() {
+    outColorRenderTarget = texture(sceneTexture, inUV);
 }
 	

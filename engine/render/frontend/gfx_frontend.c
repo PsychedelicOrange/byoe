@@ -24,7 +24,7 @@ int gfx_init(rhi_api api, GLFWwindow* window, uint32_t width, uint32_t height)
     return Success;
 }
 
-void gfx_destroy()
+void gfx_destroy(void)
 {
     if (s_CurrentAPI == Vulkan) {
         vulkan_ctx_destroy();

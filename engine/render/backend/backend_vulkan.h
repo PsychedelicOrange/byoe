@@ -22,6 +22,6 @@ void vulkan_ctx_destroy(void);
 //------------------------------------------
 // RHI
 //------------------------------------------
-rhi_error_codes vulkan_draw();
+rhi_error_codes vulkan_draw(void);
 
 #endif    // BACKEND_VULKAN_N
