@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+typedef struct GLFWwindow GLFWwindow;
+
 typedef enum rhi_api
 {
     Vulkan,
@@ -13,7 +15,7 @@ typedef enum rhi_api
 // Context
 //------------------------------------------
 
-int  gfx_init(rhi_api api, uint32_t width, uint32_t height);
+int  gfx_init(rhi_api api, GLFWwindow* window, uint32_t width, uint32_t height);
 void gfx_destroy();
 
 //------------------------------------------

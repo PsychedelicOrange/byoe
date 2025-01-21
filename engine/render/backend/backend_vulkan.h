@@ -8,7 +8,8 @@
 //------------------------------------------
 // Context
 //------------------------------------------
-bool vulkan_ctx_init(uint32_t width, uint32_t height);
+bool vulkan_ctx_init(GLFWwindow* window, uint32_t width, uint32_t height);
+void vulkan_ctx_destroy(void);
 
 //------------------------------------------
 // Debug

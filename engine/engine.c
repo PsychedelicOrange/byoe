@@ -25,7 +25,11 @@ void engine_init(struct GLFWwindow** gameWindow, uint32_t width, uint32_t height
     render_utils_init_glfw();
     *gameWindow = render_utils_create_glfw_window("BYOE Game: Spooky Asteroids!", width, height);
 
-    gfx_init(Vulkan, width, height);
+    if (gfx_init(Vulkan, *gameWindow, width, height) != Success) {
+        gfx_destroy();
+        LOG_ERROR("Error initializing gfx");
+        exit(-1);
+    }
 
     renderer_desc desc = {0};
     desc.width         = width;
@@ -53,6 +57,7 @@ void engine_init(struct GLFWwindow** gameWindow, uint32_t width, uint32_t height
 void engine_destroy(void)
 {
     renderer_sdf_destroy();
+    gfx_destroy();
     game_registry_destroy();
     LOG_SUCCESS("Exiting BYOE...Byee!");
 }
