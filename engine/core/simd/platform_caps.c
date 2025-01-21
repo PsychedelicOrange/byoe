@@ -17,6 +17,7 @@
 #if defined(_WIN32)
     #include <windows.h>
 #elif defined(__linux__)
+    #include <string.h>
     #include <sys/sysinfo.h>
     #include <sys/utsname.h>
     #include <unistd.h>

@@ -18,6 +18,8 @@
     Online:
         https://glad.dav1d.de/#profile=core&language=c&specification=gl&loader=on&api=gl%3D4.6&extensions=GL_EXT_texture_filter_anisotropic
 */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
 
 #include <glad/glad.h>
 #include <stdio.h>
@@ -1857,3 +1859,4 @@ int gladLoadGLLoader(GLADloadproc load)
     if (!find_extensionsGL()) return 0;
     return GLVersion.major != 0 || GLVersion.minor != 0;
 }
+#pragma GCC diagnostic pop

@@ -38,7 +38,7 @@ void gameobjects_update(float dt)
             if (go->updateFn)
                 go->updateFn(&go->uuid, dt);
 
-            if (go->sdfNodeIdx >= 0 && go->sdfNodeIdx != UINT_MAX && go->isRenderable)
+            if (go->sdfNodeIdx != UINT_MAX && go->isRenderable)
                 scene->nodes[go->sdfNodeIdx].primitive.transform = go->transform;
         }
     }
