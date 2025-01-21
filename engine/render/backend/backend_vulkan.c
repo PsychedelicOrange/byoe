@@ -28,6 +28,7 @@
 //--------------------------------------------------------
 // Internal Types
 //--------------------------------------------------------
+// TODO: Combing these 2 structs
 typedef struct queue_indices
 {
     uint32_t gfx;
@@ -35,9 +36,31 @@ typedef struct queue_indices
     uint32_t async_compute;
 } queue_indices;
 
+typedef struct queue_backend
+{
+    VkQueue gfx;
+    VkQueue present;
+    VkQueue async_compute;
+} queue_backend;
+//---------------------------------
+
+typedef struct QueueFamPropsArrayView
+{
+    VkQueueFamilyProperties* arr;
+    uint32_t                 size;
+} QueueFamPropsArrayView;
+
+typedef struct device_create_info_ex
+{
+    VkPhysicalDevice   gpu;
+    TypedGrowableArray queue_cis;
+
+} device_create_info_ex;
+
 typedef struct vulkan_context
 {
     VkInstance                       instance;
+    VkDebugUtilsMessengerEXT         debug_messenger;
     VkSurfaceKHR                     surface;
     VkPhysicalDevice                 gpu;
     VkDevice                         logical_device;
@@ -45,6 +68,7 @@ typedef struct vulkan_context
     VkPhysicalDeviceMemoryProperties mem_props;
     VkExtensionProperties*           supported_extensions;
     queue_indices                    queue_idxs;
+    queue_backend                    queues;
 } vulkan_context;
 
 static vulkan_context s_VkCtx;
@@ -55,13 +79,32 @@ static vulkan_context s_VkCtx;
 
 //--------------------------------------------------------
 
+static VkResult vulkan_internal_create_debug_utils_messenger(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger)
+{
+    PFN_vkCreateDebugUtilsMessengerEXT func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+    if (func != NULL)
+        return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
+    else
+        return VK_ERROR_EXTENSION_NOT_PRESENT;
+}
+
+static void vulkan_internal_destroy_debug_utils_messenger(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator)
+{
+    PFN_vkDestroyDebugUtilsMessengerEXT func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+    if (func != NULL)
+        func(instance, debugMessenger, pAllocator);
+}
+
 // Debug callback
-VkBool32 vulkan_backend_debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
+static VkBool32 vulkan_backend_debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
 {
     (void) messageSeverity;
     (void) messageTypes;
     (void) pCallbackData;
     (void) pUserData;
+
+    if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) LOG_ERROR("%s", pCallbackData->pMessage);
+    if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) LOG_WARN("%s", pCallbackData->pMessage);
 
     return VK_TRUE;
 }
@@ -70,7 +113,7 @@ VkBool32 vulkan_backend_debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT me
 // Context
 //--------------------------------------------------------
 
-static VkInstance vulkan_internal_create_ctx(void)
+static VkInstance vulkan_internal_create_instance(void)
 {
     // Debug create info
     VkDebugUtilsMessengerCreateInfoEXT debug_ci = {
@@ -147,6 +190,10 @@ static VkInstance vulkan_internal_create_ctx(void)
 
     //free(glfwExtensions);
     //typed_growable_array_free(&instance_extensions);
+
+    vulkan_internal_create_debug_utils_messenger(instance, &debug_ci, NULL, &s_VkCtx.debug_messenger);
+
+    volkLoadInstance(instance);
 
     return instance;
 }
@@ -232,12 +279,6 @@ static VkExtensionProperties* vulkan_internal_query_supported_device_extensions(
     return NULL;
 }
 
-typedef struct QueueFamPropsArrayView
-{
-    VkQueueFamilyProperties* arr;
-    uint32_t                 size;
-} QueueFamPropsArrayView;
-
 static QueueFamPropsArrayView vulkan_internal_query_queue_props(VkPhysicalDevice gpu)
 {
     uint32_t queueFamilyCount;
@@ -301,13 +342,6 @@ static TypedGrowableArray vulkan_internal_create_queue_family_infos(queue_indice
     return queueFamilyInfos;
 }
 
-typedef struct device_create_info_ex
-{
-    VkPhysicalDevice   gpu;
-    TypedGrowableArray queue_cis;
-
-} device_create_info_ex;
-
 static VkDevice vulkan_internal_create_logical_device(device_create_info_ex info)
 {
     (void) info;
@@ -359,9 +393,15 @@ static VkDevice vulkan_internal_create_logical_device(device_create_info_ex info
     return device;
 }
 
-static VkQueue vulkan_internal_create_queue(uint32_t index)
+static queue_backend vulkan_internal_create_queues(queue_indices indices)
 {
-    (void) index;
+    queue_backend backend;
+
+    vkGetDeviceQueue(VKDEVICE, indices.gfx, 0, &backend.gfx);
+    vkGetDeviceQueue(VKDEVICE, indices.present, 0, &backend.present);
+    vkGetDeviceQueue(VKDEVICE, indices.async_compute, 0, &backend.async_compute);
+
+    return backend;
 }
 
 bool vulkan_ctx_init(GLFWwindow* window, uint32_t width, uint32_t height)
@@ -376,8 +416,7 @@ bool vulkan_ctx_init(GLFWwindow* window, uint32_t width, uint32_t height)
         return false;
     }
 
-    VKINSTANCE = vulkan_internal_create_ctx();
-    volkLoadInstance(VKINSTANCE);
+    VKINSTANCE = vulkan_internal_create_instance();
 
     s_VkCtx.surface = vulkan_internal_create_surface(window, VKINSTANCE);
 
@@ -401,12 +440,19 @@ bool vulkan_ctx_init(GLFWwindow* window, uint32_t width, uint32_t height)
     device_ci_ex.queue_cis             = vulkan_internal_create_queue_family_infos(s_VkCtx.queue_idxs);
     VKDEVICE                           = vulkan_internal_create_logical_device(device_ci_ex);
 
+    s_VkCtx.queues = vulkan_internal_create_queues(s_VkCtx.queue_idxs);
+
     return false;
 }
 
 void vulkan_ctx_destroy(void)
 {
     free(s_VkCtx.supported_extensions);
+
+    vkDestroySurfaceKHR(VKINSTANCE, s_VkCtx.surface, NULL);
+    vkDestroyDevice(s_VkCtx.logical_device, NULL);
+    vulkan_internal_destroy_debug_utils_messenger(VKINSTANCE, s_VkCtx.debug_messenger, NULL);
+    vkDestroyInstance(VKINSTANCE, NULL);
 }
 
 //--------------------------------------------------------
