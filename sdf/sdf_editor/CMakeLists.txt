@@ -8,6 +8,8 @@ file(GLOB_RECURSE editor_source
     "menu.c"
     "sidebar.c"
     "file_browser.c"
+	"icon.c"
+	"add_primitive.c"
 )
 
 # Set the C standard for this project

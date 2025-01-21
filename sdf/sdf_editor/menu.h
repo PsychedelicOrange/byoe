@@ -1,3 +1,5 @@
+#ifndef MENU_BYOE_H
+#define MENU_BYOE_H
 /* MENU */
 #include "nuklear_include.h"
 
@@ -21,3 +23,5 @@ typedef struct menu_state{
 menu_state menu_default(int window[2]);
 
 void menu_draw(struct nk_context* ctx, menu_state* state);
+
+#endif

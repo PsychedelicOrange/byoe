@@ -1,4 +1,6 @@
 /* Use this include instead of nuklear.h */
+#ifndef NUKLEAR_INCLUDE_BYOE
+#define NUKLEAR_INCLUDE_BYOE
 
 #define NK_INCLUDE_FIXED_TYPES
 #define NK_INCLUDE_STANDARD_IO
@@ -11,3 +13,5 @@
 #include "nuklear.h"
 #include "nuklear_glfw_gl3.h"
 #include "stb_image.h"
+
+#endif

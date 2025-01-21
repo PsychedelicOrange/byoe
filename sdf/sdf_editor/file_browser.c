@@ -2,26 +2,7 @@
 #include "logging/log.h"
 #include <assert.h>
 #include <stdlib.h>
-
-struct nk_image
-icon_load(const char *filename)
-{
-    int x,y,n;
-    GLuint tex;
-    unsigned char *data = stbi_load(filename, &x, &y, &n, 0);
-    if (!data) LOG_ERROR("stb : failed to load image: %s", filename);
-
-    glGenTextures(1, &tex);
-    glBindTexture(GL_TEXTURE_2D, tex);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_NEAREST);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, x, y, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-    glGenerateMipmap(GL_TEXTURE_2D);
-    stbi_image_free(data);
-    return nk_image_id((int)tex);
-}
+#include "icon.h"
 
 #if 0
 char*
@@ -214,6 +195,9 @@ media_init(struct media *media)
     media->files[FILE_PCX] = FILE_DEF(FILE_PCX, "pcx", FILE_GROUP_IMAGE);
     media->files[FILE_TGA] = FILE_DEF(FILE_TGA, "tga", FILE_GROUP_IMAGE);
     media->files[FILE_GIF] = FILE_DEF(FILE_GIF, "gif", FILE_GROUP_IMAGE);
+    media->files[FILE_MP4] = FILE_DEF(FILE_MP4, "mp4", FILE_GROUP_MOVIE);
+    media->files[FILE_MKV] = FILE_DEF(FILE_MKV, "tga", FILE_GROUP_MOVIE);
+
 }
 
 void
@@ -307,7 +291,7 @@ file_browser_run(struct file_browser *browser, struct nk_context *ctx)
 
     if (browser->show)
     {
-        if (nk_begin(ctx, browser->titlebar, nk_rect(50, 50, 600, 600),
+        if (nk_begin(ctx, browser->titlebar, nk_rect(50, 50, 800, 800),
             NK_WINDOW_BORDER|NK_WINDOW_MOVABLE|NK_WINDOW_SCALABLE|NK_WINDOW_NO_SCROLLBAR|
                 NK_WINDOW_MINIMIZABLE|NK_WINDOW_TITLE))
         {
@@ -366,10 +350,10 @@ file_browser_run(struct file_browser *browser, struct nk_context *ctx)
                 size_t count = browser->dir_count + browser->file_count;
 
                 /* File icons layout */
-                cols = 2;
+                cols = 3;
                 rows = count / cols;
                 float ratio2[] = {0.08f, NK_UNDEFINED};
-                nk_layout_row(ctx, NK_DYNAMIC, 30, 2, ratio2);
+                nk_layout_row(ctx, NK_DYNAMIC, 50, 2, ratio2);
                 for (i = 0; i <= rows; i += 1) {
                     size_t n = j + cols;
                     for (; j < count && j < n; ++j) {
