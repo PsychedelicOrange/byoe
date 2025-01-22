@@ -1,6 +1,8 @@
 #ifndef RHI_H
 #define RHI_H
 
+// TODO FUTURE: separate it into high level: frontend/backend and low level:frontend/backend --> 4 files
+
 #include "../render/render_structs.h"
 
 #include <stdint.h>
