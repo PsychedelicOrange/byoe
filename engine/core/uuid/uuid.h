@@ -1,14 +1,16 @@
 #pragma once
 
+#include <stdalign.h>
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
 #include <string.h>
 #include <time.h>
-#include <stdbool.h>
 
-typedef struct random_uuid_t {
-    uint32_t data[4]; // 32 bits * 4 = 128 bits
+typedef struct random_uuid_t
+{
+    alignas(16) uint32_t data[4];
 } random_uuid_t;
 
 void uuid_generate(random_uuid_t* out);

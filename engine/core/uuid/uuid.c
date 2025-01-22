@@ -6,14 +6,14 @@ void uuid_generate(random_uuid_t* out)
 {
     // Generate random 32-bit values for each part of the UUID
     for (int i = 0; i < 4; i++) {
-        out->data[i] = rng_generate(); // Random 32-bit value
+        out->data[i] = rng_generate();    // Random 32-bit value
     }
 }
 
 void uuid_destroy(random_uuid_t* out)
 {
     for (int i = 0; i < 4; i++) {
-        out->data[i] = 0; // Random 32-bit value
+        out->data[i] = 0;    // Random 32-bit value
     }
 }
 
@@ -30,14 +30,13 @@ void uuid_print(const random_uuid_t* uuid)
 char* uuid_to_string(const random_uuid_t* uuid)
 {
     // Allocate memory for the UUID string (8 characters * 4 segments + 3 dashes + null terminator)
-    char* uuid_str = (char*)malloc(37); // 36 characters + 1 for null terminator
+    char* uuid_str = (char*) malloc(37);    // 36 characters + 1 for null terminator
     if (uuid_str == NULL) {
-        return NULL; // Handle memory allocation failure
+        return NULL;    // Handle memory allocation failure
     }
 
     // Format the UUID into the allocated string
-    snprintf(uuid_str, 37, "%08x-%08x-%08x-%08x",
-        uuid->data[0], uuid->data[1], uuid->data[2], uuid->data[3]);
+    snprintf(uuid_str, 37, "%08x-%08x-%08x-%08x", uuid->data[0], uuid->data[1], uuid->data[2], uuid->data[3]);
 
     return uuid_str;
 }
@@ -61,6 +60,7 @@ bool uuid_is_null(const random_uuid_t* uuid) {
 }
 */
 
-bool uuid_is_null(const random_uuid_t* uuid) {
+bool uuid_is_null(const random_uuid_t* uuid)
+{
     return (uuid->data[0] | uuid->data[1] | uuid->data[2] | uuid->data[3]) == 0;
 }

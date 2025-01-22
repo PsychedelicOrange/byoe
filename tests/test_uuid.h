@@ -6,7 +6,8 @@
 #include <engine/core/uuid/uuid.h>
 
 // Test function
-void test_uuid(void) {
+void test_uuid(void)
+{
     const char* test_case = "test_uuid";
 
     // Generate a valid UUID
@@ -14,7 +15,7 @@ void test_uuid(void) {
         TEST_START();
 #ifdef __GNUC__
         random_uuid_t uuid = {{0, 0, 0, 0}};
-#else 
+#else
         random_uuid_t uuid = {0, 0, 0, 0};
 #endif
         uuid_generate(&uuid);

@@ -19,9 +19,31 @@
 // Maximum number of game Object Instances in the game world at any moment
 #define MAX_OBJECTS 1024
 
-#define COLOR_RESET   "\x1b[0m"
-#define COLOR_RED     "\x1b[31m"
-#define COLOR_GREEN   "\x1b[32m"
-#define COLOR_YELLOW  "\x1b[33m"
-#define COLOR_BLUE    "\x1b[34m"
-#define COLOR_PINK    "\x1b[35m"
+#define COLOR_RESET  "\x1b[0m"
+#define COLOR_RED    "\x1b[31m"
+#define COLOR_GREEN  "\x1b[32m"
+#define COLOR_YELLOW "\x1b[33m"
+#define COLOR_BLUE   "\x1b[34m"
+#define COLOR_PINK   "\x1b[35m"
+
+#ifdef SHADER_INCLUDE
+    #define ENUM(name, ...) enum name \
+    {                                 \
+        __VA_ARGS__                   \
+    };
+    #define STRUCT(name, ...) \
+        struct name           \
+        {                     \
+            __VA_ARGS__       \
+        };
+#else
+    #define ENUM(name, ...) typedef enum name \
+    {                                         \
+        __VA_ARGS__                           \
+    } name;
+    #define STRUCT(name, ...) \
+        typedef struct name   \
+        {                     \
+            __VA_ARGS__       \
+        } name;
+#endif

@@ -11,6 +11,12 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 ## GLOBAL COMPILATION SETTINGS
 set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+# VS edit and continue for h0to reloading
+if(MSVC)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /MP") 
+    add_compile_options("/ZI")
+    add_link_options("/INCREMENTAL")
+endif()
 ####################################################################
 ## SOURCES
 # Add subdirectories for engine and game

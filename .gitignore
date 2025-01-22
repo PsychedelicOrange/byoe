@@ -4,6 +4,10 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 
+# test related files
+tests/test_sdf_scene.ppm
+test_sdf_scene.ppm
+
 build/
 # User-specific files
 *.rsuser
@@ -472,6 +476,8 @@ CMakeUserPresets.json
 *.i*86
 *.x86_64
 *.hex
+benchmarks/benchmarks
+tests/tests
 
 # Debug files
 *.dSYM/
