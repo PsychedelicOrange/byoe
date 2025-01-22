@@ -1,5 +1,6 @@
 #include "backend_vulkan.h"
 
+#include "../core/common.h"
 #include "../core/containers/typed_growable_array.h"
 #include "../core/logging/log.h"
 
@@ -28,6 +29,33 @@
 //--------------------------------------------------------
 // Internal Types
 //--------------------------------------------------------
+
+typedef struct sync_prim_backend
+{
+    VkSemaphore image_ready_sema;
+    VkSemaphore rendering_done_sema;
+    VkSemaphore cmd_buf_ready_sema;
+} sync_prim_backend;
+
+typedef struct swapchain_backend
+{
+    VkSwapchainKHR     swapchain;
+    VkSwapchainKHR     old_swapchain;
+    VkSurfaceFormatKHR format;
+    VkPresentModeKHR   present_mode;
+    VkExtent2D         extents;
+    uint32_t           image_count;
+} swapchain_backend;
+
+typedef struct cmd_pool_backend
+{
+    VkCommandPool pool;
+} cmd_pool_backend;
+
+//---------------------------------
+// Utils structs
+
+//-------------------------
 // TODO: Combing these 2 structs
 typedef struct queue_indices
 {
@@ -42,7 +70,7 @@ typedef struct queue_backend
     VkQueue present;
     VkQueue async_compute;
 } queue_backend;
-//---------------------------------
+//-------------------------
 
 typedef struct QueueFamPropsArrayView
 {
@@ -54,11 +82,12 @@ typedef struct device_create_info_ex
 {
     VkPhysicalDevice   gpu;
     TypedGrowableArray queue_cis;
-
 } device_create_info_ex;
 
+//---------------------------------
 typedef struct vulkan_context
 {
+    GLFWwindow*                      window;
     VkInstance                       instance;
     VkDebugUtilsMessengerEXT         debug_messenger;
     VkSurfaceKHR                     surface;
@@ -76,6 +105,7 @@ static vulkan_context s_VkCtx;
 #define VKINSTANCE s_VkCtx.instance
 #define VKDEVICE   s_VkCtx.logical_device
 #define VKGPU      s_VkCtx.gpu
+#define VKSURFACE  s_VkCtx.surface
 
 //--------------------------------------------------------
 
@@ -155,25 +185,6 @@ static VkInstance vulkan_internal_create_instance(void)
 
     // TODO: Use a StringView DS for this to work fine
     //    TypedGrowableArray instance_extensions = typed_growable_array_create(sizeof(const char*) * 255, glfwExtensionsCount);
-    //
-    //    for (uint32_t i = 0; i < glfwExtensionsCount; i++) {
-    //        void* ext_element = typed_growable_array_get_element(&instance_extensions, i);
-    //        strcpy(ext_element, glfwExtensions[i]);
-    //    }
-    //
-    //    // Add any custom extension from the list of supported extensions that you need and are not included by GLFW
-    //#ifdef _WIN32
-    //    typed_growable_array_append(&instance_extensions, VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
-    //#elif defined __APPLE__
-    //    typed_growable_array_append(&instance_extensions, VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
-    //#endif
-    //    typed_growable_array_append(&instance_extensions, VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
-    //    typed_growable_array_append(&instance_extensions, VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-    //    typed_growable_array_append(&instance_extensions, "VK_EXT_debug_report");
-    //
-    //    for (uint32_t i = 0; i < instance_extensions.size; i++) {
-    //        LOG_WARN("extension %s", (const char*) typed_growable_array_get_element(&instance_extensions, i));
-    //    }
 
     VkInstanceCreateInfo info_ci = {
         .sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
@@ -192,9 +203,6 @@ static VkInstance vulkan_internal_create_instance(void)
     //typed_growable_array_free(&instance_extensions);
 
     vulkan_internal_create_debug_utils_messenger(instance, &debug_ci, NULL, &s_VkCtx.debug_messenger);
-
-    volkLoadInstance(instance);
-
     return instance;
 }
 
@@ -224,7 +232,7 @@ static VkPhysicalDevice vulkan_internal_select_best_gpu(VkInstance instance)
     else
         LOG_ERROR("No GPUs found!");
 
-    VkPhysicalDevice* gpus = calloc(sizeof(VkPhysicalDevice), total_gpus_count);
+    VkPhysicalDevice* gpus = calloc(total_gpus_count, sizeof(VkPhysicalDevice));
     vkEnumeratePhysicalDevices(instance, &total_gpus_count, gpus);
 
     if (!gpus)
@@ -267,7 +275,7 @@ static VkExtensionProperties* vulkan_internal_query_supported_device_extensions(
     uint32_t extCount = 0;
     vkEnumerateDeviceExtensionProperties(gpu, NULL, &extCount, NULL);
     if (extCount > 0) {
-        VkExtensionProperties* supported_extensions = calloc(sizeof(VkExtensionProperties), extCount);
+        VkExtensionProperties* supported_extensions = calloc(extCount, sizeof(VkExtensionProperties));
         if (vkEnumerateDeviceExtensionProperties(gpu, NULL, &extCount, supported_extensions) == VK_SUCCESS) {
             LOG_INFO("Selected physical device has %d extensions", extCount);
             for (uint32_t i = 0; i < extCount; ++i) {
@@ -284,7 +292,7 @@ static QueueFamPropsArrayView vulkan_internal_query_queue_props(VkPhysicalDevice
     uint32_t queueFamilyCount;
     vkGetPhysicalDeviceQueueFamilyProperties(gpu, &queueFamilyCount, NULL);
 
-    VkQueueFamilyProperties* q_fam_props = calloc(sizeof(VkQueueFamilyProperties), queueFamilyCount);
+    VkQueueFamilyProperties* q_fam_props = calloc(queueFamilyCount, sizeof(VkQueueFamilyProperties));
     vkGetPhysicalDeviceQueueFamilyProperties(gpu, &queueFamilyCount, q_fam_props);
 
     QueueFamPropsArrayView view = {0};
@@ -410,6 +418,7 @@ bool vulkan_ctx_init(GLFWwindow* window, uint32_t width, uint32_t height)
     (void) height;
 
     memset(&s_VkCtx, 0, sizeof(vulkan_context));
+    s_VkCtx.window = window;
 
     if (volkInitialize() != VK_SUCCESS) {
         LOG_ERROR("Failed to initialize Volk");
@@ -417,6 +426,8 @@ bool vulkan_ctx_init(GLFWwindow* window, uint32_t width, uint32_t height)
     }
 
     VKINSTANCE = vulkan_internal_create_instance();
+
+    volkLoadInstance(VKINSTANCE);
 
     s_VkCtx.surface = vulkan_internal_create_surface(window, VKINSTANCE);
 
@@ -453,6 +464,164 @@ void vulkan_ctx_destroy(void)
     vkDestroyDevice(s_VkCtx.logical_device, NULL);
     vulkan_internal_destroy_debug_utils_messenger(VKINSTANCE, s_VkCtx.debug_messenger, NULL);
     vkDestroyInstance(VKINSTANCE, NULL);
+}
+
+//--------------------------------------------------------
+
+static VkSurfaceCapabilitiesKHR vulkan_internal_query_swap_surface_caps(void)
+{
+    VkSurfaceCapabilitiesKHR surface_caps = {0};
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(VKGPU, VKSURFACE, &surface_caps);
+    return surface_caps;
+}
+
+static VkSurfaceFormatKHR vulkan_internal_choose_surface_format(void)
+{
+    uint32_t formatsCount = 0;
+    vkGetPhysicalDeviceSurfaceFormatsKHR(VKGPU, VKSURFACE, &formatsCount, NULL);
+
+    VkSurfaceFormatKHR* formats = calloc(formatsCount, sizeof(VkSurfaceFormatKHR));
+    vkGetPhysicalDeviceSurfaceFormatsKHR(VKGPU, VKSURFACE, &formatsCount, formats);
+
+    for (uint32_t i = 0; i < formatsCount; i++) {
+        VkSurfaceFormatKHR format = formats[i];
+        if (format.format == VK_FORMAT_B8G8R8A8_UNORM && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+            return format;
+    }
+    return formats[0];
+}
+
+static VkPresentModeKHR vulkan_internal_choose_present_mode(void)
+{
+    uint32_t presentModesCount = 0;
+    vkGetPhysicalDeviceSurfacePresentModesKHR(VKGPU, VKSURFACE, &presentModesCount, NULL);
+
+    VkPresentModeKHR* present_modes = calloc(presentModesCount, sizeof(VkPresentModeKHR));
+    vkGetPhysicalDeviceSurfacePresentModesKHR(VKGPU, VKSURFACE, &presentModesCount, present_modes);
+
+    for (uint32_t i = 0; i < presentModesCount; i++) {
+        VkPresentModeKHR mode = present_modes[i];
+        if (mode == VK_PRESENT_MODE_MAILBOX_KHR)
+            return mode;
+    }
+    return VK_PRESENT_MODE_FIFO_KHR;    // V-Sync
+}
+
+static VkExtent2D vulkan_internal_choose_extents(void)
+{
+    VkSurfaceCapabilitiesKHR caps = vulkan_internal_query_swap_surface_caps();
+    if (caps.currentExtent.width != UINT32_MAX)
+        return caps.currentExtent;
+    else {
+        int width, height;
+        glfwGetFramebufferSize((GLFWwindow*) s_VkCtx.window, &width, &height);
+
+        VkExtent2D actualExtent = {
+            (uint32_t) (width),
+            (uint32_t) (height)};
+
+        actualExtent.width  = clamp_int(actualExtent.width, caps.minImageExtent.width, caps.maxImageExtent.width);
+        actualExtent.height = clamp_int(actualExtent.height, caps.minImageExtent.height, caps.maxImageExtent.height);
+
+        return actualExtent;
+    }
+}
+
+gfx_swapchain vulkan_device_create_swapchain(uint32_t width, uint32_t height)
+{
+    gfx_swapchain swapchain = {0};
+    uuid_generate(&swapchain.uuid);
+
+    swapchain.width  = width;
+    swapchain.height = height;
+
+    swapchain_backend* backend = malloc(sizeof(swapchain_backend));
+    if (!backend) {
+        LOG_ERROR("error malloc swapchain_backend");
+        uuid_destroy(&swapchain.uuid);
+        return swapchain;
+    }
+
+    swapchain.backend = backend;
+
+    VkSurfaceCapabilitiesKHR caps = vulkan_internal_query_swap_surface_caps();
+
+    backend->format       = vulkan_internal_choose_surface_format();
+    backend->present_mode = vulkan_internal_choose_present_mode();
+    backend->extents      = vulkan_internal_choose_extents();
+
+    backend->image_count = caps.minImageCount + 1;
+
+    VkSwapchainCreateInfoKHR sc_ci = {
+        .sType                 = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+        .surface               = VKSURFACE,
+        .minImageCount         = backend->image_count,
+        .imageFormat           = backend->format.format,
+        .imageColorSpace       = backend->format.colorSpace,
+        .imageExtent           = backend->extents,
+        .imageArrayLayers      = 1,
+        .imageUsage            = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT,
+        .imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE,
+        .compositeAlpha        = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+        .queueFamilyIndexCount = 0,
+        .pQueueFamilyIndices   = NULL,
+        .clipped               = VK_TRUE,
+        .preTransform          = caps.currentTransform,
+        .oldSwapchain          = backend->old_swapchain};
+
+    VK_CHECK_RESULT(vkCreateSwapchainKHR(VKDEVICE, &sc_ci, NULL, &backend->swapchain), "[Vulkan] Failed to create swapchain handle");
+
+    if (backend->old_swapchain != VK_NULL_HANDLE) {
+        vkDestroySwapchainKHR(VKDEVICE, backend->old_swapchain, VK_NULL_HANDLE);
+        backend->old_swapchain = VK_NULL_HANDLE;
+    }
+
+    return swapchain;
+}
+
+void vulkan_device_destroy_swapchain(gfx_swapchain sc)
+{
+    if (!uuid_is_null(&sc.uuid)) {
+        uuid_destroy(&sc.uuid);
+        swapchain_backend* backend = sc.backend;
+
+        // TODO: Destroy back buffer images
+
+        if (backend->swapchain != VK_NULL_HANDLE)
+            vkDestroySwapchainKHR(VKDEVICE, backend->swapchain, NULL);
+        free(sc.backend);
+    }
+}
+
+gfx_cmd_pool vulkan_device_create_gfx_cmd_pool(void)
+{
+    gfx_cmd_pool pool = {0};
+    uuid_generate(&pool.uuid);
+
+    cmd_pool_backend* backend = malloc(sizeof(cmd_pool_backend));
+    pool.backend              = backend;
+    if (!backend) {
+        LOG_ERROR("error malloc cmd_pool_backend");
+        uuid_destroy(&pool.uuid);
+        return pool;
+    }
+
+    VkCommandPoolCreateInfo cmdPoolCI = {0};
+    cmdPoolCI.sType                   = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    cmdPoolCI.queueFamilyIndex        = s_VkCtx.queue_idxs.gfx;    // same as present
+    cmdPoolCI.flags                   = 0;
+
+    VK_CHECK_RESULT(vkCreateCommandPool(VKDEVICE, &cmdPoolCI, NULL, &backend->pool), "Cannot create gfx command pool");
+    return pool;
+}
+
+void vulkan_device_destroy_gfx_cmd_pool(gfx_cmd_pool pool)
+{
+    if (!uuid_is_null(&pool.uuid)) {
+        uuid_destroy(&pool.uuid);
+        vkDestroyCommandPool(VKDEVICE, ((cmd_pool_backend*) pool.backend)->pool, NULL);
+        free(pool.backend);
+    }
 }
 
 //--------------------------------------------------------

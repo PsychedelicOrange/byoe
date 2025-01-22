@@ -18,6 +18,11 @@ int gfx_init(rhi_api api, GLFWwindow* window, uint32_t width, uint32_t height)
             LOG_ERROR("Failed to create vulkan backend!");
             return FailedUnknown;
         }
+        // Context and Device
+        gfx_create_gfx_cmd_pool  = vulkan_device_create_gfx_cmd_pool;
+        gfx_destroy_gfx_cmd_pool = vulkan_device_destroy_gfx_cmd_pool;
+
+        // RHI
         rhi_clear = vulkan_draw;
     }
 

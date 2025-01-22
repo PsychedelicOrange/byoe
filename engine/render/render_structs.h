@@ -237,6 +237,20 @@ typedef enum gfx_format
     screen
 } gfx_format;
 
+typedef struct gfx_cmd_pool
+{
+    random_uuid_t uuid;
+    void*         backend;
+} gfx_cmd_pool;
+
+typedef struct gfx_swapchain
+{
+    random_uuid_t uuid;
+    uint32_t      width;
+    uint32_t      height;
+    void*         backend;
+} gfx_swapchain;
+
 typedef struct gfx_vertex_buffer
 {
     random_uuid_t uuid;
@@ -251,7 +265,7 @@ typedef struct gfx_index_buffer
     random_uuid_t uuid;
     uint32_t      count;
     uint32_t      offset;
-    void*         backend;    // points to an internal api specific handles struct
+    void*         backend;
 } gfx_index_buffer;
 
 typedef struct gfx_uniform_buffer
@@ -259,6 +273,7 @@ typedef struct gfx_uniform_buffer
     random_uuid_t uuid;
     uint32_t      size;
     uint32_t      offset;
+    void*         backend;
 } gfx_uniform_buffer;
 
 typedef struct gfx_texture
@@ -271,7 +286,7 @@ typedef struct gfx_texture
     } rw_rules;
 
     gfx_format format;
-
+    void*      backend;
 } gfx_texture;
 
 #endif    // RENDER_STRUCTS_H

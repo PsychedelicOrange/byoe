@@ -1,6 +1,8 @@
 #ifndef RHI_H
 #define RHI_H
 
+#include "../render/render_structs.h"
+
 #include <stdint.h>
 
 typedef struct GLFWwindow GLFWwindow;
@@ -17,6 +19,9 @@ typedef enum rhi_api
 
 int  gfx_init(rhi_api api, GLFWwindow* window, uint32_t width, uint32_t height);
 void gfx_destroy(void);
+
+gfx_cmd_pool (*gfx_create_gfx_cmd_pool)(void);
+void         (*gfx_destroy_gfx_cmd_pool)(gfx_cmd_pool);
 
 //------------------------------------------
 // RHI function pointers

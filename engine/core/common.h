@@ -47,3 +47,20 @@
             __VA_ARGS__       \
         } name;
 #endif
+
+#define DEFINE_CLAMP(type)               \
+    static type clamp_##type(type value, \
+        type                      min,   \
+        type                      max)   \
+    {                                    \
+        if (value < min) {               \
+            return min;                  \
+        } else if (value > max) {        \
+            return max;                  \
+        } else {                         \
+            return value;                \
+        }                                \
+    }
+
+DEFINE_CLAMP(int)
+DEFINE_CLAMP(float)
