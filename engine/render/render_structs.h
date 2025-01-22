@@ -212,6 +212,9 @@ typedef struct SDF_Node
 // Graphics API
 //------------------------
 
+#define MAX_BACKBUFFERS    3
+#define MAX_FRAME_INFLIGHT 2
+
 typedef enum gfx_format
 {
     r8int,
@@ -257,7 +260,7 @@ typedef struct gfx_vertex_buffer
     uint32_t      num_elements;
     uint32_t      size;
     uint32_t      offset;
-    void*         backend;    // points to an internal api specific handles struct
+    void*         backend;
 } gfx_vertex_buffer;
 
 typedef struct gfx_index_buffer
@@ -288,5 +291,12 @@ typedef struct gfx_texture
     gfx_format format;
     void*      backend;
 } gfx_texture;
+
+typedef struct gfx_context
+{
+    random_uuid_t uuid;
+    void*         backend;
+    gfx_swapchain swapchain;
+} gfx_context;
 
 #endif    // RENDER_STRUCTS_H

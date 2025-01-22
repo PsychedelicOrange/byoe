@@ -8,6 +8,8 @@
 #include "rng/rng.h"
 #include "shader.h"
 
+#include "frontend/gfx_frontend.h"
+
 // Put them at last: causing some weird errors while compiling on MSVC with APIENTRY define
 // Also follow this order as it will cause openlg include error
 // clang-format off
@@ -30,6 +32,7 @@ typedef struct renderer_internal_state
     color_rgba       clearColor;
     mat4s            viewproj;
     texture_readback lastTextureReadback;
+    gfx_context      gfxcontext;
 } renderer_internal_state;
 
 //---------------------------------------------------------
@@ -87,6 +90,24 @@ static void renderer_internal_sdf_set_raymarch_shader_global_uniforms(void)
     setUniformMat4(s_RendererSDFInternalState.raymarchShaderID, s_RendererSDFInternalState.viewproj, "viewproj");
 }
 
+static bool render_internal_sdf_init_gfx_ctx(uint32_t width, uint32_t height)
+{
+    s_RendererSDFInternalState.gfxcontext = gfx_ctx_init(s_RendererSDFInternalState.window, width, height);
+    if (uuid_is_null(&s_RendererSDFInternalState.gfxcontext.uuid)) {
+        LOG_ERROR("Failed to create vulkan backend!");
+        return false;
+    } else {
+        s_RendererSDFInternalState.gfxcontext.swapchain = gfx_create_swapchain(width, height);
+        if (uuid_is_null(&s_RendererSDFInternalState.gfxcontext.swapchain.uuid)) {
+            LOG_ERROR("Failed to create gfx_swapchain!");
+            return false;
+        }
+
+        // TESTING, so we return even if successful
+        return false;
+    }
+}
+
 //-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 
 bool renderer_sdf_init(renderer_desc desc)
@@ -101,15 +122,18 @@ bool renderer_sdf_init(renderer_desc desc)
     s_RendererSDFInternalState.frameCount    = 0;
     s_RendererSDFInternalState.clearColor    = (color_rgba){0.0f, 0.0f, 0.0f, 1.0f};
 
-    renderer_internal_sdf_hot_reload_shaders();
-
     glfwSetFramebufferSizeCallback(s_RendererSDFInternalState.window, renderer_internal_sdf_resize);
 
-    return true;
+    bool success = render_internal_sdf_init_gfx_ctx(desc.width, desc.height);
+
+    return success;
 }
 
 void renderer_sdf_destroy(void)
 {
+    gfx_destroy_swapchain(s_RendererSDFInternalState.gfxcontext.swapchain);
+    gfx_ctx_destroy(s_RendererSDFInternalState.gfxcontext);
+
     if (s_RendererSDFInternalState.lastTextureReadback.pixels)
         free(s_RendererSDFInternalState.lastTextureReadback.pixels);
 

@@ -30,6 +30,19 @@
 // Internal Types
 //--------------------------------------------------------
 
+// TODO:
+// - [ ] Complete Swapchain: sync primitives API + acquire/present/submit API
+// - [ ] command pool in renderer_sdf
+// - [ ] ring buffer + command buffer
+// 1:30 pm
+// - [ ] basic rendering using begin rendering API for drawing a screen quad without vertices
+// - [ ] Descriptors API
+// - [ ] UBOs + Push constants API + setup descriptor sets for the resources
+// - [ ] CS dispatch -> SDF raymarching shader
+// 5:00 pm
+// 5:00 - 7:00 = GYM + Neva
+
+
 typedef struct sync_prim_backend
 {
     VkSemaphore image_ready_sema;
@@ -45,6 +58,8 @@ typedef struct swapchain_backend
     VkPresentModeKHR   present_mode;
     VkExtent2D         extents;
     uint32_t           image_count;
+    VkImage            backbuffers[MAX_BACKBUFFERS];
+    VkImageView        backbuffer_views[MAX_BACKBUFFERS];
 } swapchain_backend;
 
 typedef struct cmd_pool_backend
@@ -412,17 +427,19 @@ static queue_backend vulkan_internal_create_queues(queue_indices indices)
     return backend;
 }
 
-bool vulkan_ctx_init(GLFWwindow* window, uint32_t width, uint32_t height)
+gfx_context vulkan_ctx_init(GLFWwindow* window, uint32_t width, uint32_t height)
 {
     (void) width;
     (void) height;
+
+    gfx_context ctx = {0};
 
     memset(&s_VkCtx, 0, sizeof(vulkan_context));
     s_VkCtx.window = window;
 
     if (volkInitialize() != VK_SUCCESS) {
         LOG_ERROR("Failed to initialize Volk");
-        return false;
+        return ctx;
     }
 
     VKINSTANCE = vulkan_internal_create_instance();
@@ -435,7 +452,7 @@ bool vulkan_ctx_init(GLFWwindow* window, uint32_t width, uint32_t height)
     VKGPU = vulkan_internal_select_best_gpu(VKINSTANCE);
     if (VKGPU == VK_NULL_HANDLE) {
         LOG_ERROR("No suitable GPU found!");
-        return false;
+        return ctx;
     }
 
     vulkan_internal_query_device_props(VKGPU, &s_VkCtx);
@@ -451,13 +468,22 @@ bool vulkan_ctx_init(GLFWwindow* window, uint32_t width, uint32_t height)
     device_ci_ex.queue_cis             = vulkan_internal_create_queue_family_infos(s_VkCtx.queue_idxs);
     VKDEVICE                           = vulkan_internal_create_logical_device(device_ci_ex);
 
+    if (VKDEVICE == VK_NULL_HANDLE)
+        return ctx;
+
     s_VkCtx.queues = vulkan_internal_create_queues(s_VkCtx.queue_idxs);
 
-    return false;
+    uuid_generate(&ctx.uuid);
+    ctx.backend = &s_VkCtx;
+
+    return ctx;
 }
 
-void vulkan_ctx_destroy(void)
+void vulkan_ctx_destroy(gfx_context ctx)
 {
+    (void) ctx;
+    uuid_destroy(&ctx.uuid);
+
     free(s_VkCtx.supported_extensions);
 
     vkDestroySurfaceKHR(VKINSTANCE, s_VkCtx.surface, NULL);
@@ -527,6 +553,43 @@ static VkExtent2D vulkan_internal_choose_extents(void)
     }
 }
 
+static void vulkan_internal_retrieve_swap_images(swapchain_backend* backend)
+{
+    uint32_t swapImageCount = 0;
+    vkGetSwapchainImagesKHR(VKDEVICE, backend->swapchain, &swapImageCount, NULL);
+
+    VK_CHECK_RESULT(vkGetSwapchainImagesKHR(VKDEVICE, backend->swapchain, &swapImageCount, backend->backbuffers), "[Vulkan] Cannot retrieve swapchain images!");
+}
+
+static void vulkan_internal_retrieve_swap_image_views(swapchain_backend* backend)
+{
+    for (uint32_t i = 0; i < backend->image_count; i++) {
+        VkImageViewCreateInfo back_buffer_view_ci = {
+            .sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .image                           = backend->backbuffers[i],
+            .viewType                        = VK_IMAGE_VIEW_TYPE_2D,
+            .format                          = backend->format.format,
+            .components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY,
+            .components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY,
+            .components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY,
+            .components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY,
+            .subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+            .subresourceRange.baseMipLevel   = 0,
+            .subresourceRange.levelCount     = 1,
+            .subresourceRange.baseArrayLayer = 0,
+            .subresourceRange.layerCount     = 1};
+        VK_CHECK_RESULT(vkCreateImageView(VKDEVICE, &back_buffer_view_ci, NULL, &backend->backbuffer_views[i]), "[Vulkan] Cannot create swap image view!");
+    }
+}
+
+static void vulkan_internal_destroy_backbuffers(swapchain_backend* backend)
+{
+    for (uint32_t i = 0; i < backend->image_count; i++) {
+        vkDestroyImageView(VKDEVICE, backend->backbuffer_views[i], NULL);
+        backend->backbuffer_views[i] = VK_NULL_HANDLE;
+    }
+}
+
 gfx_swapchain vulkan_device_create_swapchain(uint32_t width, uint32_t height)
 {
     gfx_swapchain swapchain = {0};
@@ -541,7 +604,7 @@ gfx_swapchain vulkan_device_create_swapchain(uint32_t width, uint32_t height)
         uuid_destroy(&swapchain.uuid);
         return swapchain;
     }
-
+    memset(backend, 0, sizeof(swapchain_backend));
     swapchain.backend = backend;
 
     VkSurfaceCapabilitiesKHR caps = vulkan_internal_query_swap_surface_caps();
@@ -576,6 +639,9 @@ gfx_swapchain vulkan_device_create_swapchain(uint32_t width, uint32_t height)
         backend->old_swapchain = VK_NULL_HANDLE;
     }
 
+    vulkan_internal_retrieve_swap_images(backend);
+    vulkan_internal_retrieve_swap_image_views(backend);
+
     return swapchain;
 }
 
@@ -585,7 +651,7 @@ void vulkan_device_destroy_swapchain(gfx_swapchain sc)
         uuid_destroy(&sc.uuid);
         swapchain_backend* backend = sc.backend;
 
-        // TODO: Destroy back buffer images
+        vulkan_internal_destroy_backbuffers(backend);
 
         if (backend->swapchain != VK_NULL_HANDLE)
             vkDestroySwapchainKHR(VKDEVICE, backend->swapchain, NULL);

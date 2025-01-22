@@ -6,19 +6,18 @@
 
 static rhi_api s_CurrentAPI;
 
-int gfx_init(rhi_api api, GLFWwindow* window, uint32_t width, uint32_t height)
+int gfx_init(rhi_api api)
 {
-    (void) width;
-    (void) height;
     s_CurrentAPI = api;
 
     if (s_CurrentAPI == Vulkan) {
-        bool success = vulkan_ctx_init(window, width, height);
-        if (!success) {
-            LOG_ERROR("Failed to create vulkan backend!");
-            return FailedUnknown;
-        }
         // Context and Device
+        gfx_ctx_init    = vulkan_ctx_init;
+        gfx_ctx_destroy = vulkan_ctx_destroy;
+
+        gfx_create_swapchain  = vulkan_device_create_swapchain;
+        gfx_destroy_swapchain = vulkan_device_destroy_swapchain;
+
         gfx_create_gfx_cmd_pool  = vulkan_device_create_gfx_cmd_pool;
         gfx_destroy_gfx_cmd_pool = vulkan_device_destroy_gfx_cmd_pool;
 
@@ -31,7 +30,4 @@ int gfx_init(rhi_api api, GLFWwindow* window, uint32_t width, uint32_t height)
 
 void gfx_destroy(void)
 {
-    if (s_CurrentAPI == Vulkan) {
-        vulkan_ctx_destroy();
-    }
 }

@@ -17,8 +17,14 @@ typedef enum rhi_api
 // Context
 //------------------------------------------
 
-int  gfx_init(rhi_api api, GLFWwindow* window, uint32_t width, uint32_t height);
+int  gfx_init(rhi_api api);
 void gfx_destroy(void);
+
+gfx_context (*gfx_ctx_init)(GLFWwindow* window, uint32_t width, uint32_t height);
+void        (*gfx_ctx_destroy)(gfx_context ctx);
+
+gfx_swapchain (*gfx_create_swapchain)(uint32_t width, uint32_t height);
+void          (*gfx_destroy_swapchain)(gfx_swapchain sc);
 
 gfx_cmd_pool (*gfx_create_gfx_cmd_pool)(void);
 void         (*gfx_destroy_gfx_cmd_pool)(gfx_cmd_pool);
