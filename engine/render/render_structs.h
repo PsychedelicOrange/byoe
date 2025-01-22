@@ -246,6 +246,15 @@ typedef enum fence_type
     gpu
 } fence_type;
 
+typedef struct gfx_config
+{
+    bool use_timeline_semaphores;
+} gfx_config;
+
+static gfx_config g_gfxConfig = {
+    .use_timeline_semaphores = false,
+};
+
 typedef struct gfx_cmd_pool
 {
     random_uuid_t uuid;
@@ -266,8 +275,8 @@ typedef struct gfx_fence
     random_uuid_t uuid;
     void*         backend;
     fence_type    visibility;
-    uint64_t      signal_value;
-    uint64_t      wait_value;
+    uint32_t      frame_idx;    // either 0 or 1 assuming 2 frames in-flight
+    uint64_t      value;        // track backend value
 } gfx_fence;
 
 typedef struct gfx_vertex_buffer
@@ -297,26 +306,69 @@ typedef struct gfx_uniform_buffer
 
 typedef struct gfx_texture
 {
+    random_uuid_t uuid;
+    // TODO: Move to texture_props --> indices to texture_prop_pool(s)
     union
     {
         bool is_read_write;
         bool is_read_only;
         bool is_write_only;
     } rw_rules;
-
     gfx_format format;
     void*      backend;
 } gfx_texture;
 
-typedef struct gfx_context
+typedef struct gfx_cmd_pool
 {
     random_uuid_t uuid;
     void*         backend;
-    gfx_swapchain swapchain;
+
+} gfx_cmd_pool;
+
+typedef struct gfx_cmd_buf
+{
+    random_uuid_t uuid;
+    void*         backend;
+
+} gfx_cmd_buf;
+
+//typedef struct gfx_thread_cmd
+//{
+//    // TODO: add atomics here
+//    gfx_cmd_pool* draw_cmds_pools[MAX_FRAME_INFLIGHT];
+//    gfx_cmd_buf*  draw_cmds[MAX_FRAME_INFLIGHT];
+//} gfx_thread_cmd;
+
+typedef struct gfx_cmd_queue
+{
+    gfx_cmd_buf** cmds;
+    uint32_t      cmds_count;
+} gfx_cmd_queue;
+
+typedef struct gfx_context
+{
+    random_uuid_t  uuid;
+    void*          backend;
+    gfx_swapchain* swapchain;
+    gfx_frame_sync frame_sync[MAX_FRAME_INFLIGHT];
+    // TODO: Add all the command buffers you want here...Draw, Async etc.
+    // 1 per thread, only single threaded for now
+    gfx_cmd_pool*  draw_cmds_pools[MAX_FRAME_INFLIGHT];
+    gfx_cmd_buf*   draw_cmds[MAX_FRAME_INFLIGHT];
+    gfx_cmd_queue* cmd_queue;
 } gfx_context;
 
-#endif    // RENDER_STRUCTS_H
-
-// Frame Sync:
+//-----------------------------------
+// High-level structs
+//-----------------------------------
+// Frame Sync
 // Triple Buffering
-// 
+typedef struct gfx_frame_sync
+{
+    gfx_fence in_flight;
+    gfx_fence image_ready;
+    gfx_fence rendering_done;
+    uint32_t  frame_idx;
+} gfx_frame_sync;
+
+#endif    // RENDER_STRUCTS_H

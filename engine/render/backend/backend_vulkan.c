@@ -31,24 +31,13 @@
 //--------------------------------------------------------
 
 // TODO:
-// - [ ] Complete Swapchain: sync primitives API + acquire/present/submit API //2:00 pm
-// Lunch 2:00 - 2:30pm
+// - [ ] Complete Swapchain: sync primitives API + acquire/present/submit API
 // - [ ] command pool in renderer_sdf
-// - [ ] ring buffer + command buffer
+// - [ ] command buffers X2
 // - [ ] basic rendering using begin rendering API for drawing a screen quad without vertices
-// 5:00 pm
-// 5:00 - 7:00 = GYM + Neva
 // - [ ] Descriptors API
-// - [ ] UBOs + Push constants API + setup descriptor sets for the resources
+// - [ ] UBOs + Push constants API + setup descriptor sets for the resources X2
 // - [ ] CS dispatch -> SDF raymarching shader
-// 10:00 pm-> Dinner and resume
-
-typedef struct frame_sync_prim_backend
-{
-    VkSemaphore image_ready_sema;
-    VkSemaphore rendering_done_sema;
-    VkSemaphore cmd_buf_ready_sema;
-} sync_prim_backend;
 
 typedef struct swapchain_backend
 {
@@ -418,7 +407,7 @@ static VkDevice vulkan_internal_create_logical_device(device_create_info_ex info
 
 static queue_backend vulkan_internal_create_queues(queue_indices indices)
 {
-    queue_backend backend;
+    queue_backend backend = {0};
 
     vkGetDeviceQueue(VKDEVICE, indices.gfx, 0, &backend.gfx);
     vkGetDeviceQueue(VKDEVICE, indices.present, 0, &backend.present);
@@ -479,10 +468,10 @@ gfx_context vulkan_ctx_init(GLFWwindow* window, uint32_t width, uint32_t height)
     return ctx;
 }
 
-void vulkan_ctx_destroy(gfx_context ctx)
+void vulkan_ctx_destroy(gfx_context* ctx)
 {
     (void) ctx;
-    uuid_destroy(&ctx.uuid);
+    uuid_destroy(&ctx->uuid);
 
     free(s_VkCtx.supported_extensions);
 
@@ -598,10 +587,10 @@ static VkSemaphore vulkan_internal_create_timeline_semaphores()
         .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
         .initialValue  = 0};
 
-    VkSemaphoreCreateInfo createInfo;
-    createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-    createInfo.pNext = &sema_ci;
-    createInfo.flags = 0;
+    VkSemaphoreCreateInfo createInfo = {0};
+    createInfo.sType                 = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    createInfo.pNext                 = &sema_ci;
+    createInfo.flags                 = 0;
 
     VkSemaphore timelineSemaphore;
     vkCreateSemaphore(VKDEVICE, &createInfo, NULL, &timelineSemaphore);
@@ -707,11 +696,71 @@ void vulkan_device_destroy_gfx_cmd_pool(gfx_cmd_pool pool)
     }
 }
 
+gfx_frame_sync* vulkan_device_create_frame_syncs(uint32_t num_frames_in_flight)
+{
+    for (uint32_t i = 0; i < num_frames_in_flight; i++) {
+        // 2 semas and 1 fence
+        if (!g_gfxConfig.use_timeline_semaphores) {
+        }
+    }
+
+    return NULL;
+}
+
+void vulkan_device_destroy_frame_syncs(gfx_frame_sync* in_flight_syncs)
+{
+}
+
 //--------------------------------------------------------
 
-rhi_error_codes vulkan_acquire_image(gfx_swapchain* swapchain, gfx_fence* frame_sync)
+rhi_error_codes vulkan_frame_begin(gfx_context* context)
 {
-    VkResult result = vkAcquireNextImageKHR(VKDEVICE, ((swapchain_backend*) (swapchain->backend))->swapchain, UINT32_MAX, NULL, NULL, &swapchain->current_backbuffer_idx);
+    gfx_frame_sync* curr_frame_sync = &context->frame_sync[context->frame_sync->frame_idx];
+
+    vulkan_wait_on_previous_cmds(curr_frame_sync);
+    vulkan_acquire_image(context->swapchain, curr_frame_sync);
+}
+
+rhi_error_codes vulkan_gfx_cmd_begin_recording(gfx_cmd_buf* cmd_buf)
+{
+}
+
+// begin_render_pass
+// end_render_pass
+// ... N times
+
+rhi_error_codes vulkan_gfx_cmd_end_recording(gfx_cmd_buf* cmd_buf)
+{
+}
+
+rhi_error_codes vulkan_gfx_cmd_enque_submit(gfx_cmd_buf* cmd_buf)
+{
+}
+
+rhi_error_codes vulkan_gfx_cmd_submit_queue(gfx_context* context)
+{
+}
+
+rhi_error_codes vulkan_frame_end(gfx_context* context)
+{
+    vulkan_present();
+
+    context->frame_sync->frame_idx = (context->frame_sync->frame_idx + 1) % MAX_FRAME_INFLIGHT;
+}
+
+// TODO: track fence value using vkGetFenceStatus at wait/reset
+
+rhi_error_codes vulkan_wait_on_previous_cmds(const gfx_frame_sync* in_flight_sync)
+{
+    VK_CHECK_RESULT(vkWaitForFences(VKDEVICE, 1, (VkFence*) (in_flight_sync->in_flight.backend), true, UINT32_MAX), "cannot wait on in-flight fence");
+    VK_CHECK_RESULT(vkResetFences(VKDEVICE, 1, (VkFence*) (in_flight_sync->in_flight.backend)), "cannot reset above in-flight fence");
+
+    return Success;
+}
+
+rhi_error_codes vulkan_acquire_image(gfx_swapchain* swapchain, const gfx_frame_sync* in_flight_sync)
+{
+    VkResult result = vkAcquireNextImageKHR(VKDEVICE, ((swapchain_backend*) (swapchain->backend))->swapchain, UINT32_MAX, *(VkSemaphore*) (in_flight_sync->image_ready.backend), NULL, &swapchain->current_backbuffer_idx);
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
         // TODO: re-create swapchain and acquire again
     }

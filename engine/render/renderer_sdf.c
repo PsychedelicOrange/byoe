@@ -44,6 +44,7 @@ static renderer_internal_state s_RendererSDFInternalState;
 static void renderer_internal_sdf_resize(GLFWwindow* window, int width, int height)
 {
     (void) window;
+    memset(&s_RendererSDFInternalState, 0, sizeof(renderer_internal_state));
     s_RendererSDFInternalState.width            = width;
     s_RendererSDFInternalState.height           = height;
     s_RendererSDFInternalState.frameCount       = 0;
@@ -156,6 +157,8 @@ void renderer_sdf_render(void)
 
     // Scene Culling is done before any rendering begins (might move it to update part of engine loop)
 
+    rhi_frame_begin();
+
     // clear with a pink color
     renderer_internal_sdf_clear_screen(s_RendererSDFInternalState.clearColor);
 
@@ -169,6 +172,8 @@ void renderer_sdf_render(void)
         s_RendererSDFInternalState.lastTextureReadback = renderer_sdf_read_swapchain();
         s_RendererSDFInternalState.captureSwapchain    = false;
     }
+
+    rhi_frame_end();
 
     renderer_internal_sdf_swap_backbuffer();
 }

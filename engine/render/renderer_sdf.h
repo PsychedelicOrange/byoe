@@ -26,7 +26,6 @@ typedef struct texture_readback
     bool     _pad1[8];
 } texture_readback;
 
-
 bool renderer_sdf_init(renderer_desc desc);
 void renderer_sdf_destroy(void);
 

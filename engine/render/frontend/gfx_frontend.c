@@ -31,3 +31,10 @@ int gfx_init(rhi_api api)
 void gfx_destroy(void)
 {
 }
+
+void gfx_ctx_ignite(gfx_context* ctx)
+{
+    // create sync prims, command pool and buffers per thread (in this case only 1)
+    ctx->frame_sync = gfx_create_frame_syncs(MAX_FRAME_INFLIGHT);
+
+}
