@@ -31,19 +31,19 @@
 //--------------------------------------------------------
 
 // TODO:
-// - [ ] Complete Swapchain: sync primitives API + acquire/present/submit API
+// - [ ] Complete Swapchain: sync primitives API + acquire/present/submit API //2:00 pm
+// Lunch 2:00 - 2:30pm
 // - [ ] command pool in renderer_sdf
 // - [ ] ring buffer + command buffer
-// 1:30 pm
 // - [ ] basic rendering using begin rendering API for drawing a screen quad without vertices
+// 5:00 pm
+// 5:00 - 7:00 = GYM + Neva
 // - [ ] Descriptors API
 // - [ ] UBOs + Push constants API + setup descriptor sets for the resources
 // - [ ] CS dispatch -> SDF raymarching shader
-// 5:00 pm
-// 5:00 - 7:00 = GYM + Neva
+// 10:00 pm-> Dinner and resume
 
-
-typedef struct sync_prim_backend
+typedef struct frame_sync_prim_backend
 {
     VkSemaphore image_ready_sema;
     VkSemaphore rendering_done_sema;
@@ -590,6 +590,23 @@ static void vulkan_internal_destroy_backbuffers(swapchain_backend* backend)
     }
 }
 
+static VkSemaphore vulkan_internal_create_timeline_semaphores()
+{
+    VkSemaphoreTypeCreateInfo sema_ci = {
+        .sType         = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
+        .pNext         = NULL,
+        .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
+        .initialValue  = 0};
+
+    VkSemaphoreCreateInfo createInfo;
+    createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    createInfo.pNext = &sema_ci;
+    createInfo.flags = 0;
+
+    VkSemaphore timelineSemaphore;
+    vkCreateSemaphore(VKDEVICE, &createInfo, NULL, &timelineSemaphore);
+}
+
 gfx_swapchain vulkan_device_create_swapchain(uint32_t width, uint32_t height)
 {
     gfx_swapchain swapchain = {0};
@@ -691,6 +708,18 @@ void vulkan_device_destroy_gfx_cmd_pool(gfx_cmd_pool pool)
 }
 
 //--------------------------------------------------------
+
+rhi_error_codes vulkan_acquire_image(gfx_swapchain* swapchain, gfx_fence* frame_sync)
+{
+    VkResult result = vkAcquireNextImageKHR(VKDEVICE, ((swapchain_backend*) (swapchain->backend))->swapchain, UINT32_MAX, NULL, NULL, &swapchain->current_backbuffer_idx);
+    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+        // TODO: re-create swapchain and acquire again
+    }
+    if (result == VK_SUCCESS)
+        return Success;
+    else
+        return FailedSwapAcquire;
+}
 
 rhi_error_codes vulkan_draw(void)
 {

@@ -37,8 +37,11 @@ typedef enum rhi_error_codes
     Success,
     FailedUnknown,
     FailedMemoryAlloc,
+    FailedSwapAcquire,
     FailedHandleCreation
 } rhi_error_codes;
+
+rhi_error_codes (*rhi_acquire_image)(gfx_swapchain* swapchain, gfx_fence* frame_sync);
 
 rhi_error_codes (*rhi_clear)(void);
 rhi_error_codes (*rhi_draw)(void);

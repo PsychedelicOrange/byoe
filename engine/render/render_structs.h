@@ -240,6 +240,12 @@ typedef enum gfx_format
     screen
 } gfx_format;
 
+typedef enum fence_type
+{
+    cpu,
+    gpu
+} fence_type;
+
 typedef struct gfx_cmd_pool
 {
     random_uuid_t uuid;
@@ -251,8 +257,18 @@ typedef struct gfx_swapchain
     random_uuid_t uuid;
     uint32_t      width;
     uint32_t      height;
+    uint32_t      current_backbuffer_idx;
     void*         backend;
 } gfx_swapchain;
+
+typedef struct gfx_fence
+{
+    random_uuid_t uuid;
+    void*         backend;
+    fence_type    visibility;
+    uint64_t      signal_value;
+    uint64_t      wait_value;
+} gfx_fence;
 
 typedef struct gfx_vertex_buffer
 {
@@ -300,3 +316,7 @@ typedef struct gfx_context
 } gfx_context;
 
 #endif    // RENDER_STRUCTS_H
+
+// Frame Sync:
+// Triple Buffering
+// 
