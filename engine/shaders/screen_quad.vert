@@ -1,20 +1,20 @@
 #version 450
 
-layout(location = 0) out vec3 fragColor;
+layout(location = 0) out vec2 outUV;
 
-vec2 positions[3] = vec2[](
-    vec2(0.0, -0.5),
-    vec2(0.5, 0.5),
-    vec2(-0.5, 0.5)
-);
-
-vec3 colors[3] = vec3[](
-    vec3(1.0, 0.0, 0.0),
-    vec3(0.0, 1.0, 0.0),
-    vec3(0.0, 0.0, 1.0)
-);
-
-void main() {
-    gl_Position = vec4(positions[gl_VertexIndex], 0.0, 1.0);
-    fragColor = colors[gl_VertexIndex];
+out gl_PerVertex
+{
+    vec4 gl_Position;
+};
+//------------------------------------------------------------------------------
+void main()
+{
+    // Calculate UV coordinates based on gl_VertexID
+    float x = float((gl_VertexIndex << 1) & 2);
+    float y = float(gl_VertexIndex & 2);
+    vec2 uv = vec2(x, y);
+    outUV = uv;
+    
+    // Set the final vertex position
+    gl_Position = vec4(uv * 2.0f - 1.0f, 0.0f, 1.0f);
 }
