@@ -954,20 +954,68 @@ typedef struct shader_backend
     } modules;
 } shader_backend;
 
+typedef struct
+{
+    uint32_t* data;
+    size_t    size;
+} SPVBuffer;
+
+static SPVBuffer loadSPVFile(const char* filename)
+{
+    SPVBuffer buffer = {NULL, 0};
+    FILE*     file   = fopen(filename, "rb");
+    if (!file) {
+        fprintf(stderr, "Failed to open file: %s\n", filename);
+        return buffer;
+    }
+
+    // Get the file size
+    fseek(file, 0, SEEK_END);
+    long fileSize = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    if (fileSize <= 0 ) {
+        fprintf(stderr, "Invalid SPV file size.\n");
+        fclose(file);
+        return buffer;
+    }
+
+    // Allocate memory for the buffer
+    buffer.size = fileSize;
+    buffer.data = (uint32_t*) malloc(fileSize);
+    if (!buffer.data) {
+        fprintf(stderr, "Memory allocation failed.\n");
+        fclose(file);
+        return buffer;
+    }
+
+    // Read the file contents into the buffer
+    if (fread(buffer.data, 1, fileSize, file) != fileSize) {
+        fprintf(stderr, "Failed to read the file.\n");
+        free(buffer.data);
+        buffer.data = NULL;
+        buffer.size = 0;
+        fclose(file);
+        return buffer;
+    }
+
+    fclose(file);
+    return buffer;
+}
+
 static VkShaderModule vulkan_internal_create_shader_handle(const char* spv_file_path)
 {
-    uint32_t                 file_size        = 0;
-    uint32_t*          shader_byte_code = (uint32_t*) readFileToString(spv_file_path, &file_size);
+    SPVBuffer                shader_byte_code = loadSPVFile(spv_file_path);
     VkShaderModuleCreateInfo shader_ci        = {
                .sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
                .pNext    = NULL,
-               .codeSize = file_size,
-               .pCode    = (uint32_t*) shader_byte_code};
+               .codeSize = shader_byte_code.size,
+               .pCode    = shader_byte_code.data};
 
     VkShaderModule module = VK_NULL_HANDLE;
     VK_CHECK_RESULT(vkCreateShaderModule(VKDEVICE, &shader_ci, NULL, &module), "[Vulkan] cannot create shader module");
 
-    free(shader_byte_code);
+    free(shader_byte_code.data);
 
     return module;
 }
