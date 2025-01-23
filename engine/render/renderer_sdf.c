@@ -44,13 +44,15 @@ static renderer_internal_state s_RendererSDFInternalState;
 static void renderer_internal_sdf_resize(GLFWwindow* window, int width, int height)
 {
     (void) window;
-    memset(&s_RendererSDFInternalState, 0, sizeof(renderer_internal_state));
     s_RendererSDFInternalState.width            = width;
     s_RendererSDFInternalState.height           = height;
     s_RendererSDFInternalState.frameCount       = 0;
     s_RendererSDFInternalState.captureSwapchain = false;
 
-    glViewport(0, 0, width, height);
+    gfx_flush_gpu_work();
+
+    gfx_ctx_recreate_frame_sync(&s_RendererSDFInternalState.gfxcontext);
+    rhi_resize_swapchain(&s_RendererSDFInternalState.gfxcontext.swapchain, width, height);
 }
 
 // static void renderer_internal_sdf_hot_reload_shaders(void)
@@ -119,7 +121,7 @@ bool renderer_sdf_init(renderer_desc desc)
     s_RendererSDFInternalState.frameCount    = 0;
     s_RendererSDFInternalState.clearColor    = (color_rgba){0.0f, 0.0f, 0.0f, 1.0f};
 
-    glfwSetFramebufferSizeCallback(s_RendererSDFInternalState.window, renderer_internal_sdf_resize);
+    glfwSetWindowSizeCallback(s_RendererSDFInternalState.window, renderer_internal_sdf_resize);
 
     bool success = render_internal_sdf_init_gfx_ctx(desc.width, desc.height);
 
@@ -128,9 +130,11 @@ bool renderer_sdf_init(renderer_desc desc)
 
 void renderer_sdf_destroy(void)
 {
+    gfx_flush_gpu_work();
+
     gfx_destroy_gfx_cmd_pool(&s_RendererSDFInternalState.gfxcontext.draw_cmds_pool);
     for (uint32_t i = 0; i < MAX_FRAME_INFLIGHT; i++) {
-        free(s_RendererSDFInternalState.gfxcontext.cmd_queue.cmds[i]);
+        //free(s_RendererSDFInternalState.gfxcontext.cmd_queue.cmds[i]);
         gfx_destroy_frame_sync(&s_RendererSDFInternalState.gfxcontext.frame_sync[i]);
     }
 
@@ -272,14 +276,4 @@ texture_readback renderer_sdf_read_swapchain(void)
 texture_readback renderer_sdf_get_last_swapchain_readback(void)
 {
     return s_RendererSDFInternalState.lastTextureReadback;
-}
-
-void renderer_sdf_resize(uint32_t width, uint32_t height)
-{
-    s_RendererSDFInternalState.width  = width;
-    s_RendererSDFInternalState.height = height;
-
-    gfx_ctx_recreate_frame_sync(&s_RendererSDFInternalState.gfxcontext);
-
-    rhi_resize_swapchain(&s_RendererSDFInternalState.gfxcontext.swapchain, width, height);
 }

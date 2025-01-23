@@ -15,6 +15,8 @@ int gfx_init(rhi_api api)
         gfx_ctx_init    = vulkan_ctx_init;
         gfx_ctx_destroy = vulkan_ctx_destroy;
 
+        gfx_flush_gpu_work = vulkan_flush_gpu_work;
+
         gfx_create_swapchain  = vulkan_device_create_swapchain;
         gfx_destroy_swapchain = vulkan_device_destroy_swapchain;
 
@@ -37,7 +39,7 @@ int gfx_init(rhi_api api)
         rhi_present               = vulkan_present;
         rhi_resize_swapchain      = vulkan_resize_swapchain;
 
-      rhi_begin_gfx_cmd_recording = vulkan_begin_gfx_cmd_recording;
+        rhi_begin_gfx_cmd_recording = vulkan_begin_gfx_cmd_recording;
         rhi_end_gfx_cmd_recording   = vulkan_end_gfx_cmd_recording;
 
         rhi_clear = vulkan_draw;

@@ -30,6 +30,8 @@ void gfx_ctx_recreate_frame_sync(gfx_context* ctx);
 gfx_context (*gfx_ctx_init)(GLFWwindow* window, uint32_t width, uint32_t height);
 void        (*gfx_ctx_destroy)(gfx_context* ctx);
 
+void (*gfx_flush_gpu_work)(void);
+
 gfx_swapchain (*gfx_create_swapchain)(uint32_t width, uint32_t height);
 void          (*gfx_destroy_swapchain)(gfx_swapchain* sc);
 

@@ -13,6 +13,8 @@ void        vulkan_ctx_destroy(gfx_context* ctx);
 
 //void vulkan_ctx_ignite(gfx_context* context);
 
+void vulkan_flush_gpu_work(void);
+
 //------------------------------------------
 // Debug
 //------------------------------------------

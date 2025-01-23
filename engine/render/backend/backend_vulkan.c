@@ -500,6 +500,11 @@ void vulkan_ctx_destroy(gfx_context* ctx)
     vkDestroyInstance(VKINSTANCE, NULL);
 }
 
+void vulkan_flush_gpu_work(void)
+{
+    vkDeviceWaitIdle(VKDEVICE);
+}
+
 //--------------------------------------------------------
 
 static VkSurfaceCapabilitiesKHR vulkan_internal_query_swap_surface_caps(void)
