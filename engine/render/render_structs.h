@@ -260,6 +260,20 @@ typedef enum gfx_format
     screen
 } gfx_format;
 
+typedef enum gfx_shader_stage
+{
+    vs,
+    ps,
+    cs,
+    gs,
+    tes,
+    tcs,
+    ms,
+    as,
+    ray_hit,
+    ray_gen
+} gfx_shader_stage;
+
 typedef enum fence_type
 {
     cpu,
@@ -346,6 +360,7 @@ typedef struct gfx_cmd_buf
     void*         backend;
 } gfx_cmd_buf;
 
+// Example:
 //typedef struct gfx_thread_cmd
 //{
 //    // TODO: add atomics here
@@ -359,6 +374,20 @@ typedef struct gfx_cmd_queue
     uint32_t      cmds_count;
     uint32_t      _pad0;
 } gfx_cmd_queue;
+
+typedef struct gfx_shader
+{
+    random_uuid_t uuid;
+    union
+    {
+        void* CS;
+        struct
+        {
+            void* VS;
+            void* PS;
+        };
+    } stages;
+} gfx_shader;
 
 //-----------------------------------
 // High-level structs

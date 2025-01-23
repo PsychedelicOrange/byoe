@@ -11,8 +11,6 @@
 gfx_context vulkan_ctx_init(GLFWwindow* window, uint32_t width, uint32_t height);
 void        vulkan_ctx_destroy(gfx_context* ctx);
 
-//void vulkan_ctx_ignite(gfx_context* context);
-
 void vulkan_flush_gpu_work(void);
 
 //------------------------------------------
@@ -36,6 +34,13 @@ gfx_cmd_buf vulkan_create_gfx_cmd_buf(gfx_cmd_pool* pool);
 
 gfx_frame_sync vulkan_device_create_frame_sync(void);
 void           vulkan_device_destroy_frame_sync(gfx_frame_sync* frame_sync);
+
+// TODO: Use a Span DS to make this more intuitive
+gfx_shader vulkan_device_create_compute_shader(const char* spv_file_path);
+gfx_shader vulkan_device_create_vs_ps_shader(const char* spv_file_path_vs, const char* spv_file_path_ps);
+
+void vulkan_device_destroy_compute_shader(gfx_shader* shader);
+void vulkan_device_destroy_vs_ps_shader(gfx_shader* shader);
 //------------------------------------------
 // RHI
 //------------------------------------------

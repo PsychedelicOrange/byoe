@@ -28,6 +28,12 @@ int gfx_init(rhi_api api)
         gfx_create_frame_sync  = vulkan_device_create_frame_sync;
         gfx_destroy_frame_sync = vulkan_device_destroy_frame_sync;
 
+        gfx_create_compute_shader  = vulkan_device_create_compute_shader;
+        gfx_destroy_compute_shader = vulkan_device_destroy_compute_shader;
+
+        gfx_create_vs_ps_shader  = vulkan_device_create_vs_ps_shader;
+        gfx_destroy_vs_ps_shader = vulkan_device_destroy_vs_ps_shader;
+
         // RHI
         rhi_frame_begin = vulkan_frame_begin;
         rhi_frame_end   = vulkan_frame_end;

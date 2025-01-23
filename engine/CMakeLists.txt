@@ -26,9 +26,9 @@ endif()
 function(compile_shader SHADER_SRC SHADER_DST)
     add_custom_command(
         OUTPUT ${SHADER_DST}
-        COMMAND ${GLSLC_EXECUTABLE} ${SHADER_SRC} -o ${SHADER_DST}
+        COMMAND ${GLSLC_EXECUTABLE}  --target-env=vulkan1.2 ${SHADER_SRC} -o ${SHADER_DST}
         DEPENDS ${SHADER_SRC}
-        COMMENT "Compiling shader: ${SHADER_SRC}"
+        COMMENT "Compiling shader: ${SHADER_SRC} output: ${SHADER_DST}"
         VERBATIM
     )
 endfunction()
@@ -36,7 +36,7 @@ endfunction()
 set(COMPILED_SHADERS)
 foreach(SHADER ${shaders})
     get_filename_component(FILE_NAME ${SHADER} NAME)
-    set(SHADER_OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${FILE_NAME}.spv)
+    set(SHADER_OUTPUT ${CMAKE_SOURCE_DIR}/game/shaders_built/${FILE_NAME}.spv)
     compile_shader(${SHADER} ${SHADER_OUTPUT})
     list(APPEND COMPILED_SHADERS ${SHADER_OUTPUT})
 endforeach()

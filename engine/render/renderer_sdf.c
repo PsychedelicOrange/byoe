@@ -32,6 +32,7 @@ typedef struct renderer_internal_state
     mat4s            viewproj;
     texture_readback lastTextureReadback;
     gfx_context      gfxcontext;
+    gfx_shader       raymarchCS;
 } renderer_internal_state;
 
 //---------------------------------------------------------
@@ -122,6 +123,9 @@ bool renderer_sdf_init(renderer_desc desc)
     glfwSetWindowSizeCallback(s_RendererSDFInternalState.window, renderer_internal_sdf_resize);
 
     bool success = render_internal_sdf_init_gfx_ctx(desc.width, desc.height);
+
+    //s_RendererSDFInternalState.raymarchCS = gfx_create_compute_shader("./game/shaders_built/raymarch_sdf_scene.comp.spv");
+    s_RendererSDFInternalState.raymarchCS = gfx_create_vs_ps_shader("./game/shaders_built/screen_quad.vert.spv", "./game/shaders_built/screen_quad.frag.spv");
 
     return success;
 }

@@ -4,6 +4,8 @@
 #include "../core/containers/typed_growable_array.h"
 #include "../core/logging/log.h"
 
+#include "../core/shader.h"
+
 #define VK_NO_PROTOTYPES
 #include <volk.h>
 #include <vulkan/vulkan.h>
@@ -39,10 +41,15 @@ DEFINE_CLAMP(int)
 // - [x] command pool in renderer_sdf
 // - [x] command buffers X2
 // - [ ] basic rendering using begin rendering API for drawing a screen quad without vertices --> KHR_dynamic_rendering renderpass API
-// - [ ] Descriptors API
-// - [ ] UBOs + Push constants API + setup descriptor sets for the resources X2
+//      - [ ] shader loading API
+//      - [ ] pipeline API
+//      - [ ] draw API
+// - [ ] Descriptors API + pipeline layout handling etc.
+// - [ ] UBOs + Push constants API + setup descriptor sets for the resources x2
+// - [ ] texture_2d (rw views) API for binding the r/w texture to composition pass
 // - [ ] CS dispatch -> SDF raymarching shader
-// - [ ] Barriers (image memory) and Transition layout API
+// - [ ] Barriers (image memory) and Transition layout API + single time command buffers
+// ----------------------> renderer_backend Draft-1
 
 typedef struct swapchain_backend
 {
@@ -930,6 +937,118 @@ void vulkan_device_destroy_frame_sync(gfx_frame_sync* frame_sync)
     free(frame_sync->rendering_done.backend);
     free(frame_sync->image_ready.backend);
     free(frame_sync->in_flight.backend);
+}
+
+typedef struct shader_backend
+{
+    VkPipelineShaderStageCreateInfo stage_ci;
+    gfx_shader_stage                stage;
+    union
+    {
+        VkShaderModule CS;
+        struct
+        {
+            VkShaderModule VS;
+            VkShaderModule PS;
+        };
+    } modules;
+} shader_backend;
+
+static VkShaderModule vulkan_internal_create_shader_handle(const char* spv_file_path)
+{
+    uint32_t                 file_size        = 0;
+    uint32_t*          shader_byte_code = (uint32_t*) readFileToString(spv_file_path, &file_size);
+    VkShaderModuleCreateInfo shader_ci        = {
+               .sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+               .pNext    = NULL,
+               .codeSize = file_size,
+               .pCode    = (uint32_t*) shader_byte_code};
+
+    VkShaderModule module = VK_NULL_HANDLE;
+    VK_CHECK_RESULT(vkCreateShaderModule(VKDEVICE, &shader_ci, NULL, &module), "[Vulkan] cannot create shader module");
+
+    free(shader_byte_code);
+
+    return module;
+}
+
+gfx_shader vulkan_device_create_compute_shader(const char* spv_file_path)
+{
+    gfx_shader shader = {0};
+    uuid_generate(&shader.uuid);
+
+    shader_backend* backend = malloc(sizeof(shader_backend));
+    if (backend) {
+        shader.stages.CS = backend;
+        backend->stage   = cs;
+
+        backend->modules.CS = vulkan_internal_create_shader_handle(spv_file_path);
+
+        backend->stage_ci = (VkPipelineShaderStageCreateInfo){
+            .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            .stage  = VK_SHADER_STAGE_COMPUTE_BIT,
+            .module = backend->modules.CS};
+    }
+    return shader;
+}
+
+gfx_shader vulkan_device_create_vs_ps_shader(const char* spv_file_path_vs, const char* spv_file_path_ps)
+{
+    gfx_shader shader = {0};
+    uuid_generate(&shader.uuid);
+    (void) spv_file_path_vs;
+    shader_backend* backend_vs = malloc(sizeof(shader_backend));
+    if (backend_vs) {
+        shader.stages.VS  = backend_vs;
+        backend_vs->stage = vs;
+
+        backend_vs->modules.VS = vulkan_internal_create_shader_handle(spv_file_path_vs);
+
+        backend_vs->stage_ci = (VkPipelineShaderStageCreateInfo){
+            .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            .stage  = VK_SHADER_STAGE_VERTEX_BIT,
+            .module = backend_vs->modules.VS};
+    }
+
+    shader_backend* backend_ps = malloc(sizeof(shader_backend));
+    if (backend_ps) {
+        shader.stages.PS  = backend_ps;
+        backend_ps->stage = ps;
+
+        backend_ps->modules.PS = vulkan_internal_create_shader_handle(spv_file_path_ps);
+
+        backend_ps->stage_ci = (VkPipelineShaderStageCreateInfo){
+            .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            .stage  = VK_SHADER_STAGE_FRAGMENT_BIT,
+            .module = backend_ps->modules.PS};
+    }
+
+    return shader;
+}
+
+void vulkan_device_destroy_compute_shader(gfx_shader* shader)
+{
+    uuid_destroy(&shader->uuid);
+
+    shader_backend* backend = shader->stages.CS;
+
+    vkDestroyShaderModule(VKDEVICE, backend->modules.CS, NULL);
+
+    free(backend);
+}
+
+void vulkan_device_destroy_vs_ps_shader(gfx_shader* shader)
+{
+    uuid_destroy(&shader->uuid);
+
+    shader_backend* backend_vs = shader->stages.VS;
+    shader_backend* backend_ps = shader->stages.PS;
+
+    vkDestroyShaderModule(VKDEVICE, backend_vs->modules.VS, NULL);
+    vkDestroyShaderModule(VKDEVICE, backend_ps->modules.PS, NULL);
+
+    free(backend_vs);
+    free(backend_ps);
 }
 
 //--------------------------------------------------------

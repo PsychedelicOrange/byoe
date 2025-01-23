@@ -43,6 +43,12 @@ gfx_cmd_buf (*gfx_create_gfx_cmd_buf)(gfx_cmd_pool* pool);
 gfx_frame_sync (*gfx_create_frame_sync)(void);
 void           (*gfx_destroy_frame_sync)(gfx_frame_sync* in_flight_sync);
 
+gfx_shader (*gfx_create_compute_shader)(const char* spv_file_path);
+void       (*gfx_destroy_compute_shader)(gfx_shader* shader);
+
+gfx_shader (*gfx_create_vs_ps_shader)(const char* spv_file_path_vs, const char* spv_file_path_ps);
+void       (*gfx_destroy_vs_ps_shader)(gfx_shader* shader);
+
 //------------------------------------------
 // RHI function pointers
 //------------------------------------------
