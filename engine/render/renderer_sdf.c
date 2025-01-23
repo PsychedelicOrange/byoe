@@ -66,14 +66,6 @@ static void renderer_internal_sdf_clear_screen(color_rgba color)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
-static void renderer_internal_sdf_swap_backbuffer(void)
-{
-    // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
-    // -------------------------------------------------------------------------------
-    glfwSwapBuffers(s_RendererSDFInternalState.window);
-    glfwPollEvents();
-}
-
 static void renderer_internal_sdf_set_pipeline_settings(void)
 {
     // Enable Depth testing
@@ -104,7 +96,9 @@ static bool render_internal_sdf_init_gfx_ctx(uint32_t width, uint32_t height)
             return false;
         }
 
-        // TESTING, so we return even if successful
+        gfx_ctx_ignite(&s_RendererSDFInternalState.gfxcontext);
+
+        // TESTING
         return false;
     }
 }
@@ -132,8 +126,13 @@ bool renderer_sdf_init(renderer_desc desc)
 
 void renderer_sdf_destroy(void)
 {
-    gfx_destroy_swapchain(s_RendererSDFInternalState.gfxcontext.swapchain);
-    gfx_ctx_destroy(s_RendererSDFInternalState.gfxcontext);
+    for (uint32_t i = 0; i < MAX_FRAME_INFLIGHT; i++) {
+        gfx_destroy_frame_sync(&s_RendererSDFInternalState.gfxcontext.frame_sync[i]);
+        gfx_destroy_gfx_cmd_pool(&s_RendererSDFInternalState.gfxcontext.draw_cmds_pools[i]);
+    }
+
+    gfx_destroy_swapchain(&s_RendererSDFInternalState.gfxcontext.swapchain);
+    gfx_ctx_destroy(&s_RendererSDFInternalState.gfxcontext);
 
     if (s_RendererSDFInternalState.lastTextureReadback.pixels)
         free(s_RendererSDFInternalState.lastTextureReadback.pixels);
@@ -157,25 +156,39 @@ void renderer_sdf_render(void)
 
     // Scene Culling is done before any rendering begins (might move it to update part of engine loop)
 
-    rhi_frame_begin();
+    gfx_frame_sync* frame_sync = rhi_frame_begin(&s_RendererSDFInternalState.gfxcontext);
+    {
+        gfx_cmd_buf* cmd_buff = &s_RendererSDFInternalState.gfxcontext.draw_cmds[s_RendererSDFInternalState.gfxcontext.frame_idx];
 
-    // clear with a pink color
-    renderer_internal_sdf_clear_screen(s_RendererSDFInternalState.clearColor);
+        //rhi_gfx_cmd_begin_recording(cmd_buff);
 
-    renderer_internal_sdf_set_pipeline_settings();
+        //rhi_begin_render_pass();
 
-    renderer_internal_sdf_set_raymarch_shader_global_uniforms();
+        // clear with a pink color
+        //renderer_internal_sdf_clear_screen(s_RendererSDFInternalState.clearColor);
+        //
+        //renderer_internal_sdf_set_pipeline_settings();
+        //
+        //renderer_internal_sdf_set_raymarch_shader_global_uniforms();
+        //
+        //renderer_sdf_draw_scene(s_RendererSDFInternalState.scene);
 
-    renderer_sdf_draw_scene(s_RendererSDFInternalState.scene);
+        //rhi_end_render_pass();
 
-    if (s_RendererSDFInternalState.captureSwapchain) {
-        s_RendererSDFInternalState.lastTextureReadback = renderer_sdf_read_swapchain();
-        s_RendererSDFInternalState.captureSwapchain    = false;
+        //rhi_gfx_cmd_end_recording(cmd_buff);
+
+        rhi_gfx_cmd_enque_submit(&s_RendererSDFInternalState.gfxcontext.cmd_queue, cmd_buff);
+
+        rhi_gfx_cmd_submit_queue(&s_RendererSDFInternalState.gfxcontext.cmd_queue, frame_sync);
+
+        //if (s_RendererSDFInternalState.captureSwapchain) {
+        //    s_RendererSDFInternalState.lastTextureReadback = renderer_sdf_read_swapchain();
+        //    s_RendererSDFInternalState.captureSwapchain    = false;
+        //}
     }
+    rhi_frame_end(&s_RendererSDFInternalState.gfxcontext);
 
-    rhi_frame_end();
-
-    renderer_internal_sdf_swap_backbuffer();
+    glfwPollEvents();
 }
 
 const SDF_Scene* renderer_sdf_get_scene(void)
@@ -256,4 +269,14 @@ texture_readback renderer_sdf_read_swapchain(void)
 texture_readback renderer_sdf_get_last_swapchain_readback(void)
 {
     return s_RendererSDFInternalState.lastTextureReadback;
+}
+
+void renderer_sdf_resize(uint32_t width, uint32_t height)
+{
+    s_RendererSDFInternalState.width  = width;
+    s_RendererSDFInternalState.height = height;
+
+    gfx_ctx_recreate_frame_sync(&s_RendererSDFInternalState.gfxcontext);
+
+    rhi_resize_swapchain(&s_RendererSDFInternalState.gfxcontext.swapchain, width, height);
 }

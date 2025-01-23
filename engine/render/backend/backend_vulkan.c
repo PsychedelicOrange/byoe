@@ -651,17 +651,17 @@ gfx_swapchain vulkan_device_create_swapchain(uint32_t width, uint32_t height)
     return swapchain;
 }
 
-void vulkan_device_destroy_swapchain(gfx_swapchain sc)
+void vulkan_device_destroy_swapchain(gfx_swapchain* sc)
 {
-    if (!uuid_is_null(&sc.uuid)) {
-        uuid_destroy(&sc.uuid);
-        swapchain_backend* backend = sc.backend;
+    if (!uuid_is_null(&sc->uuid)) {
+        uuid_destroy(&sc->uuid);
+        swapchain_backend* backend = sc->backend;
 
         vulkan_internal_destroy_backbuffers(backend);
 
         if (backend->swapchain != VK_NULL_HANDLE)
             vkDestroySwapchainKHR(VKDEVICE, backend->swapchain, NULL);
-        free(sc.backend);
+        free(sc->backend);
     }
 }
 
@@ -687,66 +687,140 @@ gfx_cmd_pool vulkan_device_create_gfx_cmd_pool(void)
     return pool;
 }
 
-void vulkan_device_destroy_gfx_cmd_pool(gfx_cmd_pool pool)
+void vulkan_device_destroy_gfx_cmd_pool(gfx_cmd_pool* pool)
 {
-    if (!uuid_is_null(&pool.uuid)) {
-        uuid_destroy(&pool.uuid);
-        vkDestroyCommandPool(VKDEVICE, ((cmd_pool_backend*) pool.backend)->pool, NULL);
-        free(pool.backend);
+    if (!uuid_is_null(&pool->uuid)) {
+        uuid_destroy(&pool->uuid);
+        vkDestroyCommandPool(VKDEVICE, ((cmd_pool_backend*) pool->backend)->pool, NULL);
+        free(pool->backend);
     }
 }
 
-gfx_frame_sync* vulkan_device_create_frame_syncs(uint32_t num_frames_in_flight)
+static void vulkan_internal_create_sema(void* backend)
 {
-    for (uint32_t i = 0; i < num_frames_in_flight; i++) {
-        // 2 semas and 1 fence
-        if (!g_gfxConfig.use_timeline_semaphores) {
-        }
-    }
+    VkSemaphoreCreateInfo semaphoreInfo = {
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+        .pNext = NULL,
+        .flags = VK_SEMAPHORE_TYPE_BINARY};
 
-    return NULL;
+    VK_CHECK_RESULT(vkCreateSemaphore(VKDEVICE, &semaphoreInfo, NULL, backend), "[Vulkan] cannot create semaphore");
 }
 
-void vulkan_device_destroy_frame_syncs(gfx_frame_sync* in_flight_syncs)
+static void vulkan_internal_destroy_sema(VkSemaphore sema)
 {
+    vkDestroySemaphore(VKDEVICE, sema, NULL);
+}
+
+static void vulkan_internal_create_fence(void* backend)
+{
+    VkFenceCreateInfo fenceCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+        .flags = VK_FENCE_CREATE_SIGNALED_BIT};
+
+    VK_CHECK_RESULT(vkCreateFence(VKDEVICE, &fenceCreateInfo, NULL, backend), "[Vulkan] cannot create fence");
+}
+
+static void vulkan_internal_destroy_fence(VkFence fence)
+{
+    vkDestroyFence(VKDEVICE, fence, NULL);
+}
+
+gfx_frame_sync vulkan_device_create_frame_sync()
+{
+    // 2 semas and 1 fence
+    gfx_frame_sync frame_sync = {0};
+
+    {
+        uuid_generate(&frame_sync.image_ready.uuid);
+        frame_sync.image_ready.visibility = gpu;
+        frame_sync.image_ready.value      = UINT32_MAX;
+        frame_sync.image_ready.backend    = malloc(sizeof(VkSemaphore));
+        vulkan_internal_create_sema(frame_sync.image_ready.backend);
+    }
+
+    {
+        uuid_generate(&frame_sync.rendering_done.uuid);
+       frame_sync.rendering_done.visibility = gpu;
+       frame_sync.rendering_done.value      = UINT32_MAX;
+       frame_sync.rendering_done.backend    = malloc(sizeof(VkSemaphore));
+       vulkan_internal_create_sema(frame_sync.rendering_done.backend);
+    }
+
+    if (!g_gfxConfig.use_timeline_semaphores) {
+        uuid_generate(&frame_sync.in_flight.uuid);
+        frame_sync.in_flight.visibility = cpu;
+        frame_sync.in_flight.value      = UINT32_MAX;
+        frame_sync.in_flight.backend = malloc(sizeof(VkFence));
+        vulkan_internal_create_fence(frame_sync.in_flight.backend);
+    }
+    return frame_sync;
+}
+
+void vulkan_device_destroy_frame_sync(gfx_frame_sync* frame_sync)
+{
+    (void) frame_sync;
+    uuid_destroy(&frame_sync->rendering_done.uuid);
+    uuid_destroy(&frame_sync->image_ready.uuid);
+    uuid_destroy(&frame_sync->in_flight.uuid);
+
+    vulkan_internal_destroy_sema(*(VkSemaphore*) frame_sync->rendering_done.backend);
+    vulkan_internal_destroy_sema(*(VkSemaphore*) frame_sync->image_ready.backend);
+
+    if (!g_gfxConfig.use_timeline_semaphores && frame_sync->in_flight.visibility == cpu)
+        vulkan_internal_destroy_fence(*(VkFence*) frame_sync->in_flight.backend);
+
+    free(frame_sync->rendering_done.backend);
+    free(frame_sync->image_ready.backend);
+    free(frame_sync->in_flight.backend);
 }
 
 //--------------------------------------------------------
 
-rhi_error_codes vulkan_frame_begin(gfx_context* context)
+// TODO: Move come of these functions to front end use rhi_ wrappers instead
+
+gfx_frame_sync* vulkan_frame_begin(gfx_context* context)
 {
-    gfx_frame_sync* curr_frame_sync = &context->frame_sync[context->frame_sync->frame_idx];
+    gfx_frame_sync* curr_frame_sync = &context->frame_sync[context->frame_idx];
 
     vulkan_wait_on_previous_cmds(curr_frame_sync);
-    vulkan_acquire_image(context->swapchain, curr_frame_sync);
+    vulkan_acquire_image(&context->swapchain, curr_frame_sync);
+
+    memset(context->cmd_queue.cmds, 0, context->cmd_queue.cmds_count * sizeof(gfx_cmd_buf*));
+    context->cmd_queue.cmds_count = 0;
+
+    return curr_frame_sync;
 }
 
-rhi_error_codes vulkan_gfx_cmd_begin_recording(gfx_cmd_buf* cmd_buf)
-{
-}
+//rhi_error_codes vulkan_gfx_cmd_begin_recording(gfx_cmd_buf* cmd_buf)
+//{
+//}
+//
+//// begin_render_pass
+//// end_render_pass
+//// ... N times
+//
+//rhi_error_codes vulkan_gfx_cmd_end_recording(gfx_cmd_buf* cmd_buf)
+//{
+//}
 
-// begin_render_pass
-// end_render_pass
-// ... N times
-
-rhi_error_codes vulkan_gfx_cmd_end_recording(gfx_cmd_buf* cmd_buf)
+rhi_error_codes vulkan_gfx_cmd_enque_submit(gfx_cmd_queue* cmd_queue, gfx_cmd_buf* cmd_buff)
 {
-}
+    cmd_queue->cmds[cmd_queue->cmds_count] = cmd_buff;
+    cmd_queue->cmds_count++;
 
-rhi_error_codes vulkan_gfx_cmd_enque_submit(gfx_cmd_buf* cmd_buf)
-{
-}
-
-rhi_error_codes vulkan_gfx_cmd_submit_queue(gfx_context* context)
-{
+    return Success;
 }
 
 rhi_error_codes vulkan_frame_end(gfx_context* context)
 {
-    vulkan_present();
+    vulkan_present(&context->swapchain, &context->frame_sync[context->frame_idx]);
 
-    context->frame_sync->frame_idx = (context->frame_sync->frame_idx + 1) % MAX_FRAME_INFLIGHT;
+    context->frame_idx = (context->frame_idx + 1) % MAX_FRAME_INFLIGHT;
+
+    return Success;
 }
+
+//--------------------------------------------------------
 
 // TODO: track fence value using vkGetFenceStatus at wait/reset
 
@@ -763,12 +837,86 @@ rhi_error_codes vulkan_acquire_image(gfx_swapchain* swapchain, const gfx_frame_s
     VkResult result = vkAcquireNextImageKHR(VKDEVICE, ((swapchain_backend*) (swapchain->backend))->swapchain, UINT32_MAX, *(VkSemaphore*) (in_flight_sync->image_ready.backend), NULL, &swapchain->current_backbuffer_idx);
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
         // TODO: re-create swapchain and acquire again
+        LOG_ERROR("[Vulkan] Swapchain out of date or suboptimal...recreating...");
+        vkDeviceWaitIdle(VKDEVICE);
+        vulkan_resize_swapchain(swapchain, swapchain->width, swapchain->height);
     }
     if (result == VK_SUCCESS)
         return Success;
     else
         return FailedSwapAcquire;
 }
+
+rhi_error_codes vulkan_gfx_cmd_submit_queue(gfx_cmd_queue* cmd_queue, gfx_frame_sync* frame_sync)
+{
+    // Flatten all the gfx_cmd_buff into a VkCommandBuffer Array
+    VkCommandBuffer* vk_cmd_buffs = malloc(cmd_queue->cmds_count * sizeof(VkCommandBuffer));
+    for (uint32_t i = 0; i < cmd_queue->cmds_count; i++) {
+        vk_cmd_buffs[i] = *((VkCommandBuffer*) (cmd_queue->cmds[i]->backend));
+    }
+
+    VkPipelineStageFlags waitStages[1] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+
+    VkSubmitInfo submitInfo = {
+        .sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .pNext                = NULL,
+        .commandBufferCount   = cmd_queue->cmds_count,
+        .pCommandBuffers      = vk_cmd_buffs,
+        .pWaitDstStageMask    = waitStages,
+        .waitSemaphoreCount   = 1,
+        .pWaitSemaphores      = (VkSemaphore*) (frame_sync->image_ready.backend),
+        .signalSemaphoreCount = 1,
+        .pSignalSemaphores    = (VkSemaphore*) (frame_sync->rendering_done.backend),
+    };
+
+    VkFence signal_fence = *((VkFence*) (frame_sync->in_flight.backend));
+
+    VK_CHECK_RESULT(vkQueueSubmit(s_VkCtx.queues.gfx, 1, &submitInfo, signal_fence), "Failed to submit command buffers");
+
+    return Success;
+}
+
+rhi_error_codes vulkan_present(gfx_swapchain* swapchain, gfx_frame_sync* frame_sync)
+{
+    VkPresentInfoKHR presentInfo = {
+        .sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+        .pNext              = NULL,
+        .swapchainCount     = 1,
+        .pSwapchains        = &((swapchain_backend*) (swapchain->backend))->swapchain,
+        .pImageIndices      = &swapchain->current_backbuffer_idx,
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores    = (VkSemaphore*) (frame_sync->rendering_done.backend),
+        .pResults           = NULL};
+
+    VkResult result = vkQueuePresentKHR(s_VkCtx.queues.present, &presentInfo);
+
+    if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+        vkDeviceWaitIdle(VKDEVICE);
+        LOG_ERROR("[Vulkan] Swapchain out of date");
+    } else if (result == VK_SUBOPTIMAL_KHR)
+        LOG_ERROR("[Vulkan] Swapchain suboptimal");
+    else
+        VK_CHECK_RESULT(result, "[Vulkan] Failed to present image to presentation engine.");
+
+    return Success;
+}
+
+rhi_error_codes vulkan_resize_swapchain(gfx_swapchain* swapchain, uint32_t width, uint32_t height)
+{
+    swapchain_backend* backend = (swapchain_backend*) (swapchain->backend);
+    backend->old_swapchain     = backend->swapchain;
+    vulkan_device_destroy_swapchain(swapchain);
+
+    backend->swapchain = VK_NULL_HANDLE;    // THIS SHOULD CAUSE A CRASH, since backend is NULL
+    swapchain->width   = width;
+    swapchain->width   = height;
+
+    *swapchain = vulkan_device_create_swapchain(width, height);
+
+    return Success;
+}
+
+//--------------------------------------------------------
 
 rhi_error_codes vulkan_draw(void)
 {

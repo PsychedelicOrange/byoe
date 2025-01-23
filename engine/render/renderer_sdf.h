@@ -43,4 +43,6 @@ void             renderer_sdf_set_capture_swapchain_ready(void);
 texture_readback renderer_sdf_read_swapchain(void);
 texture_readback renderer_sdf_get_last_swapchain_readback(void);
 
+void renderer_sdf_resize(uint32_t width, uint32_t height);
+
 #endif

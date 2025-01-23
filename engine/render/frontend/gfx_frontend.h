@@ -7,6 +7,9 @@
 
 #include <stdint.h>
 
+#define DEFAULT_WIDTH  1024
+#define DEFAULT_HEIGHT 1024
+
 typedef struct GLFWwindow GLFWwindow;
 
 typedef enum rhi_api
@@ -21,20 +24,20 @@ typedef enum rhi_api
 
 int  gfx_init(rhi_api api);
 void gfx_destroy(void);
+void gfx_ctx_ignite(gfx_context* ctx);
+void gfx_ctx_recreate_frame_sync(gfx_context* ctx);
 
 gfx_context (*gfx_ctx_init)(GLFWwindow* window, uint32_t width, uint32_t height);
 void        (*gfx_ctx_destroy)(gfx_context* ctx);
 
-void gfx_ctx_ignite(gfx_context* ctx);
-
 gfx_swapchain (*gfx_create_swapchain)(uint32_t width, uint32_t height);
-void          (*gfx_destroy_swapchain)(gfx_swapchain sc);
+void          (*gfx_destroy_swapchain)(gfx_swapchain* sc);
 
 gfx_cmd_pool (*gfx_create_gfx_cmd_pool)(void);
-void         (*gfx_destroy_gfx_cmd_pool)(gfx_cmd_pool);
+void         (*gfx_destroy_gfx_cmd_pool)(gfx_cmd_pool*);
 
-gfx_frame_sync* (*gfx_create_frame_syncs)(uint32_t num_frames_in_flight);
-void            (*gfx_destroy_frame_syncs)(gfx_frame_sync* in_flight_syncs);
+gfx_frame_sync (*gfx_create_frame_sync)();
+void           (*gfx_destroy_frame_sync)(gfx_frame_sync* in_flight_sync);
 
 //------------------------------------------
 // RHI function pointers
@@ -48,18 +51,21 @@ typedef enum rhi_error_codes
     FailedHandleCreation
 } rhi_error_codes;
 
-rhi_error_codes (*rhi_frame_begin)(gfx_context* context);
+gfx_frame_sync* (*rhi_frame_begin)(gfx_context* context);
 rhi_error_codes (*rhi_frame_end)(gfx_context* context);
+// Begin/End RenderPass
 
 rhi_error_codes (*rhi_wait_on_previous_cmds)(const gfx_frame_sync* in_flight_sync);
 rhi_error_codes (*rhi_acquire_image)(gfx_swapchain* swapchain, const gfx_frame_sync* in_flight_sync);
+rhi_error_codes (*rhi_gfx_cmd_enque_submit)(gfx_cmd_queue* cmd_queue, gfx_cmd_buf* cmd_buff);
+rhi_error_codes (*rhi_gfx_cmd_submit_queue)(gfx_cmd_queue* cmd_queue, gfx_frame_sync* frame_sync);
+rhi_error_codes (*rhi_present)(gfx_swapchain* swapchain, gfx_frame_sync* frame_sync);
+
+rhi_error_codes (*rhi_resize_swapchain)(gfx_swapchain* swapchain, uint32_t width, uint32_t height);
 
 rhi_error_codes (*rhi_clear)(void);
 rhi_error_codes (*rhi_draw)(void);
-rhi_error_codes (*rhi_present)(void);
 
-uint32_t              (*rhi_get_back_buffer_idx)(gfx_swapchain* swapchain);
-uint32_t              (*rhi_get_current_frame_idx)();
-const gfx_frame_sync* (*rhi_get_current_frame_sync)();
-
+uint32_t rhi_get_back_buffer_idx(const gfx_swapchain* swapchain);
+uint32_t rhi_get_current_frame_idx(const gfx_context* ctx);
 #endif    // RHI_H

@@ -255,28 +255,23 @@ static gfx_config g_gfxConfig = {
     .use_timeline_semaphores = false,
 };
 
-typedef struct gfx_cmd_pool
-{
-    random_uuid_t uuid;
-    void*         backend;
-} gfx_cmd_pool;
-
 typedef struct gfx_swapchain
 {
     random_uuid_t uuid;
+    void*         backend;
     uint32_t      width;
     uint32_t      height;
     uint32_t      current_backbuffer_idx;
-    void*         backend;
+    uint32_t      _pad0[3];
 } gfx_swapchain;
 
 typedef struct gfx_fence
 {
     random_uuid_t uuid;
     void*         backend;
+    uint64_t      value;    // track backend value
     fence_type    visibility;
-    uint32_t      frame_idx;    // either 0 or 1 assuming 2 frames in-flight
-    uint64_t      value;        // track backend value
+    uint32_t      _pad0[3];
 } gfx_fence;
 
 typedef struct gfx_vertex_buffer
@@ -329,7 +324,6 @@ typedef struct gfx_cmd_buf
 {
     random_uuid_t uuid;
     void*         backend;
-
 } gfx_cmd_buf;
 
 //typedef struct gfx_thread_cmd
@@ -343,20 +337,8 @@ typedef struct gfx_cmd_queue
 {
     gfx_cmd_buf** cmds;
     uint32_t      cmds_count;
+    uint32_t      _pad0;
 } gfx_cmd_queue;
-
-typedef struct gfx_context
-{
-    random_uuid_t  uuid;
-    void*          backend;
-    gfx_swapchain* swapchain;
-    gfx_frame_sync frame_sync[MAX_FRAME_INFLIGHT];
-    // TODO: Add all the command buffers you want here...Draw, Async etc.
-    // 1 per thread, only single threaded for now
-    gfx_cmd_pool*  draw_cmds_pools[MAX_FRAME_INFLIGHT];
-    gfx_cmd_buf*   draw_cmds[MAX_FRAME_INFLIGHT];
-    gfx_cmd_queue* cmd_queue;
-} gfx_context;
 
 //-----------------------------------
 // High-level structs
@@ -368,7 +350,21 @@ typedef struct gfx_frame_sync
     gfx_fence in_flight;
     gfx_fence image_ready;
     gfx_fence rendering_done;
-    uint32_t  frame_idx;
 } gfx_frame_sync;
+
+typedef struct gfx_context
+{
+    random_uuid_t  uuid;
+    void*          backend;
+    uint32_t       _pad0;
+    uint32_t       frame_idx;
+    gfx_swapchain  swapchain;
+    gfx_frame_sync frame_sync[MAX_FRAME_INFLIGHT];
+    // TODO: Add all the command buffers you want here...Draw, Async etc.
+    // 1 per thread, only single threaded for now
+    gfx_cmd_pool  draw_cmds_pools[MAX_FRAME_INFLIGHT];
+    gfx_cmd_buf   draw_cmds[MAX_FRAME_INFLIGHT];
+    gfx_cmd_queue cmd_queue;
+} gfx_context;
 
 #endif    // RENDER_STRUCTS_H

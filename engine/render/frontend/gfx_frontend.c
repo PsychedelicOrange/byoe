@@ -21,6 +21,9 @@ int gfx_init(rhi_api api)
         gfx_create_gfx_cmd_pool  = vulkan_device_create_gfx_cmd_pool;
         gfx_destroy_gfx_cmd_pool = vulkan_device_destroy_gfx_cmd_pool;
 
+        gfx_create_frame_sync  = vulkan_device_create_frame_sync;
+        gfx_destroy_frame_sync = vulkan_device_destroy_frame_sync;
+
         // RHI
         rhi_clear = vulkan_draw;
     }
@@ -34,7 +37,28 @@ void gfx_destroy(void)
 
 void gfx_ctx_ignite(gfx_context* ctx)
 {
-    // create sync prims, command pool and buffers per thread (in this case only 1)
-    ctx->frame_sync = gfx_create_frame_syncs(MAX_FRAME_INFLIGHT);
+    for (uint32_t i = 0; i < MAX_FRAME_INFLIGHT; i++) {
+        ctx->frame_sync[i] = gfx_create_frame_sync();
 
+        ctx->draw_cmds_pools[i] = gfx_create_gfx_cmd_pool();
+    }
+    // command pool per thread and 2 in-flight command buffers per pool
+}
+
+void gfx_ctx_recreate_frame_sync(gfx_context* ctx)
+{
+    for (uint32_t i = 0; i < MAX_FRAME_INFLIGHT; i++) {
+        gfx_destroy_frame_sync(&ctx->frame_sync[i]);
+        ctx->frame_sync[i] = gfx_create_frame_sync();
+    }
+}
+
+uint32_t rhi_get_back_buffer_idx(const gfx_swapchain* swapchain)
+{
+    return swapchain->current_backbuffer_idx;
+}
+
+uint32_t rhi_get_current_frame_idx(const gfx_context* ctx)
+{
+    return ctx->frame_idx;
 }
