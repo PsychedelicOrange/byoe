@@ -274,11 +274,11 @@ typedef enum gfx_shader_stage
     ray_gen
 } gfx_shader_stage;
 
-typedef enum fence_type
+typedef enum gfx_fence_type
 {
     cpu,
     gpu
-} fence_type;
+} gfx_fence_type;
 
 typedef struct gfx_config
 {
@@ -288,6 +288,10 @@ typedef struct gfx_config
 static gfx_config g_gfxConfig = {
     .use_timeline_semaphores = false,
 };
+
+// TODO: gfx_XXX memory alloc design
+// void* backend will be allocated by their own backend_resource_pool_(Type)
+// frontend_resource_pool_(Type) will have it's own allocators with a pointer to another backend pool elements
 
 typedef struct gfx_swapchain
 {
@@ -301,11 +305,11 @@ typedef struct gfx_swapchain
 
 typedef struct gfx_fence
 {
-    random_uuid_t uuid;
-    void*         backend;
-    uint64_t      value;    // track backend value
-    fence_type    visibility;
-    uint32_t      _pad0[3];
+    random_uuid_t  uuid;
+    void*          backend;
+    uint64_t       value;    // track backend value
+    gfx_fence_type visibility;
+    uint32_t       _pad0[3];
 } gfx_fence;
 
 typedef struct gfx_vertex_buffer
@@ -388,6 +392,14 @@ typedef struct gfx_shader
         };
     } stages;
 } gfx_shader;
+
+typedef struct gfx_pipeline
+{
+    random_uuid_t uuid;
+    void*         backend;
+    // pipeline props
+
+} gfx_pipeline;
 
 //-----------------------------------
 // High-level structs

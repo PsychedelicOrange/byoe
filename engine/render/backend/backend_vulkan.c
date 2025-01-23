@@ -41,7 +41,7 @@ DEFINE_CLAMP(int)
 // - [x] command pool in renderer_sdf
 // - [x] command buffers X2
 // - [ ] basic rendering using begin rendering API for drawing a screen quad without vertices --> KHR_dynamic_rendering renderpass API
-//      - [ ] shader loading API
+//      - [x] shader loading API
 //      - [ ] pipeline API
 //      - [ ] draw API
 // - [ ] Descriptors API + pipeline layout handling etc.
