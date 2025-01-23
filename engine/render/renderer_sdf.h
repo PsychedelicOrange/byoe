@@ -35,8 +35,6 @@ void renderer_sdf_render(void);
 const SDF_Scene* renderer_sdf_get_scene(void);
 void             renderer_sdf_set_scene(const SDF_Scene* scene);
 
-void renderer_sdf_set_clear_color(color_rgba rgba);
-
 void renderer_sdf_draw_scene(const SDF_Scene* scene);
 
 void             renderer_sdf_set_capture_swapchain_ready(void);

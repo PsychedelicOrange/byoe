@@ -25,11 +25,30 @@
 
 // Docs: https://github.com/PsychedelicOrange/byoe/pull/10
 
-STRUCT(color_rgba,
-       float r, g, b, a;)
+STRUCT(
+    color_rgba,
+    union {
+        struct
+        {
+            float r;
+            float g;
+            float b;
+            float a;
+        };
+        float raw[4];
+    };)
 
-STRUCT(color_rgb,
-       float r, g, b;)
+STRUCT(
+    color_rgb,
+    union {
+        struct
+        {
+            float r;
+            float g;
+            float b;
+        };
+        float raw[3];
+    };)
 
 STRUCT(bounding_sphere,
        vec3  pos;
@@ -372,7 +391,7 @@ typedef struct gfx_context
 
 typedef struct gfx_attachment
 {
-    vec4s        clear_color;
+    color_rgba   clear_color;
     gfx_texture* attachment;
     bool         clear;
     bool         _pad0[7];

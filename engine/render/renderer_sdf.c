@@ -29,7 +29,6 @@ typedef struct renderer_internal_state
     uint64_t         frameCount;
     bool             captureSwapchain;
     bool             _pad0[3];
-    color_rgba       clearColor;
     mat4s            viewproj;
     texture_readback lastTextureReadback;
     gfx_context      gfxcontext;
@@ -119,7 +118,6 @@ bool renderer_sdf_init(renderer_desc desc)
     s_RendererSDFInternalState.height        = desc.height;
     s_RendererSDFInternalState.window        = desc.window;
     s_RendererSDFInternalState.frameCount    = 0;
-    s_RendererSDFInternalState.clearColor    = (color_rgba){0.0f, 0.0f, 0.0f, 1.0f};
 
     glfwSetWindowSizeCallback(s_RendererSDFInternalState.window, renderer_internal_sdf_resize);
 
@@ -174,11 +172,9 @@ void renderer_sdf_render(void)
             .swapchain               = &s_RendererSDFInternalState.gfxcontext.swapchain,
             .extents                 = {(float) s_RendererSDFInternalState.width, (float) s_RendererSDFInternalState.height},
             .color_attachments_count = 1,
-            .color_attachments[0]    = {.clear = true, .clear_color = (vec4s){1.0f, (float) sin(0.0025f * (float) s_RendererSDFInternalState.frameCount), 1.0f, 1.0f}}};
+            .color_attachments[0]    = {.clear = true, .clear_color = (color_rgba){1.0f, (float) sin(0.0025f * (float) s_RendererSDFInternalState.frameCount), 1.0f, 1.0f}}};
         rhi_begin_render_pass(cmd_buff, clear_screen_pass, s_RendererSDFInternalState.gfxcontext.swapchain.current_backbuffer_idx);
 
-        //// clear with a pink color
-        ////renderer_internal_sdf_clear_screen(s_RendererSDFInternalState.clearColor);
         ////
         ////renderer_internal_sdf_set_pipeline_settings();
         ////
@@ -212,11 +208,6 @@ const SDF_Scene* renderer_sdf_get_scene(void)
 void renderer_sdf_set_scene(const SDF_Scene* scene)
 {
     s_RendererSDFInternalState.scene = scene;
-}
-
-void renderer_sdf_set_clear_color(color_rgba rgba)
-{
-    s_RendererSDFInternalState.clearColor = rgba;
 }
 
 void renderer_sdf_draw_scene(const SDF_Scene* scene)
