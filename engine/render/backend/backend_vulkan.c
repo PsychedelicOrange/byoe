@@ -38,10 +38,11 @@ DEFINE_CLAMP(int)
 // - [x] Complete Swapchain: sync primitives API + acquire/present/submit API
 // - [x] command pool in renderer_sdf
 // - [x] command buffers X2
-// - [ ] basic rendering using begin rendering API for drawing a screen quad without vertices
+// - [ ] basic rendering using begin rendering API for drawing a screen quad without vertices --> KHR_dynamic_rendering renderpass API
 // - [ ] Descriptors API
 // - [ ] UBOs + Push constants API + setup descriptor sets for the resources X2
 // - [ ] CS dispatch -> SDF raymarching shader
+// - [ ] Barriers (image memory) and Transition layout API
 
 typedef struct swapchain_backend
 {
@@ -160,6 +161,24 @@ static VkBool32 vulkan_backend_debug_callback(VkDebugUtilsMessageSeverityFlagBit
     if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) LOG_WARN("%s", pCallbackData->pMessage);
 
     return VK_TRUE;
+}
+
+static void vulkan_internal_cmd_begin_rendering(VkCommandBuffer commandBuffer, const VkRenderingInfo* pRenderingInfo)
+{
+    PFN_vkCmdBeginRenderingKHR func = (PFN_vkCmdBeginRenderingKHR) vkGetDeviceProcAddr(VKDEVICE, "vkCmdBeginRenderingKHR");
+    if (func != NULL)
+        func(commandBuffer, pRenderingInfo);
+    else
+        LOG_ERROR("VkCmdBeginRenderingKHR Function not found");
+}
+
+static void vulkan_internal_cmd_end_rendering(VkCommandBuffer commandBuffer)
+{
+    PFN_vkCmdEndRenderingKHR func = (PFN_vkCmdEndRenderingKHR) vkGetDeviceProcAddr(VKDEVICE, "vkCmdEndRenderingKHR");
+    if (func != NULL)
+        func(commandBuffer);
+    else
+        LOG_ERROR("VkCmdEndRenderingKHR Function not found");
 }
 
 //--------------------------------------------------------
@@ -932,17 +951,63 @@ gfx_frame_sync* vulkan_frame_begin(gfx_context* context)
     return curr_frame_sync;
 }
 
-//rhi_error_codes vulkan_gfx_cmd_begin_recording(gfx_cmd_buf* cmd_buf)
-//{
-//}
-//
-//// begin_render_pass
-//// end_render_pass
-//// ... N times
-//
-//rhi_error_codes vulkan_gfx_cmd_end_recording(gfx_cmd_buf* cmd_buf)
-//{
-//}
+rhi_error_codes vulkan_begin_render_pass(gfx_cmd_buf* cmd_buf, gfx_render_pass render_pass, uint32_t backbuffer_index)
+{
+    VkRenderingAttachmentInfo color_attachments[MAX_RT] = {0};
+
+    if (render_pass.is_swap_pass) render_pass.color_attachments_count = 1;
+
+    for (uint32_t i = 0; i < render_pass.color_attachments_count; i++) {
+        gfx_attachment            col_attach  = render_pass.color_attachments[i];
+        VkRenderingAttachmentInfo attach_info = {
+            .sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+            .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+        memcpy(attach_info.clearValue.color.float32, col_attach.clear_color.raw, sizeof(vec4s));
+        if (col_attach.clear) {
+            attach_info.loadOp  = VK_ATTACHMENT_LOAD_OP_CLEAR;
+            attach_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        } else {
+            attach_info.loadOp  = VK_ATTACHMENT_LOAD_OP_LOAD;
+            attach_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        }
+        if (render_pass.is_swap_pass) {
+            if (!render_pass.swapchain)
+                LOG_ERROR("[Vulkan] pass is marked as swap pass but swapchain is empty");
+            attach_info.imageView = ((swapchain_backend*) (render_pass.swapchain->backend))->backbuffer_views[backbuffer_index];
+        } else {
+            // TODO: use gfx_texture->backend as imageview
+        }
+
+        color_attachments[i] = attach_info;
+    }
+
+    VkRenderingInfo info = {
+        .sType      = VK_STRUCTURE_TYPE_RENDERING_INFO,
+        .pNext      = NULL,
+        .layerCount = 1,
+        .renderArea = {
+            .offset = {0, 0},
+            .extent = {(uint32_t) render_pass.extents.x, (uint32_t) render_pass.extents.y}},
+        .colorAttachmentCount = render_pass.color_attachments_count,
+        .pColorAttachments    = color_attachments,
+        // TODO: Depth Attachments
+    };
+
+    if (render_pass.is_swap_pass) {
+        info.colorAttachmentCount = 1;
+        info.pColorAttachments    = color_attachments;
+    }
+
+    vulkan_internal_cmd_begin_rendering(*(VkCommandBuffer*) cmd_buf->backend, &info);
+
+    return Success;
+}
+
+rhi_error_codes vulkan_end_render_pass(gfx_cmd_buf* cmd_buf)
+{
+    vulkan_internal_cmd_end_rendering(*(VkCommandBuffer*) cmd_buf->backend);
+    return Success;
+}
 
 rhi_error_codes vulkan_gfx_cmd_enque_submit(gfx_cmd_queue* cmd_queue, gfx_cmd_buf* cmd_buff)
 {

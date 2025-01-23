@@ -169,18 +169,24 @@ void renderer_sdf_render(void)
 
         rhi_begin_gfx_cmd_recording(cmd_buff);
 
-        //rhi_begin_render_pass();
+        gfx_render_pass clear_screen_pass = {
+            .is_swap_pass            = true,
+            .swapchain               = &s_RendererSDFInternalState.gfxcontext.swapchain,
+            .extents                 = {(float) s_RendererSDFInternalState.width, (float) s_RendererSDFInternalState.height},
+            .color_attachments_count = 1,
+            .color_attachments[0]    = {.clear = true, .clear_color = (vec4s){1.0f, (float) sin(0.0025f * (float) s_RendererSDFInternalState.frameCount), 1.0f, 1.0f}}};
+        rhi_begin_render_pass(cmd_buff, clear_screen_pass, s_RendererSDFInternalState.gfxcontext.swapchain.current_backbuffer_idx);
 
-        // clear with a pink color
-        //renderer_internal_sdf_clear_screen(s_RendererSDFInternalState.clearColor);
-        //
-        //renderer_internal_sdf_set_pipeline_settings();
-        //
-        //renderer_internal_sdf_set_raymarch_shader_global_uniforms();
-        //
-        //renderer_sdf_draw_scene(s_RendererSDFInternalState.scene);
+        //// clear with a pink color
+        ////renderer_internal_sdf_clear_screen(s_RendererSDFInternalState.clearColor);
+        ////
+        ////renderer_internal_sdf_set_pipeline_settings();
+        ////
+        ////renderer_internal_sdf_set_raymarch_shader_global_uniforms();
+        ////
+        ////renderer_sdf_draw_scene(s_RendererSDFInternalState.scene);
 
-        //rhi_end_render_pass();
+        rhi_end_render_pass(cmd_buff);
 
         rhi_end_gfx_cmd_recording(cmd_buff);
 
@@ -188,10 +194,10 @@ void renderer_sdf_render(void)
 
         rhi_gfx_cmd_submit_queue(&s_RendererSDFInternalState.gfxcontext.cmd_queue, frame_sync);
 
-        //if (s_RendererSDFInternalState.captureSwapchain) {
-        //    s_RendererSDFInternalState.lastTextureReadback = renderer_sdf_read_swapchain();
-        //    s_RendererSDFInternalState.captureSwapchain    = false;
-        //}
+        //////if (s_RendererSDFInternalState.captureSwapchain) {
+        //////    s_RendererSDFInternalState.lastTextureReadback = renderer_sdf_read_swapchain();
+        //////    s_RendererSDFInternalState.captureSwapchain    = false;
+        //////}
     }
     rhi_frame_end(&s_RendererSDFInternalState.gfxcontext);
 

@@ -368,4 +368,26 @@ typedef struct gfx_context
     gfx_cmd_queue cmd_queue;
 } gfx_context;
 
+#define MAX_RT 8
+
+typedef struct gfx_attachment
+{
+    vec4s        clear_color;
+    gfx_texture* attachment;
+    bool         clear;
+    bool         _pad0[7];
+} gfx_attachment;
+
+typedef struct gfx_render_pass
+{
+    vec2s          extents;
+    uint32_t       _pad0;
+    uint32_t       color_attachments_count;
+    gfx_attachment color_attachments[MAX_RT];
+    gfx_attachment depth_attachment;
+    gfx_swapchain* swapchain;
+    bool           is_swap_pass;
+    bool           _pad1[7];
+} gfx_render_pass;
+
 #endif    // RENDER_STRUCTS_H

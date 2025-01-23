@@ -55,6 +55,9 @@ rhi_error_codes vulkan_resize_swapchain(gfx_swapchain* swapchain, uint32_t width
 rhi_error_codes vulkan_begin_gfx_cmd_recording(gfx_cmd_buf* cmd_buf);
 rhi_error_codes vulkan_end_gfx_cmd_recording(gfx_cmd_buf* cmd_buf);
 
+rhi_error_codes vulkan_begin_render_pass(gfx_cmd_buf* cmd_buf, gfx_render_pass render_pass, uint32_t backbuffer_index);
+rhi_error_codes vulkan_end_render_pass(gfx_cmd_buf* cmd_buf);
+
 rhi_error_codes vulkan_draw(void);
 
 #endif    // BACKEND_VULKAN_N

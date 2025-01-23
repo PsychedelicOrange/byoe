@@ -42,6 +42,9 @@ int gfx_init(rhi_api api)
         rhi_begin_gfx_cmd_recording = vulkan_begin_gfx_cmd_recording;
         rhi_end_gfx_cmd_recording   = vulkan_end_gfx_cmd_recording;
 
+        rhi_begin_render_pass = vulkan_begin_render_pass;
+        rhi_end_render_pass   = vulkan_end_render_pass;
+
         rhi_clear = vulkan_draw;
     }
 
@@ -54,6 +57,7 @@ void gfx_destroy(void)
 
 void gfx_ctx_ignite(gfx_context* ctx)
 {
+    // command pool: only per thread and 2 in-flight command buffers per pool
     ctx->draw_cmds_pool = gfx_create_gfx_cmd_pool();
     for (uint32_t i = 0; i < MAX_FRAME_INFLIGHT; i++) {
         ctx->frame_sync[i] = gfx_create_frame_sync();
@@ -61,7 +65,6 @@ void gfx_ctx_ignite(gfx_context* ctx)
         // Allocate and create the command buffers
         ctx->draw_cmds[i] = gfx_create_gfx_cmd_buf(&ctx->draw_cmds_pool);
     }
-    // command pool per thread and 2 in-flight command buffers per pool
 }
 
 void gfx_ctx_recreate_frame_sync(gfx_context* ctx)
