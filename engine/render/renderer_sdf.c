@@ -98,8 +98,10 @@ static bool render_internal_sdf_init_gfx_ctx(uint32_t width, uint32_t height)
 
         gfx_ctx_ignite(&s_RendererSDFInternalState.gfxcontext);
 
-        // TESTING
-        return false;
+        s_RendererSDFInternalState.gfxcontext.cmd_queue.cmds       = calloc(MAX_FRAME_INFLIGHT, sizeof(gfx_cmd_buf*));
+        s_RendererSDFInternalState.gfxcontext.cmd_queue.cmds_count = MAX_FRAME_INFLIGHT;
+
+        return true;
     }
 }
 
@@ -126,9 +128,10 @@ bool renderer_sdf_init(renderer_desc desc)
 
 void renderer_sdf_destroy(void)
 {
+    gfx_destroy_gfx_cmd_pool(&s_RendererSDFInternalState.gfxcontext.draw_cmds_pool);
     for (uint32_t i = 0; i < MAX_FRAME_INFLIGHT; i++) {
+        free(s_RendererSDFInternalState.gfxcontext.cmd_queue.cmds[i]);
         gfx_destroy_frame_sync(&s_RendererSDFInternalState.gfxcontext.frame_sync[i]);
-        gfx_destroy_gfx_cmd_pool(&s_RendererSDFInternalState.gfxcontext.draw_cmds_pools[i]);
     }
 
     gfx_destroy_swapchain(&s_RendererSDFInternalState.gfxcontext.swapchain);
@@ -160,7 +163,7 @@ void renderer_sdf_render(void)
     {
         gfx_cmd_buf* cmd_buff = &s_RendererSDFInternalState.gfxcontext.draw_cmds[s_RendererSDFInternalState.gfxcontext.frame_idx];
 
-        //rhi_gfx_cmd_begin_recording(cmd_buff);
+        rhi_begin_gfx_cmd_recording(cmd_buff);
 
         //rhi_begin_render_pass();
 
@@ -175,7 +178,7 @@ void renderer_sdf_render(void)
 
         //rhi_end_render_pass();
 
-        //rhi_gfx_cmd_end_recording(cmd_buff);
+        rhi_end_gfx_cmd_recording(cmd_buff);
 
         rhi_gfx_cmd_enque_submit(&s_RendererSDFInternalState.gfxcontext.cmd_queue, cmd_buff);
 

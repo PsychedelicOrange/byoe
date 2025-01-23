@@ -212,8 +212,9 @@ typedef struct SDF_Node
 // Graphics API
 //------------------------
 
-#define MAX_BACKBUFFERS    3
-#define MAX_FRAME_INFLIGHT 2
+#define MAX_BACKBUFFERS         3
+#define MAX_FRAME_INFLIGHT      2
+#define MAX_CMD_BUFFS_PER_QUEUE 16
 
 typedef enum gfx_format
 {
@@ -317,7 +318,7 @@ typedef struct gfx_cmd_pool
 {
     random_uuid_t uuid;
     void*         backend;
-
+    // TODO: store refs to all the command buffers allocated
 } gfx_cmd_pool;
 
 typedef struct gfx_cmd_buf
@@ -362,7 +363,7 @@ typedef struct gfx_context
     gfx_frame_sync frame_sync[MAX_FRAME_INFLIGHT];
     // TODO: Add all the command buffers you want here...Draw, Async etc.
     // 1 per thread, only single threaded for now
-    gfx_cmd_pool  draw_cmds_pools[MAX_FRAME_INFLIGHT];
+    gfx_cmd_pool  draw_cmds_pool;
     gfx_cmd_buf   draw_cmds[MAX_FRAME_INFLIGHT];
     gfx_cmd_queue cmd_queue;
 } gfx_context;

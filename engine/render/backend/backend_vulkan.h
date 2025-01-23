@@ -30,6 +30,8 @@ void          vulkan_device_destroy_swapchain(gfx_swapchain* sc);
 gfx_cmd_pool vulkan_device_create_gfx_cmd_pool(void);
 void         vulkan_device_destroy_gfx_cmd_pool(gfx_cmd_pool* pool);
 
+gfx_cmd_buf vulkan_create_gfx_cmd_buf(gfx_cmd_pool* pool);
+
 gfx_frame_sync vulkan_device_create_frame_sync();
 void           vulkan_device_destroy_frame_sync(gfx_frame_sync* frame_sync);
 //------------------------------------------
@@ -47,6 +49,9 @@ rhi_error_codes vulkan_gfx_cmd_submit_queue(gfx_cmd_queue* cmd_queue, gfx_frame_
 rhi_error_codes vulkan_present(gfx_swapchain* swapchain, gfx_frame_sync* frame_sync);
 
 rhi_error_codes vulkan_resize_swapchain(gfx_swapchain* swapchain, uint32_t width, uint32_t height);
+
+rhi_error_codes vulkan_begin_gfx_cmd_recording(gfx_cmd_buf* cmd_buf);
+rhi_error_codes vulkan_end_gfx_cmd_recording(gfx_cmd_buf* cmd_buf);
 
 rhi_error_codes vulkan_draw(void);
 

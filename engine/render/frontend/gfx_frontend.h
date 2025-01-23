@@ -36,6 +36,8 @@ void          (*gfx_destroy_swapchain)(gfx_swapchain* sc);
 gfx_cmd_pool (*gfx_create_gfx_cmd_pool)(void);
 void         (*gfx_destroy_gfx_cmd_pool)(gfx_cmd_pool*);
 
+gfx_cmd_buf (*gfx_create_gfx_cmd_buf)(gfx_cmd_pool* pool);
+
 gfx_frame_sync (*gfx_create_frame_sync)();
 void           (*gfx_destroy_frame_sync)(gfx_frame_sync* in_flight_sync);
 
@@ -50,10 +52,12 @@ typedef enum rhi_error_codes
     FailedSwapAcquire,
     FailedHandleCreation
 } rhi_error_codes;
-
+//---------------------------
+// High-level API
 gfx_frame_sync* (*rhi_frame_begin)(gfx_context* context);
 rhi_error_codes (*rhi_frame_end)(gfx_context* context);
 // Begin/End RenderPass
+//---------------------------
 
 rhi_error_codes (*rhi_wait_on_previous_cmds)(const gfx_frame_sync* in_flight_sync);
 rhi_error_codes (*rhi_acquire_image)(gfx_swapchain* swapchain, const gfx_frame_sync* in_flight_sync);
@@ -62,6 +66,9 @@ rhi_error_codes (*rhi_gfx_cmd_submit_queue)(gfx_cmd_queue* cmd_queue, gfx_frame_
 rhi_error_codes (*rhi_present)(gfx_swapchain* swapchain, gfx_frame_sync* frame_sync);
 
 rhi_error_codes (*rhi_resize_swapchain)(gfx_swapchain* swapchain, uint32_t width, uint32_t height);
+
+rhi_error_codes (*rhi_begin_gfx_cmd_recording)(gfx_cmd_buf* cmd_buf);
+rhi_error_codes (*rhi_end_gfx_cmd_recording)(gfx_cmd_buf* cmd_buf);
 
 rhi_error_codes (*rhi_clear)(void);
 rhi_error_codes (*rhi_draw)(void);

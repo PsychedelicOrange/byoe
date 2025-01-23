@@ -681,7 +681,7 @@ gfx_cmd_pool vulkan_device_create_gfx_cmd_pool(void)
     VkCommandPoolCreateInfo cmdPoolCI = {0};
     cmdPoolCI.sType                   = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     cmdPoolCI.queueFamilyIndex        = s_VkCtx.queue_idxs.gfx;    // same as present
-    cmdPoolCI.flags                   = 0;
+    cmdPoolCI.flags                   = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
     VK_CHECK_RESULT(vkCreateCommandPool(VKDEVICE, &cmdPoolCI, NULL, &backend->pool), "Cannot create gfx command pool");
     return pool;
@@ -694,6 +694,23 @@ void vulkan_device_destroy_gfx_cmd_pool(gfx_cmd_pool* pool)
         vkDestroyCommandPool(VKDEVICE, ((cmd_pool_backend*) pool->backend)->pool, NULL);
         free(pool->backend);
     }
+}
+
+gfx_cmd_buf vulkan_create_gfx_cmd_buf(gfx_cmd_pool* pool)
+{
+    VkCommandBufferAllocateInfo alloc = {
+        .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .pNext              = NULL,
+        .commandPool        = ((cmd_pool_backend*) (pool->backend))->pool,
+        .commandBufferCount = 1,
+        .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY};
+
+    gfx_cmd_buf cmd_buf = {0};
+    uuid_generate(&cmd_buf.uuid);
+    cmd_buf.backend = malloc(sizeof(VkCommandBuffer));
+
+    VK_CHECK_RESULT(vkAllocateCommandBuffers(VKDEVICE, &alloc, cmd_buf.backend), "[Vulkan] cannot allocate frame buffers");
+    return cmd_buf;
 }
 
 static void vulkan_internal_create_sema(void* backend)
@@ -740,17 +757,17 @@ gfx_frame_sync vulkan_device_create_frame_sync()
 
     {
         uuid_generate(&frame_sync.rendering_done.uuid);
-       frame_sync.rendering_done.visibility = gpu;
-       frame_sync.rendering_done.value      = UINT32_MAX;
-       frame_sync.rendering_done.backend    = malloc(sizeof(VkSemaphore));
-       vulkan_internal_create_sema(frame_sync.rendering_done.backend);
+        frame_sync.rendering_done.visibility = gpu;
+        frame_sync.rendering_done.value      = UINT32_MAX;
+        frame_sync.rendering_done.backend    = malloc(sizeof(VkSemaphore));
+        vulkan_internal_create_sema(frame_sync.rendering_done.backend);
     }
 
     if (!g_gfxConfig.use_timeline_semaphores) {
         uuid_generate(&frame_sync.in_flight.uuid);
         frame_sync.in_flight.visibility = cpu;
         frame_sync.in_flight.value      = UINT32_MAX;
-        frame_sync.in_flight.backend = malloc(sizeof(VkFence));
+        frame_sync.in_flight.backend    = malloc(sizeof(VkFence));
         vulkan_internal_create_fence(frame_sync.in_flight.backend);
     }
     return frame_sync;
@@ -888,7 +905,7 @@ rhi_error_codes vulkan_present(gfx_swapchain* swapchain, gfx_frame_sync* frame_s
         .pWaitSemaphores    = (VkSemaphore*) (frame_sync->rendering_done.backend),
         .pResults           = NULL};
 
-    VkResult result = vkQueuePresentKHR(s_VkCtx.queues.present, &presentInfo);
+    VkResult result = vkQueuePresentKHR(s_VkCtx.queues.gfx, &presentInfo);
 
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {
         vkDeviceWaitIdle(VKDEVICE);
@@ -913,6 +930,23 @@ rhi_error_codes vulkan_resize_swapchain(gfx_swapchain* swapchain, uint32_t width
 
     *swapchain = vulkan_device_create_swapchain(width, height);
 
+    return Success;
+}
+
+rhi_error_codes vulkan_begin_gfx_cmd_recording(gfx_cmd_buf* cmd_buf)
+{
+    VkCommandBufferBeginInfo begin = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .pNext = NULL,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT};
+
+    VK_CHECK_RESULT(vkBeginCommandBuffer(*(VkCommandBuffer*) cmd_buf->backend, &begin), "[Vulkan] Failed to start recoding command buffer");
+    return Success;
+}
+
+rhi_error_codes vulkan_end_gfx_cmd_recording(gfx_cmd_buf* cmd_buf)
+{
+    VK_CHECK_RESULT(vkEndCommandBuffer(*(VkCommandBuffer*) cmd_buf->backend), "[Vulkan] Failed to end recoding command buffer");
     return Success;
 }
 

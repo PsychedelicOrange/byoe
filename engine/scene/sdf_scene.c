@@ -17,13 +17,6 @@ void sdf_scene_init(SDF_Scene* scene)
     scene->culled_nodes_count = 0;
     scene->current_node_head  = 0;
     scene->nodes              = calloc(MAX_SDF_NODES, sizeof(SDF_Node));
-
-    // create the UBO to upload scene nodes data
-    glGenBuffers(1, &s_GPUSceneNodesUBO);
-    glBindBuffer(GL_UNIFORM_BUFFER, s_GPUSceneNodesUBO);
-    // Initialize with NULL data
-    glBufferData(GL_UNIFORM_BUFFER, sizeof(SDF_NodeGPUData) * MAX_SDF_NODES, NULL, GL_DYNAMIC_DRAW);
-    glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
 void sdf_scene_destroy(SDF_Scene* scene)

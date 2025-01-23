@@ -21,10 +21,25 @@ int gfx_init(rhi_api api)
         gfx_create_gfx_cmd_pool  = vulkan_device_create_gfx_cmd_pool;
         gfx_destroy_gfx_cmd_pool = vulkan_device_destroy_gfx_cmd_pool;
 
+        gfx_create_gfx_cmd_buf = vulkan_create_gfx_cmd_buf;
+
         gfx_create_frame_sync  = vulkan_device_create_frame_sync;
         gfx_destroy_frame_sync = vulkan_device_destroy_frame_sync;
 
         // RHI
+        rhi_frame_begin = vulkan_frame_begin;
+        rhi_frame_end   = vulkan_frame_end;
+
+        rhi_wait_on_previous_cmds = vulkan_wait_on_previous_cmds;
+        rhi_acquire_image         = vulkan_acquire_image;
+        rhi_gfx_cmd_enque_submit  = vulkan_gfx_cmd_enque_submit;
+        rhi_gfx_cmd_submit_queue  = vulkan_gfx_cmd_submit_queue;
+        rhi_present               = vulkan_present;
+        rhi_resize_swapchain      = vulkan_resize_swapchain;
+
+      rhi_begin_gfx_cmd_recording = vulkan_begin_gfx_cmd_recording;
+        rhi_end_gfx_cmd_recording   = vulkan_end_gfx_cmd_recording;
+
         rhi_clear = vulkan_draw;
     }
 
@@ -37,10 +52,12 @@ void gfx_destroy(void)
 
 void gfx_ctx_ignite(gfx_context* ctx)
 {
+    ctx->draw_cmds_pool = gfx_create_gfx_cmd_pool();
     for (uint32_t i = 0; i < MAX_FRAME_INFLIGHT; i++) {
         ctx->frame_sync[i] = gfx_create_frame_sync();
 
-        ctx->draw_cmds_pools[i] = gfx_create_gfx_cmd_pool();
+        // Allocate and create the command buffers
+        ctx->draw_cmds[i] = gfx_create_gfx_cmd_buf(&ctx->draw_cmds_pool);
     }
     // command pool per thread and 2 in-flight command buffers per pool
 }
