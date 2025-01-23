@@ -5,7 +5,9 @@ We decided to build a mini-engine using SDF (signed distance fields) and make a 
 
 ## Built by:
 Parth Sarvade   | [Github: PsychedelicOrange](https://github.com/PsychedelicOrange) | [Discord: psychedelicorange]()
+
 Maanyavar       | [Github: ]() | [Discord: earnestly]()
+
 Phani Srikar    | [Github: Pikachuxxxx](https://github.com/Pikachuxxxx) | [Discord: pikachuxxx]()
 
 ## Engine 
