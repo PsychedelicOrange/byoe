@@ -32,7 +32,7 @@ void         vulkan_device_destroy_gfx_cmd_pool(gfx_cmd_pool* pool);
 
 gfx_cmd_buf vulkan_create_gfx_cmd_buf(gfx_cmd_pool* pool);
 
-gfx_frame_sync vulkan_device_create_frame_sync();
+gfx_frame_sync vulkan_device_create_frame_sync(void);
 void           vulkan_device_destroy_frame_sync(gfx_frame_sync* frame_sync);
 //------------------------------------------
 // RHI

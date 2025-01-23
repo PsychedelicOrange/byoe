@@ -62,5 +62,4 @@
         }                                \
     }
 
-DEFINE_CLAMP(int)
-DEFINE_CLAMP(float)
+// DEFINE_CLAMP(float)

@@ -19,6 +19,8 @@
 #include <stdlib.h>
 #include <string.h>    // memset
 
+DEFINE_CLAMP(int)
+
 //--------------------------------------------------------
 
 #define VK_CHECK_RESULT(x, msg) \
@@ -33,9 +35,9 @@
 //--------------------------------------------------------
 
 // TODO:
-// - [ ] Complete Swapchain: sync primitives API + acquire/present/submit API
-// - [ ] command pool in renderer_sdf
-// - [ ] command buffers X2
+// - [x] Complete Swapchain: sync primitives API + acquire/present/submit API
+// - [x] command pool in renderer_sdf
+// - [x] command buffers X2
 // - [ ] basic rendering using begin rendering API for drawing a screen quad without vertices
 // - [ ] Descriptors API
 // - [ ] UBOs + Push constants API + setup descriptor sets for the resources X2
@@ -596,23 +598,6 @@ static void vulkan_internal_destroy_backbuffers(swapchain_backend* backend)
     }
 }
 
-static VkSemaphore vulkan_internal_create_timeline_semaphores()
-{
-    VkSemaphoreTypeCreateInfo sema_ci = {
-        .sType         = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
-        .pNext         = NULL,
-        .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
-        .initialValue  = 0};
-
-    VkSemaphoreCreateInfo createInfo = {0};
-    createInfo.sType                 = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-    createInfo.pNext                 = &sema_ci;
-    createInfo.flags                 = 0;
-
-    VkSemaphore timelineSemaphore;
-    vkCreateSemaphore(VKDEVICE, &createInfo, NULL, &timelineSemaphore);
-}
-
 gfx_swapchain vulkan_device_create_swapchain(uint32_t width, uint32_t height)
 {
     gfx_swapchain swapchain = {0};
@@ -761,7 +746,7 @@ static void vulkan_internal_destroy_fence(VkFence fence)
 
 static int frame_sync_alloc_counter = 0;
 
-gfx_frame_sync vulkan_device_create_frame_sync()
+gfx_frame_sync vulkan_device_create_frame_sync(void)
 {
     frame_sync_alloc_counter++;
 
@@ -774,7 +759,7 @@ gfx_frame_sync vulkan_device_create_frame_sync()
         frame_sync.image_ready.value      = UINT32_MAX;
         frame_sync.image_ready.backend    = malloc(sizeof(VkSemaphore));
         vulkan_internal_create_sema(frame_sync.image_ready.backend);
-        VK_TAG_OBJECT("image_ready_sema " + frame_sync_alloc_counter, VK_OBJECT_TYPE_SEMAPHORE, *(uint64_t*) frame_sync.image_ready.backend);
+        VK_TAG_OBJECT("image_ready_sema", VK_OBJECT_TYPE_SEMAPHORE, *(uint64_t*) frame_sync.image_ready.backend);
     }
 
     {
@@ -783,7 +768,7 @@ gfx_frame_sync vulkan_device_create_frame_sync()
         frame_sync.rendering_done.value      = UINT32_MAX;
         frame_sync.rendering_done.backend    = malloc(sizeof(VkSemaphore));
         vulkan_internal_create_sema(frame_sync.rendering_done.backend);
-        VK_TAG_OBJECT("rendering_done_sema " + frame_sync_alloc_counter, VK_OBJECT_TYPE_SEMAPHORE, *(uint64_t*) frame_sync.image_ready.backend);
+        VK_TAG_OBJECT("rendering_done_sema", VK_OBJECT_TYPE_SEMAPHORE, *(uint64_t*) frame_sync.image_ready.backend);
     }
 
     if (!g_gfxConfig.use_timeline_semaphores) {
@@ -792,7 +777,7 @@ gfx_frame_sync vulkan_device_create_frame_sync()
         frame_sync.in_flight.value      = UINT32_MAX;
         frame_sync.in_flight.backend    = malloc(sizeof(VkFence));
         vulkan_internal_create_fence(frame_sync.in_flight.backend);
-        VK_TAG_OBJECT("in_flight_fence " + frame_sync_alloc_counter, VK_OBJECT_TYPE_FENCE, *(uint64_t*) frame_sync.in_flight.backend);
+        VK_TAG_OBJECT("in_flight_fence", VK_OBJECT_TYPE_FENCE, *(uint64_t*) frame_sync.in_flight.backend);
     }
     return frame_sync;
 }

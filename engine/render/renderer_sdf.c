@@ -53,35 +53,35 @@ static void renderer_internal_sdf_resize(GLFWwindow* window, int width, int heig
     glViewport(0, 0, width, height);
 }
 
-static void renderer_internal_sdf_hot_reload_shaders(void)
-{
-    // reload the raymarch shader
-    glDeleteProgram(s_RendererSDFInternalState.raymarchShaderID);
-    s_RendererSDFInternalState.raymarchShaderID = create_shader("engine/shaders/screen_quad.vert", "engine/shaders/raymarch_sdf_scene.frag");
-}
+// static void renderer_internal_sdf_hot_reload_shaders(void)
+// {
+//     // reload the raymarch shader
+//     glDeleteProgram(s_RendererSDFInternalState.raymarchShaderID);
+//     s_RendererSDFInternalState.raymarchShaderID = create_shader("engine/shaders/screen_quad.vert", "engine/shaders/raymarch_sdf_scene.frag");
+// }
 
-static void renderer_internal_sdf_clear_screen(color_rgba color)
-{
-    glClearColor(color.r, color.g, color.b, color.a);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-}
+// static void renderer_internal_sdf_clear_screen(color_rgba color)
+// {
+//     glClearColor(color.r, color.g, color.b, color.a);
+//     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+// }
 
-static void renderer_internal_sdf_set_pipeline_settings(void)
-{
-    // Enable Depth testing
-    glEnable(GL_DEPTH_TEST);
-}
+// static void renderer_internal_sdf_set_pipeline_settings(void)
+// {
+//     // Enable Depth testing
+//     glEnable(GL_DEPTH_TEST);
+// }
 
-static void renderer_internal_sdf_set_raymarch_shader_global_uniforms(void)
-{
-    int resolution[2] = {s_RendererSDFInternalState.width, s_RendererSDFInternalState.height};
-    setUniformVec2Int(s_RendererSDFInternalState.raymarchShaderID, resolution, "resolution");
+// static void renderer_internal_sdf_set_raymarch_shader_global_uniforms(void)
+// {
+//     int resolution[2] = {s_RendererSDFInternalState.width, s_RendererSDFInternalState.height};
+//     setUniformVec2Int(s_RendererSDFInternalState.raymarchShaderID, resolution, "resolution");
 
-    const Camera camera                 = gamestate_get_global_instance()->camera;
-    mat4s        projection             = glms_perspective(camera.fov, (float) s_RendererSDFInternalState.width / (float) s_RendererSDFInternalState.height, camera.near_plane, camera.far_plane);
-    s_RendererSDFInternalState.viewproj = glms_mul(projection, camera.lookAt);
-    setUniformMat4(s_RendererSDFInternalState.raymarchShaderID, s_RendererSDFInternalState.viewproj, "viewproj");
-}
+//     const Camera camera                 = gamestate_get_global_instance()->camera;
+//     mat4s        projection             = glms_perspective(camera.fov, (float) s_RendererSDFInternalState.width / (float) s_RendererSDFInternalState.height, camera.near_plane, camera.far_plane);
+//     s_RendererSDFInternalState.viewproj = glms_mul(projection, camera.lookAt);
+//     setUniformMat4(s_RendererSDFInternalState.raymarchShaderID, s_RendererSDFInternalState.viewproj, "viewproj");
+// }
 
 static bool render_internal_sdf_init_gfx_ctx(uint32_t width, uint32_t height)
 {
@@ -154,8 +154,8 @@ void renderer_sdf_render(void)
     if (game_state->keycodes[GLFW_KEY_ESCAPE] == GLFW_PRESS)
         glfwSetWindowShouldClose(s_RendererSDFInternalState.window, true);
 
-    if (game_state->keycodes[GLFW_KEY_SPACE] == GLFW_PRESS)
-        renderer_internal_sdf_hot_reload_shaders();
+    // if (game_state->keycodes[GLFW_KEY_SPACE] == GLFW_PRESS)
+    //     renderer_internal_sdf_hot_reload_shaders();
 
     // Scene Culling is done before any rendering begins (might move it to update part of engine loop)
 
