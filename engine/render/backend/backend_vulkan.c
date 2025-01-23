@@ -26,6 +26,8 @@
 
 #define VK_LAYER_KHRONOS_VALIDATION_NAME "VK_LAYER_KHRONOS_validation"
 
+#define VK_TAG_OBJECT(name, type, handle) vulkan_internal_tag_object(name, type, handle);
+
 //--------------------------------------------------------
 // Internal Types
 //--------------------------------------------------------
@@ -112,6 +114,21 @@ static vulkan_context s_VkCtx;
 #define VKSURFACE  s_VkCtx.surface
 
 //--------------------------------------------------------
+
+static VkResult vulkan_internal_tag_object(const char* name, VkObjectType type, uint64_t handle)
+{
+    VkDebugUtilsObjectNameInfoEXT info = {
+        .sType        = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+        .pObjectName  = name,
+        .objectType   = type,
+        .objectHandle = (uint64_t) handle};
+
+    PFN_vkSetDebugUtilsObjectNameEXT func = (PFN_vkSetDebugUtilsObjectNameEXT) vkGetInstanceProcAddr(VKINSTANCE, "vkSetDebugUtilsObjectNameEXT");
+    if (func != NULL)
+        return func(VKDEVICE, &info);
+    else
+        return VK_ERROR_EXTENSION_NOT_PRESENT;
+}
 
 static VkResult vulkan_internal_create_debug_utils_messenger(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger)
 {
@@ -742,8 +759,12 @@ static void vulkan_internal_destroy_fence(VkFence fence)
     vkDestroyFence(VKDEVICE, fence, NULL);
 }
 
+static int frame_sync_alloc_counter = 0;
+
 gfx_frame_sync vulkan_device_create_frame_sync()
 {
+    frame_sync_alloc_counter++;
+
     // 2 semas and 1 fence
     gfx_frame_sync frame_sync = {0};
 
@@ -753,6 +774,7 @@ gfx_frame_sync vulkan_device_create_frame_sync()
         frame_sync.image_ready.value      = UINT32_MAX;
         frame_sync.image_ready.backend    = malloc(sizeof(VkSemaphore));
         vulkan_internal_create_sema(frame_sync.image_ready.backend);
+        VK_TAG_OBJECT("image_ready_sema " + frame_sync_alloc_counter, VK_OBJECT_TYPE_SEMAPHORE, *(uint64_t*) frame_sync.image_ready.backend);
     }
 
     {
@@ -761,6 +783,7 @@ gfx_frame_sync vulkan_device_create_frame_sync()
         frame_sync.rendering_done.value      = UINT32_MAX;
         frame_sync.rendering_done.backend    = malloc(sizeof(VkSemaphore));
         vulkan_internal_create_sema(frame_sync.rendering_done.backend);
+        VK_TAG_OBJECT("rendering_done_sema " + frame_sync_alloc_counter, VK_OBJECT_TYPE_SEMAPHORE, *(uint64_t*) frame_sync.image_ready.backend);
     }
 
     if (!g_gfxConfig.use_timeline_semaphores) {
@@ -769,6 +792,7 @@ gfx_frame_sync vulkan_device_create_frame_sync()
         frame_sync.in_flight.value      = UINT32_MAX;
         frame_sync.in_flight.backend    = malloc(sizeof(VkFence));
         vulkan_internal_create_fence(frame_sync.in_flight.backend);
+        VK_TAG_OBJECT("in_flight_fence " + frame_sync_alloc_counter, VK_OBJECT_TYPE_FENCE, *(uint64_t*) frame_sync.in_flight.backend);
     }
     return frame_sync;
 }
@@ -797,6 +821,8 @@ void vulkan_device_destroy_frame_sync(gfx_frame_sync* frame_sync)
 
 gfx_frame_sync* vulkan_frame_begin(gfx_context* context)
 {
+    LOG_INFO("curr_in-flight_frame_idx: %d", context->frame_idx);
+
     gfx_frame_sync* curr_frame_sync = &context->frame_sync[context->frame_idx];
 
     vulkan_wait_on_previous_cmds(curr_frame_sync);
@@ -940,6 +966,7 @@ rhi_error_codes vulkan_begin_gfx_cmd_recording(gfx_cmd_buf* cmd_buf)
         .pNext = NULL,
         .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT};
 
+    vkResetCommandBuffer(*(VkCommandBuffer*) cmd_buf->backend, /*VkCommandBufferResetFlagBits*/ 0);
     VK_CHECK_RESULT(vkBeginCommandBuffer(*(VkCommandBuffer*) cmd_buf->backend, &begin), "[Vulkan] Failed to start recoding command buffer");
     return Success;
 }
