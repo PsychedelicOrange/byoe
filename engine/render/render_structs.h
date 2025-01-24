@@ -5,11 +5,8 @@
 #include "../core/common.h"
 #include "../core/uuid/uuid.h"
 
-// TODO: Add defines so as to make this include-able in shaders
-#ifndef SHADER_INCLUDE
-    #include <stdbool.h>
-    #include <stdint.h>
-#endif
+#include <stdbool.h>
+#include <stdint.h>
 
 #include "../scene/transform.h"
 
@@ -234,6 +231,7 @@ typedef struct SDF_Node
 #define MAX_BACKBUFFERS         3
 #define MAX_FRAME_INFLIGHT      2
 #define MAX_CMD_BUFFS_PER_QUEUE 16
+#define MAX_RT                  8
 
 typedef enum gfx_format
 {
@@ -355,6 +353,7 @@ typedef struct gfx_cmd_pool
 {
     random_uuid_t uuid;
     void*         backend;
+    void*         _pad0;
     // TODO: store refs to all the command buffers allocated
 } gfx_cmd_pool;
 
@@ -362,13 +361,14 @@ typedef struct gfx_cmd_buf
 {
     random_uuid_t uuid;
     void*         backend;
+    void*         _pad0;
 } gfx_cmd_buf;
 
 // Example:
 //typedef struct gfx_thread_cmd
 //{
 //    // TODO: add atomics here
-//    gfx_cmd_pool* draw_cmds_pools[MAX_FRAME_INFLIGHT];
+//    gfx_cmd_pool draw_cmds_pool;
 //    gfx_cmd_buf*  draw_cmds[MAX_FRAME_INFLIGHT];
 //} gfx_thread_cmd;
 
@@ -393,12 +393,28 @@ typedef struct gfx_shader
     } stages;
 } gfx_shader;
 
+typedef enum gfx_pipeline_type
+{
+    graphics,
+    compute
+} gfx_pipeline_type;
+
+typedef struct gfx_pipeline_create_info
+{
+    gfx_shader        shader;
+    gfx_format        color_formats[MAX_RT];
+    uint32_t          color_formats_count;
+    gfx_format        depth_format;
+    gfx_pipeline_type type;
+    bool              enable_depth_test;
+    bool              enable_depth_write;
+    bool              _pad0[2];
+} gfx_pipeline_create_info;
+
 typedef struct gfx_pipeline
 {
     random_uuid_t uuid;
     void*         backend;
-    // pipeline props
-
 } gfx_pipeline;
 
 //-----------------------------------
@@ -428,8 +444,6 @@ typedef struct gfx_context
     gfx_cmd_queue cmd_queue;
 } gfx_context;
 
-#define MAX_RT 8
-
 typedef struct gfx_attachment
 {
     color_rgba   clear_color;
@@ -440,14 +454,15 @@ typedef struct gfx_attachment
 
 typedef struct gfx_render_pass
 {
-    vec2s          extents;
+    alignas(16) vec2s extents;
     uint32_t       _pad0;
     uint32_t       color_attachments_count;
     gfx_attachment color_attachments[MAX_RT];
     gfx_attachment depth_attachment;
     gfx_swapchain* swapchain;
+    bool           is_compute_pass;
     bool           is_swap_pass;
-    bool           _pad1[7];
+    bool           _pad1[6];
 } gfx_render_pass;
 
 #endif    // RENDER_STRUCTS_H

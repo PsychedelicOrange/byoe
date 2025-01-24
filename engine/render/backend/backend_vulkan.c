@@ -974,7 +974,7 @@ static SPVBuffer loadSPVFile(const char* filename)
     long fileSize = ftell(file);
     fseek(file, 0, SEEK_SET);
 
-    if (fileSize <= 0 ) {
+    if (fileSize <= 0) {
         fprintf(stderr, "Invalid SPV file size.\n");
         fclose(file);
         return buffer;
@@ -1097,6 +1097,31 @@ void vulkan_device_destroy_vs_ps_shader(gfx_shader* shader)
 
     free(backend_vs);
     free(backend_ps);
+}
+
+static void vulkan_internal_create_compute_pipeline(gfx_pipeline_create_info info)
+{
+}
+
+typedef struct pipeline_backend
+{
+    VkPipeline pipeline;
+} pipeline_backend;
+
+static void vulkan_internal_create_gfx_pipeline(gfx_pipeline_create_info info)
+{
+
+}
+
+gfx_pipeline vulkan_device_create_pipeline(gfx_pipeline_create_info info)
+{
+    if (info.type == graphics) vulkan_internal_create_gfx_pipeline(info);
+    else
+        vulkan_internal_create_compute_pipeline(info);
+}
+
+void vulkan_device_destroy_pipeline(gfx_pipeline* pipeline)
+{
 }
 
 //--------------------------------------------------------

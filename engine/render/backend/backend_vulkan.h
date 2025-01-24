@@ -41,12 +41,15 @@ gfx_shader vulkan_device_create_vs_ps_shader(const char* spv_file_path_vs, const
 
 void vulkan_device_destroy_compute_shader(gfx_shader* shader);
 void vulkan_device_destroy_vs_ps_shader(gfx_shader* shader);
+
+gfx_pipeline vulkan_device_create_pipeline(gfx_pipeline_create_info info);
+void         vulkan_device_destroy_pipeline(gfx_pipeline* pipeline);
+
 //------------------------------------------
 // RHI
 //------------------------------------------
 
 gfx_frame_sync* vulkan_frame_begin(gfx_context* context);
-// Begin/End RenderPass
 rhi_error_codes vulkan_frame_end(gfx_context* context);
 
 rhi_error_codes vulkan_wait_on_previous_cmds(const gfx_frame_sync* in_flight_sync);
