@@ -19,14 +19,14 @@ int game_main(void)
     glm_euler_xyz_quat((vec3) {0.0f, glm_rad(45.0f), 0.0f}, init_quat);
 
     SDF_Primitive sphere = {
-        .type      = SDF_PRIM_Box,
+        .type      = SDF_PRIM_Sphere,
         .transform = {
-            .position = {{0.0f, 0.0f, 0.0f}},
+            .position = {{13.0f, -14.0f, 100.0f}},
             //.rotation = {0.0f, 0.383f, 0.0f, 0.924f},
             .rotation = {0.0f, 0.0f, 0.0f, 0.0f},
             .scale    = 1.0f},
-        .props.box = {.dimensions = {{0.45f, 0.20f, 1.0f}}},
-        .material  = {.diffuse = {0.75f, 0.3f, 0.2f, 1.0f}}};
+        .props.sphere = {.radius = 2.0f},
+        .material     = {.diffuse = {0.75f, 0.3f, 0.2f, 1.0f}}};
     int player_prim_idx = sdf_scene_add_primitive(asteroids_game_scene, sphere);
 
     REGISTER_GAME_OBJECT(0, Camera_Start, Camera_Update);
@@ -43,34 +43,58 @@ int game_main(void)
 
     // Testing All Primitives here
     {
-        SDF_Primitive primitive_def = {
-            .type      = SDF_PRIM_Sphere,
+        SDF_Primitive orange = {
+            .type      = SDF_PRIM_Box,
             .transform = {
-                .position = {{demoStartX, 0.0f, 0.0f}},
+                .position = {{0, 0.8f, -0.4f}},
                 .rotation = {0.0f, 0.0f, 0.0f, 0.0f},
                 .scale    = 1.0f},
-            .props.sphere = {.radius = 0.1f},
-            // .props.box    = {.dimensions = {{1.0f, 1.0f, 1.0f}}},
-            //.props.round_box        = {.dimensions = {1.0f, 1.0f, 1.0f}, .roundness = 0.5f},                      // TEST
-            //.props.box_frame        = {.dimensions = {1.0f, 1.0f, 1.0f}, .thickness = 0.025f},                    // TEST
-            //.props.torus            = {.thickness = {1.0f, 0.25f}},                                               // TEST
-            //.props.torus_capped     = {.thickness = {1.0f, 0.25f}, .radiusA = 1.0f, .radiusB = 0.5f},             // TEST
-            //.props.capsule          = {.start = {0.0f, 0.0f, 0.0f}, .end = {1.0f, 1.0f, 1.0f}, .radius = 1.0f},   // TEST
-            //.props.vertical_capsule = {.radius = 0.25f, .height = 1.0f},                                          // TEST
-            //.props.cylinder         = {.radius = 0.25f, .height = 1.0f},                                          // TEST
-            //.props.rounded_cylinder = {.radiusA = 0.15f, .radiusB = 0.75f, .height = 1.0f},                       // TEST
-            //.props.ellipsoid        = {.radii = {1.0f, 2.0f, 1.0f}},                                              // TEST
-            //.props.hexagonal_prism  = {.height = 1.0f, .radius = 1.0f},                                           // TEST
-            //.props.triangular_prism = {.height = 1.0f, .radius = 1.0f},                                           // TEST
-            //.props.cone             = {.height = 1.0f, .angle = 0.78f},                                           // TEST
-            //.props.capped_cone      = {.radiusTop = 0.25, .radiusBottom = 0.5f, .height = 1.0f},                  // TEST
-            //.props.plane            = {.distance = 0.2f, .normal = {0.0f, 1.0f, 0.0f}},                           // TEST
-            .material = {.diffuse = {0.5f, 0.3f, 0.7f, 1.0f}}};
-        int prim = sdf_scene_add_primitive(scene, primitive_def);
-        (void) prim;
-        demoStartX += 0.5f;
+            .props.box = {.dimensions = {{3.1f, 0.6f, 0.1f}}},
+            .material  = {.diffuse = {1.0f, 0.4f, 0.12f, 1.0f}}};
+        int orange_prim = sdf_scene_add_primitive(scene, orange);
+        (void) orange_prim;
+
+        SDF_Primitive green = {
+            .type      = SDF_PRIM_Box,
+            .transform = {
+                .position = {{0, 0.2f, -0.4f}},
+                .rotation = {0.0f, 0.0f, 0.0f, 0.0f},
+                .scale    = 1.0f},
+            .props.box = {.dimensions = {{3.1f, 0.6f, 0.1f}}},
+            .material  = {.diffuse = {0.01f, 0.41f, 0.21f, 1.0f}}};
+        int green_prim = sdf_scene_add_primitive(scene, green);
+        (void) green_prim;
+
+        SDF_Primitive sphere = {
+            .type      = SDF_PRIM_Sphere,
+            .transform = {
+                .position = {{0, 0.5f, -0.4f}},
+                .rotation = {0.0f, 0.0f, 0.0f, 0.0f},
+                .scale    = 1.0f},
+            .props.sphere = {.radius = 0.3f},
+            .material     = {.diffuse = {0.0f, 0.0f, 1.0f, 1.0f}}};
+        int blue_prim = sdf_scene_add_primitive(scene, sphere);
+        (void) blue_prim;
+
+        SDF_Primitive white = {
+            .type      = SDF_PRIM_Box,
+            .transform = {
+                .position = {{0, 0.5f, -0.4f}},
+                .rotation = {0.0f, 0.0f, 0.0f, 0.0f},
+                .scale    = 1.0f},
+            .props.box = {.dimensions = {{3.1f, 0.6f, 0.1f}}},
+            .material  = {.diffuse = {1.0f, 1.0f, 1.0f, 1.0f}}};
+        int white_prim = sdf_scene_add_primitive(scene, white);
+        (void) white_prim;
+
+        SDF_Object meta_def = {
+            .type   = SDF_BLEND_SMOOTH_UNION,
+            .prim_a = white_prim,
+            .prim_b = blue_prim};
+        sdf_scene_add_object(scene, meta_def);
     }
 
+    /*
     // simple cube
     {
         SDF_Primitive cube = {
@@ -165,7 +189,7 @@ int game_main(void)
         int mold_idx = sdf_scene_add_object(scene, cube_mold);
         (void) mold_idx;
     }
-
+	*/
     renderer_sdf_set_scene(scene);
 #endif    // TEST_SCENE
 
