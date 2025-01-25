@@ -208,31 +208,31 @@ static VkCompareOp vulkan_util_compare_op_translate(gfx_compare_op compare_op)
     }
 }
 
-static VkFormat vulkan_util_format_translate(gfx_format format)
-{
-    switch (format) {
-        case r8int: return VK_FORMAT_R8_SINT;
-        case r8uint: return VK_FORMAT_R8_UINT;
-        case r8f: return VK_FORMAT_R8_UNORM;
-        case r16f: return VK_FORMAT_R16_SFLOAT;
-        case r32f: return VK_FORMAT_R32_SFLOAT;
-        case r32uint: return VK_FORMAT_R32_UINT;
-        case r32int: return VK_FORMAT_R32_SINT;
-        case rgbint: return VK_FORMAT_R8G8B8_SINT;
-        case rgbuint: return VK_FORMAT_R8G8B8_UINT;
-        case rgbunorm: return VK_FORMAT_R8G8B8_UNORM;
-        case rgb32f: return VK_FORMAT_R32G32B32_SFLOAT;
-        case rgbaint: return VK_FORMAT_R8G8B8A8_SINT;
-        case rgbauint: return VK_FORMAT_R8G8B8A8_UINT;
-        case rgbaunorm: return VK_FORMAT_R8G8B8A8_UNORM;
-        case rgba32f: return VK_FORMAT_R32G32B32A32_SFLOAT;
-        case depth32f: return VK_FORMAT_D32_SFLOAT;
-        case depth16unorm: return VK_FORMAT_D16_UNORM;
-        case depthstencil: return VK_FORMAT_D24_UNORM_S8_UINT;
-        case screen: return VK_FORMAT_B8G8R8A8_UNORM;
-        default: return VK_FORMAT_UNDEFINED;
-    }
-}
+// static VkFormat vulkan_util_format_translate(gfx_format format)
+// {
+//     switch (format) {
+//         case r8int: return VK_FORMAT_R8_SINT;
+//         case r8uint: return VK_FORMAT_R8_UINT;
+//         case r8f: return VK_FORMAT_R8_UNORM;
+//         case r16f: return VK_FORMAT_R16_SFLOAT;
+//         case r32f: return VK_FORMAT_R32_SFLOAT;
+//         case r32uint: return VK_FORMAT_R32_UINT;
+//         case r32int: return VK_FORMAT_R32_SINT;
+//         case rgbint: return VK_FORMAT_R8G8B8_SINT;
+//         case rgbuint: return VK_FORMAT_R8G8B8_UINT;
+//         case rgbunorm: return VK_FORMAT_R8G8B8_UNORM;
+//         case rgb32f: return VK_FORMAT_R32G32B32_SFLOAT;
+//         case rgbaint: return VK_FORMAT_R8G8B8A8_SINT;
+//         case rgbauint: return VK_FORMAT_R8G8B8A8_UINT;
+//         case rgbaunorm: return VK_FORMAT_R8G8B8A8_UNORM;
+//         case rgba32f: return VK_FORMAT_R32G32B32A32_SFLOAT;
+//         case depth32f: return VK_FORMAT_D32_SFLOAT;
+//         case depth16unorm: return VK_FORMAT_D16_UNORM;
+//         case depthstencil: return VK_FORMAT_D24_UNORM_S8_UINT;
+//         case screen: return VK_FORMAT_B8G8R8A8_UNORM;
+//         default: return VK_FORMAT_UNDEFINED;
+//     }
+// }
 
 //--------------------------------------------------------
 
