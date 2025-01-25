@@ -12,5 +12,4 @@ void render_utils_crash_game(char* msg);
 
 struct GLFWwindow* render_utils_create_glfw_window(const char* title, uint32_t width, uint32_t height);
 
-
 #endif

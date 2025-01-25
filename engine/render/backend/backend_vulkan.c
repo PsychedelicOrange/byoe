@@ -124,6 +124,117 @@ static vulkan_context s_VkCtx;
 #define VKSURFACE  s_VkCtx.surface
 
 //--------------------------------------------------------
+// Util functions
+
+static VkPrimitiveTopology vulkan_util_draw_type_translate(gfx_draw_type draw_type)
+{
+    switch (draw_type) {
+        case point: return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+        case line: return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+        case triangle: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        default: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    }
+}
+
+// Function to translate blend operations
+static VkBlendOp vulkan_util_blend_op_translate(gfx_blend_op blend_op)
+{
+    switch (blend_op) {
+        case add: return VK_BLEND_OP_ADD;
+        case subtract: return VK_BLEND_OP_SUBTRACT;
+        case reverse_subtract: return VK_BLEND_OP_REVERSE_SUBTRACT;
+        case min: return VK_BLEND_OP_MIN;
+        case max: return VK_BLEND_OP_MAX;
+        default: return VK_BLEND_OP_ADD;
+    }
+}
+
+// Function to translate blend factors
+static VkBlendFactor vulkan_util_blend_factor_translate(gfx_blend_factor blend_factor)
+{
+    switch (blend_factor) {
+        case zero: return VK_BLEND_FACTOR_ZERO;
+        case one: return VK_BLEND_FACTOR_ONE;
+        case src_color: return VK_BLEND_FACTOR_SRC_COLOR;
+        case one_minus_src_color: return VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
+        case dst_color: return VK_BLEND_FACTOR_DST_COLOR;
+        case one_minus_dst_color: return VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
+        case src_alpha: return VK_BLEND_FACTOR_SRC_ALPHA;
+        case one_minus_src_alpha: return VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        case dst_alpha: return VK_BLEND_FACTOR_DST_ALPHA;
+        case one_minus_dst_alpha: return VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
+        case constant_color: return VK_BLEND_FACTOR_CONSTANT_COLOR;
+        case one_minus_constant_color: return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR;
+        case constant_alpha: return VK_BLEND_FACTOR_CONSTANT_ALPHA;
+        case one_minus_constant_alpha: return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA;
+        case src_alpha_saturate: return VK_BLEND_FACTOR_SRC_ALPHA_SATURATE;
+        default: return VK_BLEND_FACTOR_ONE;
+    }
+}
+
+static VkPolygonMode vulkan_util_polygon_mode_translate(gfx_polygon_mode polygon_mode)
+{
+    switch (polygon_mode) {
+        case GFX_POLYGON_MODE_FILL: return VK_POLYGON_MODE_FILL;
+        case GFX_POLYGON_MODE_WIRE: return VK_POLYGON_MODE_LINE;
+        case GFX_POLYGON_MODE_POINT: return VK_POLYGON_MODE_POINT;
+        default: return VK_POLYGON_MODE_FILL;
+    }
+}
+
+static VkCullModeFlags vulkan_util_cull_mode_translate(gfx_cull_mode cull_mode)
+{
+    switch (cull_mode) {
+        case back: return VK_CULL_MODE_BACK_BIT;
+        case front: return VK_CULL_MODE_FRONT_BIT;
+        case back_and_front: return VK_CULL_MODE_FRONT_AND_BACK;
+        case none: return VK_CULL_MODE_NONE;
+        default: return VK_CULL_MODE_BACK_BIT;
+    }
+}
+
+static VkCompareOp vulkan_util_compare_op_translate(gfx_compare_op compare_op)
+{
+    switch (compare_op) {
+        case never: return VK_COMPARE_OP_NEVER;
+        case less: return VK_COMPARE_OP_LESS;
+        case equal: return VK_COMPARE_OP_EQUAL;
+        case less_or_equal: return VK_COMPARE_OP_LESS_OR_EQUAL;
+        case greater: return VK_COMPARE_OP_GREATER;
+        case not_equal: return VK_COMPARE_OP_NOT_EQUAL;
+        case greater_or_equal: return VK_COMPARE_OP_GREATER_OR_EQUAL;
+        case always: return VK_COMPARE_OP_ALWAYS;
+        default: return VK_COMPARE_OP_ALWAYS;    // Fallback to always as default
+    }
+}
+
+static VkFormat vulkan_util_format_translate(gfx_format format)
+{
+    switch (format) {
+        case r8int: return VK_FORMAT_R8_SINT;
+        case r8uint: return VK_FORMAT_R8_UINT;
+        case r8f: return VK_FORMAT_R8_UNORM;
+        case r16f: return VK_FORMAT_R16_SFLOAT;
+        case r32f: return VK_FORMAT_R32_SFLOAT;
+        case r32uint: return VK_FORMAT_R32_UINT;
+        case r32int: return VK_FORMAT_R32_SINT;
+        case rgbint: return VK_FORMAT_R8G8B8_SINT;
+        case rgbuint: return VK_FORMAT_R8G8B8_UINT;
+        case rgbunorm: return VK_FORMAT_R8G8B8_UNORM;
+        case rgb32f: return VK_FORMAT_R32G32B32_SFLOAT;
+        case rgbaint: return VK_FORMAT_R8G8B8A8_SINT;
+        case rgbauint: return VK_FORMAT_R8G8B8A8_UINT;
+        case rgbaunorm: return VK_FORMAT_R8G8B8A8_UNORM;
+        case rgba32f: return VK_FORMAT_R32G32B32A32_SFLOAT;
+        case depth32f: return VK_FORMAT_D32_SFLOAT;
+        case depth16unorm: return VK_FORMAT_D16_UNORM;
+        case depthstencil: return VK_FORMAT_D24_UNORM_S8_UINT;
+        case screen: return VK_FORMAT_B8G8R8A8_UNORM;
+        default: return VK_FORMAT_UNDEFINED;
+    }
+}
+
+//--------------------------------------------------------
 
 static VkResult vulkan_internal_tag_object(const char* name, VkObjectType type, uint64_t handle)
 {
@@ -460,6 +571,8 @@ static queue_backend vulkan_internal_create_queues(queue_indices indices)
 
     return backend;
 }
+
+//--------------------------------------------------------
 
 gfx_context vulkan_ctx_init(GLFWwindow* window, uint32_t width, uint32_t height)
 {
@@ -971,7 +1084,7 @@ static SPVBuffer loadSPVFile(const char* filename)
 
     // Get the file size
     fseek(file, 0, SEEK_END);
-    long fileSize = ftell(file);
+    unsigned long fileSize = ftell(file);
     fseek(file, 0, SEEK_SET);
 
     if (fileSize <= 0) {
@@ -1032,7 +1145,7 @@ gfx_shader vulkan_device_create_compute_shader(const char* spv_file_path)
 
         backend->modules.CS = vulkan_internal_create_shader_handle(spv_file_path);
 
-        backend->stage_ci = (VkPipelineShaderStageCreateInfo){
+        backend->stage_ci = (VkPipelineShaderStageCreateInfo) {
             .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage  = VK_SHADER_STAGE_COMPUTE_BIT,
             .module = backend->modules.CS};
@@ -1052,7 +1165,7 @@ gfx_shader vulkan_device_create_vs_ps_shader(const char* spv_file_path_vs, const
 
         backend_vs->modules.VS = vulkan_internal_create_shader_handle(spv_file_path_vs);
 
-        backend_vs->stage_ci = (VkPipelineShaderStageCreateInfo){
+        backend_vs->stage_ci = (VkPipelineShaderStageCreateInfo) {
             .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage  = VK_SHADER_STAGE_VERTEX_BIT,
             .module = backend_vs->modules.VS};
@@ -1065,7 +1178,7 @@ gfx_shader vulkan_device_create_vs_ps_shader(const char* spv_file_path_vs, const
 
         backend_ps->modules.PS = vulkan_internal_create_shader_handle(spv_file_path_ps);
 
-        backend_ps->stage_ci = (VkPipelineShaderStageCreateInfo){
+        backend_ps->stage_ci = (VkPipelineShaderStageCreateInfo) {
             .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage  = VK_SHADER_STAGE_FRAGMENT_BIT,
             .module = backend_ps->modules.PS};
@@ -1099,8 +1212,14 @@ void vulkan_device_destroy_vs_ps_shader(gfx_shader* shader)
     free(backend_ps);
 }
 
-static void vulkan_internal_create_compute_pipeline(gfx_pipeline_create_info info)
+static gfx_pipeline vulkan_internal_create_compute_pipeline(gfx_pipeline_create_info info)
 {
+    gfx_pipeline pipeline = {0};
+    uuid_generate(&pipeline.uuid);
+
+    (void) info;
+
+    return pipeline;
 }
 
 typedef struct pipeline_backend
@@ -1108,20 +1227,206 @@ typedef struct pipeline_backend
     VkPipeline pipeline;
 } pipeline_backend;
 
-static void vulkan_internal_create_gfx_pipeline(gfx_pipeline_create_info info)
+static gfx_pipeline vulkan_internal_create_gfx_pipeline(gfx_pipeline_create_info info)
 {
+    gfx_pipeline pipeline = {0};
+    uuid_generate(&pipeline.uuid);
 
+    //----------------------------
+    // Vertex Input Layout Stage
+    //----------------------------
+    // DISABLED FOR TESTING SCREEN QUAD
+    // VkVertexInputBindingDescription vertex_binding_description = {
+    //     .binding   = 0,
+    //     .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
+    //     .stride    = 0};
+
+    // VkVertexInputAttributeDescription input_attrib = {
+    //     .binding  = 0,
+    //     .location = 0,
+    //     .format   = VK_FORMAT_R32G32B32A32_SFLOAT,
+    //     .offset   = 0};
+
+    // VkPipelineVertexInputStateCreateInfo vertex_input_sci = {
+    //     .sType                           = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+    //     .pNext                           = NULL,
+    //     .vertexBindingDescriptionCount   = 0,
+    //     .pVertexBindingDescriptions      = NULL,
+    //     .vertexAttributeDescriptionCount = 0,
+    //     .pVertexAttributeDescriptions    = NULL};
+
+    //----------------------------
+    // Input Assembly Stage
+    //----------------------------
+    VkPipelineInputAssemblyStateCreateInfo input_assembly_sci = {
+        .sType                  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+        .pNext                  = NULL,
+        .primitiveRestartEnable = VK_FALSE,
+        .topology               = vulkan_util_draw_type_translate(info.draw_type)};
+
+    //----------------------------
+    // Viewport and Dynamic states
+    //----------------------------
+    VkPipelineViewportStateCreateInfo viewport_sci = {
+        .sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+        .pNext         = NULL,
+        .viewportCount = 1,
+        .scissorCount  = 1};
+
+    const uint32_t NUM_DYNAMIC_STATES                            = 2;
+    VkDynamicState dynamic_state_descriptors[NUM_DYNAMIC_STATES] = {
+        VK_DYNAMIC_STATE_VIEWPORT,
+        VK_DYNAMIC_STATE_SCISSOR};
+
+    VkPipelineDynamicStateCreateInfo dynamic_state_ci = {
+        .sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+        .pNext             = NULL,
+        .dynamicStateCount = NUM_DYNAMIC_STATES,
+        .pDynamicStates    = dynamic_state_descriptors};
+
+    //----------------------------
+    // Rasterizer Stage
+    //----------------------------
+    VkPipelineRasterizationStateCreateInfo rasterization_sci = {
+        .sType                   = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+        .pNext                   = NULL,
+        .cullMode                = vulkan_util_cull_mode_translate(info.cull_mode),
+        .depthClampEnable        = VK_FALSE,
+        .rasterizerDiscardEnable = VK_FALSE,
+        .polygonMode             = vulkan_util_polygon_mode_translate(info.polygon_mode),
+        .frontFace               = VK_FRONT_FACE_CLOCKWISE,
+        .lineWidth               = 1.0f};
+
+    //----------------------------
+    // Color Blend State
+    //----------------------------
+    VkPipelineColorBlendAttachmentState color_blend_attachment = {
+        .blendEnable         = VK_TRUE,
+        .srcColorBlendFactor = vulkan_util_blend_factor_translate(info.src_color_blend_factor),
+        .dstColorBlendFactor = vulkan_util_blend_factor_translate(info.dst_color_blend_factor),
+        .colorBlendOp        = vulkan_util_blend_op_translate(info.color_blend_op),
+        .srcAlphaBlendFactor = vulkan_util_blend_factor_translate(info.src_alpha_blend_factor),
+        .dstAlphaBlendFactor = vulkan_util_blend_factor_translate(info.dst_alpha_blend_factor),
+        .alphaBlendOp        = vulkan_util_blend_op_translate(info.alpha_blend_op),
+        .colorWriteMask      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                          VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT};
+
+    VkPipelineColorBlendStateCreateInfo color_blend_sci = {
+        .sType           = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+        .pNext           = NULL,
+        .attachmentCount = 1,
+        .pAttachments    = &color_blend_attachment,
+        .logicOpEnable   = VK_FALSE};
+
+    //----------------------------
+    // Depth Stencil Stage
+    //----------------------------
+    // TODO: stencil testing is always disabled so change that
+
+    VkPipelineDepthStencilStateCreateInfo depthStencilSCI = {
+        .sType                 = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+        .pNext                 = NULL,
+        .depthTestEnable       = info.enable_depth_test,
+        .depthWriteEnable      = info.enable_depth_write,
+        .depthCompareOp        = vulkan_util_compare_op_translate(info.depth_compare),
+        .depthBoundsTestEnable = VK_FALSE,
+        .stencilTestEnable     = VK_FALSE,
+        .back.failOp           = VK_STENCIL_OP_KEEP,
+        .back.passOp           = VK_STENCIL_OP_KEEP,
+        .back.compareOp        = VK_COMPARE_OP_ALWAYS,
+        .back.compareMask      = 0,
+        .back.reference        = 0,
+        .back.depthFailOp      = VK_STENCIL_OP_KEEP,
+        .back.writeMask        = 0,
+        .minDepthBounds        = 0,
+        .maxDepthBounds        = 0,
+        .front                 = depthStencilSCI.back};
+
+    //----------------------------
+    // Multi sample State (MSAA)
+    //----------------------------
+    VkPipelineMultisampleStateCreateInfo multiSampleSCI = {
+        .sType                 = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+        .pNext                 = NULL,
+        .pSampleMask           = NULL,
+        .rasterizationSamples  = VK_SAMPLE_COUNT_1_BIT,
+        .sampleShadingEnable   = VK_FALSE,
+        .alphaToCoverageEnable = VK_FALSE,
+        .alphaToOneEnable      = VK_FALSE,
+        .minSampleShading      = 0.5};
+
+    //----------------------------
+    // Dynamic Rendering KHR
+    //----------------------------
+
+    VkPipelineRenderingCreateInfoKHR pipeline_rendering_ci = {
+        .sType                   = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR,
+        .colorAttachmentCount    = info.color_formats_count,
+        .pColorAttachmentFormats = NULL,
+        .depthAttachmentFormat   = VK_FORMAT_UNDEFINED};
+
+    // VkFormat formats[MAX_RT];
+    // for (auto& attachment: pipelineInfo.colorAttachmentFormats)
+    //     formats.push_back(VKUtilities::TextureFormatToVK(attachment));
+
+    //----------------------------
+    // Graphics Pipeline
+    //----------------------------
+    // VkGraphicsPipelineCreateInfo graphics_pipeline_ci = {
+    //     .sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+    //     .pNext               = pipeline_rendering_ci,
+    //     .layout              =,                   // Assume m_PipelineLayout is predefined
+    //     .renderPass          = VK_NULL_HANDLE,    // Render pass setup is omitted here
+    //     .pVertexInputState   = NULL,
+    //     .pInputAssemblyState = &input_assembly_sci,
+    //     .pViewportState      = &viewport_sci,
+    //     .pRasterizationState = &rasterization_sci,
+    //     .pColorBlendState    = &color_blend_sci,
+    //     .pDynamicState       = &dynamic_state_ci};
+
+    // std::vector<VkPipelineShaderStageCreateInfo> shaderStages = static_cast<VKShader*>(shader)->getShaderStages();
+
+    VkGraphicsPipelineCreateInfo graphics_pipeline_ci = {
+        .sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+        .pNext               = &pipeline_rendering_ci,
+        .layout              = VK_NULL_HANDLE,
+        .basePipelineHandle  = VK_NULL_HANDLE,
+        .basePipelineIndex   = -1,
+        .pVertexInputState   = NULL,
+        .pInputAssemblyState = &input_assembly_sci,
+        .pRasterizationState = &rasterization_sci,
+        .pColorBlendState    = &color_blend_sci,
+        .pTessellationState  = NULL,
+        .pMultisampleState   = &multiSampleSCI,
+        .pDynamicState       = &dynamic_state_ci,
+        .pViewportState      = &viewport_sci,
+        .pDepthStencilState  = &depthStencilSCI,
+        .pStages             = NULL,
+        .stageCount          = 0,
+        .renderPass          = VK_NULL_HANDLE};
+
+    pipeline_backend* backend = malloc(sizeof(pipeline_backend));
+    VK_CHECK_RESULT(vkCreateGraphicsPipelines(VKDEVICE, VK_NULL_HANDLE, 1, &graphics_pipeline_ci, NULL, (VkPipeline*)backend->pipeline), "[Vulkan] could not create grapihcs pipeline");
+    // VK_TAG_OBJECT(bufferName, VK_OBJECT_TYPE_PIPELINE, (uint64_t) m_Pipeline);
+
+    pipeline.backend = backend;
+
+    return pipeline;
 }
 
 gfx_pipeline vulkan_device_create_pipeline(gfx_pipeline_create_info info)
 {
-    if (info.type == graphics) vulkan_internal_create_gfx_pipeline(info);
+    if (info.type == graphics) return vulkan_internal_create_gfx_pipeline(info);
     else
-        vulkan_internal_create_compute_pipeline(info);
+        return vulkan_internal_create_compute_pipeline(info);
 }
 
 void vulkan_device_destroy_pipeline(gfx_pipeline* pipeline)
 {
+    uuid_destroy(&pipeline->uuid);
+    vkDestroyPipeline(VKDEVICE, ((pipeline_backend*) (pipeline->backend))->pipeline, NULL);
+    free(pipeline->backend);
+    pipeline->backend = NULL;
 }
 
 //--------------------------------------------------------

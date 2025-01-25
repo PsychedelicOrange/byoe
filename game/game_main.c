@@ -16,7 +16,7 @@ int game_main(void)
     renderer_sdf_set_scene(asteroids_game_scene);
 
     versor init_quat;
-    glm_euler_xyz_quat((vec3){0.0f, glm_rad(45.0f), 0.0f}, init_quat);
+    glm_euler_xyz_quat((vec3) {0.0f, glm_rad(45.0f), 0.0f}, init_quat);
 
     SDF_Primitive sphere = {
         .type      = SDF_PRIM_Box,
@@ -98,22 +98,22 @@ int game_main(void)
         int prim1 = sdf_scene_add_primitive(scene, sphere1);
         (void) prim1;
 
-        sphere1.transform.position = (vec3s){{demoStartX + 0.25f, 0.25f, 0.0f}};
+        sphere1.transform.position = (vec3s) {{demoStartX + 0.25f, 0.25f, 0.0f}};
         int prim2                  = sdf_scene_add_primitive(scene, sphere1);
         (void) prim2;
 
-        sphere1.transform.position = (vec3s){{demoStartX + 0.5f, 0.0f, 0.0f}};
+        sphere1.transform.position = (vec3s) {{demoStartX + 0.5f, 0.0f, 0.0f}};
         int prim3                  = sdf_scene_add_primitive(scene, sphere1);
         (void) prim3;
 
-        sphere1.transform.position = (vec3s){{demoStartX + 0.25f, -0.25f, 0.0f}};
+        sphere1.transform.position = (vec3s) {{demoStartX + 0.25f, -0.25f, 0.0f}};
         int prim4                  = sdf_scene_add_primitive(scene, sphere1);
         (void) prim4;
 
         SDF_Object meta_def = {
             .type   = SDF_BLEND_SMOOTH_UNION,
-            .prim_a = sdf_scene_add_object(scene, (SDF_Object){.type = SDF_BLEND_SMOOTH_UNION, .prim_a = prim1, .prim_b = prim2}),
-            .prim_b = sdf_scene_add_object(scene, (SDF_Object){.type = SDF_BLEND_SMOOTH_UNION, .prim_a = prim3, .prim_b = prim4})};
+            .prim_a = sdf_scene_add_object(scene, (SDF_Object) {.type = SDF_BLEND_SMOOTH_UNION, .prim_a = prim1, .prim_b = prim2}),
+            .prim_b = sdf_scene_add_object(scene, (SDF_Object) {.type = SDF_BLEND_SMOOTH_UNION, .prim_a = prim3, .prim_b = prim4})};
 
         sdf_scene_add_object(scene, meta_def);
         demoStartX += 0.65f;
@@ -143,8 +143,8 @@ int game_main(void)
         (void) prim1;
 
         sphere.type                 = SDF_PRIM_Box;
-        sphere.transform.position   = (vec3s){{demoStartX, -0.125f, 0.0625f}};
-        sphere.props.box.dimensions = (vec3s){{0.25f, 0.25f, 0.25f}};
+        sphere.transform.position   = (vec3s) {{demoStartX, -0.125f, 0.0625f}};
+        sphere.props.box.dimensions = (vec3s) {{0.25f, 0.25f, 0.25f}};
         int prim2                   = sdf_scene_add_primitive(scene, sphere);
         (void) prim2;
 

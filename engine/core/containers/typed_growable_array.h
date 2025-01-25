@@ -7,10 +7,10 @@
 
 typedef struct TypedGrowableArray
 {
-    void*       data;
-    uint32_t      size;
-    uint32_t      capacity;
-    uint32_t      element_size;
+    void*    data;
+    uint32_t size;
+    uint32_t capacity;
+    uint32_t element_size;
 } TypedGrowableArray;
 
 TypedGrowableArray typed_growable_array_create(uint32_t element_size, uint32_t initial_capacity);

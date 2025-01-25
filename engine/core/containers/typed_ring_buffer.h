@@ -74,4 +74,4 @@ void* ring_buffer_get_read_buffer(ring_buffer* rb);
         return true;                                                     \
     }
 
-#endif // TYPED_RING_BUFFER_H
+#endif    // TYPED_RING_BUFFER_H

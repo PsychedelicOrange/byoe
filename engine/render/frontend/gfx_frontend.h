@@ -28,26 +28,26 @@ void gfx_ctx_ignite(gfx_context* ctx);
 void gfx_ctx_recreate_frame_sync(gfx_context* ctx);
 
 gfx_context (*gfx_ctx_init)(GLFWwindow* window, uint32_t width, uint32_t height);
-void        (*gfx_ctx_destroy)(gfx_context* ctx);
+void (*gfx_ctx_destroy)(gfx_context* ctx);
 
 void (*gfx_flush_gpu_work)(void);
 
 gfx_swapchain (*gfx_create_swapchain)(uint32_t width, uint32_t height);
-void          (*gfx_destroy_swapchain)(gfx_swapchain* sc);
+void (*gfx_destroy_swapchain)(gfx_swapchain* sc);
 
 gfx_cmd_pool (*gfx_create_gfx_cmd_pool)(void);
-void         (*gfx_destroy_gfx_cmd_pool)(gfx_cmd_pool*);
+void (*gfx_destroy_gfx_cmd_pool)(gfx_cmd_pool*);
 
 gfx_cmd_buf (*gfx_create_gfx_cmd_buf)(gfx_cmd_pool* pool);
 
 gfx_frame_sync (*gfx_create_frame_sync)(void);
-void           (*gfx_destroy_frame_sync)(gfx_frame_sync* in_flight_sync);
+void (*gfx_destroy_frame_sync)(gfx_frame_sync* in_flight_sync);
 
 gfx_shader (*gfx_create_compute_shader)(const char* spv_file_path);
-void       (*gfx_destroy_compute_shader)(gfx_shader* shader);
+void (*gfx_destroy_compute_shader)(gfx_shader* shader);
 
 gfx_shader (*gfx_create_vs_ps_shader)(const char* spv_file_path_vs, const char* spv_file_path_ps);
-void       (*gfx_destroy_vs_ps_shader)(gfx_shader* shader);
+void (*gfx_destroy_vs_ps_shader)(gfx_shader* shader);
 
 //------------------------------------------
 // RHI function pointers

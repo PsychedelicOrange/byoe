@@ -9,7 +9,6 @@
 #define MAX_SDF_NODES 1024    // same as max game objects
 #define MAX_SDF_OPS   32      // Max no of SDF operations that can be done to combine complex shapes
 
-
 // Wen need to flatten the SDF_Node to pass it to GPU, this structs helps with that
 // aligned at 16 bytes | total = 160 bytes
 typedef struct SDF_NodeGPUData

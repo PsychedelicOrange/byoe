@@ -43,7 +43,7 @@ mat4s gameobject_get_transform(random_uuid_t goUUID)
 
     Transform* transform = &obj->transform;
 
-    mat4s result = create_transform_matrix(transform->position.raw, transform->rotation, (vec3){transform->scale, transform->scale, transform->scale});
+    mat4s result = create_transform_matrix(transform->position.raw, transform->rotation, (vec3) {transform->scale, transform->scale, transform->scale});
 
     return result;
 }
@@ -58,7 +58,7 @@ mat4s gameobject_ptr_get_transform(GameObject* obj)
 
     Transform* transform = &obj->transform;
 
-    mat4s result = create_transform_matrix(transform->position.raw, transform->rotation, (vec3){transform->scale, transform->scale, transform->scale});
+    mat4s result = create_transform_matrix(transform->position.raw, transform->rotation, (vec3) {transform->scale, transform->scale, transform->scale});
 
     return result;
 }

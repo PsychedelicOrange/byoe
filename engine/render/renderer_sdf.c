@@ -128,9 +128,9 @@ bool renderer_sdf_init(renderer_desc desc)
     s_RendererSDFInternalState.raymarchCS       = gfx_create_compute_shader("./game/shaders_built/raymarch_sdf_scene.comp.spv");
     s_RendererSDFInternalState.screenQuadShader = gfx_create_vs_ps_shader("./game/shaders_built/screen_quad.vert.spv", "./game/shaders_built/screen_quad.frag.spv");
 
-    gfx_pipeline_create_info scrn_pipeline_ci = {};
+    // gfx_pipeline_create_info scrn_pipeline_ci = {0};
 
-    gfx_pipeline scrn_quad_pipeline = gfx_create_pipeline(scrn_pipeline_ci);
+    // gfx_pipeline scrn_quad_pipeline = gfx_create_pipeline(scrn_pipeline_ci);
 
     return success;
 }
@@ -179,16 +179,17 @@ void renderer_sdf_render(void)
         rhi_begin_gfx_cmd_recording(cmd_buff);
 
         gfx_render_pass clear_screen_pass = {
-            .is_swap_pass            = true,
-            .swapchain               = &s_RendererSDFInternalState.gfxcontext.swapchain,
-            .extents                 = {(float) s_RendererSDFInternalState.width, (float) s_RendererSDFInternalState.height},
+            .is_swap_pass = true,
+            .swapchain    = &s_RendererSDFInternalState.gfxcontext.swapchain,
+            // .extents                 = {(float) s_RendererSDFInternalState.width, (float) s_RendererSDFInternalState.height},
             .color_attachments_count = 1,
             .color_attachments[0]    = {
-                   .clear       = true,
-                   .clear_color = (color_rgba){1.0f, (float) sin(0.0025f * (float) s_RendererSDFInternalState.frameCount), 1.0f, 1.0f}}};
+                   .clear = true,
+                //    .clear_color = (color_rgba) {1.0f, (float) sin(0.0025f * (float) s_RendererSDFInternalState.frameCount), 1.0f, 1.0f}}
+            }};
         rhi_begin_render_pass(cmd_buff, clear_screen_pass, s_RendererSDFInternalState.gfxcontext.swapchain.current_backbuffer_idx);
 
-        rhi_bind_pipeline(cmd_buff, scrn_quad_pipeline);
+        // rhi_bind_pipeline(cmd_buff, scrn_quad_pipeline);
 
         ////
         ////renderer_internal_sdf_set_pipeline_settings();
@@ -197,7 +198,7 @@ void renderer_sdf_render(void)
         ////
         ////renderer_sdf_draw_scene(s_RendererSDFInternalState.scene);
 
-        rhi_draw(cmd_buff, 3);
+        // rhi_draw(cmd_buff, 3);
 
         rhi_end_render_pass(cmd_buff);
 
