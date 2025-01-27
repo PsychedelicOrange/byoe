@@ -81,6 +81,10 @@ static void renderer_internal_create_pipelines(void)
     scrn_pipeline_ci.shader                   = s_RendererSDFInternalState.screenQuadShader;
     scrn_pipeline_ci.draw_type                = triangle;
     scrn_pipeline_ci.polygon_mode             = GFX_POLYGON_MODE_FILL;
+    scrn_pipeline_ci.cull_mode                = no_cull;
+    scrn_pipeline_ci.enable_depth_test        = false;
+    scrn_pipeline_ci.enable_depth_write       = false;
+    scrn_pipeline_ci.enable_transparency      = false;
     scrn_pipeline_ci.color_formats_count      = 1;
     scrn_pipeline_ci.color_formats[0]         = screen;
 
@@ -186,7 +190,7 @@ void renderer_sdf_render(void)
 
         rhi_begin_gfx_cmd_recording(cmd_buff);
 
-        color_rgba clear_color = {{{1.0f, (float) sin(0.0025f * (float) s_RendererSDFInternalState.frameCount), 1.0f, 1.0f}}};
+        color_rgba      clear_color       = {{{1.0f, (float) sin(0.0025f * (float) s_RendererSDFInternalState.frameCount), 1.0f, 1.0f}}};
         gfx_render_pass clear_screen_pass = {
             .is_swap_pass            = true,
             .swapchain               = &s_RendererSDFInternalState.gfxcontext.swapchain,
@@ -197,7 +201,10 @@ void renderer_sdf_render(void)
                    .clear_color = clear_color}};
         rhi_begin_render_pass(cmd_buff, clear_screen_pass, s_RendererSDFInternalState.gfxcontext.swapchain.current_backbuffer_idx);
 
-        // rhi_bind_pipeline(cmd_buff, scrn_quad_pipeline);
+        rhi_bind_pipeline(cmd_buff, s_RendererSDFInternalState.screenQuadPipeline);
+
+        rhi_set_viewport(cmd_buff, (gfx_viewport){.x = 0, .y = 0, .width = s_RendererSDFInternalState.width, .height = s_RendererSDFInternalState.height, .min_depth = 0, .max_depth = 1});
+        rhi_set_scissor(cmd_buff, (gfx_scissor){.x = 0, .y = 0, .width = s_RendererSDFInternalState.width, .height = s_RendererSDFInternalState.height});
 
         ////
         ////renderer_internal_sdf_set_pipeline_settings();
@@ -206,7 +213,7 @@ void renderer_sdf_render(void)
         ////
         ////renderer_sdf_draw_scene(s_RendererSDFInternalState.scene);
 
-        // rhi_draw(cmd_buff, 3);
+        rhi_draw(cmd_buff, 3, 1, 0, 0);
 
         rhi_end_render_pass(cmd_buff);
 

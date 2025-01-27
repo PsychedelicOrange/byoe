@@ -189,7 +189,7 @@ static VkCullModeFlags vulkan_util_cull_mode_translate(gfx_cull_mode cull_mode)
         case front: return VK_CULL_MODE_FRONT_BIT;
         case back_and_front: return VK_CULL_MODE_FRONT_AND_BACK;
         case no_cull: return VK_CULL_MODE_NONE;
-        default: return VK_CULL_MODE_BACK_BIT;
+        default: return VK_CULL_MODE_NONE;
     }
 }
 
@@ -1314,7 +1314,7 @@ static gfx_pipeline vulkan_internal_create_gfx_pipeline(gfx_pipeline_create_info
     // Color Blend State
     //----------------------------
     VkPipelineColorBlendAttachmentState color_blend_attachment = {
-        .blendEnable         = VK_TRUE,
+        .blendEnable         = info.enable_transparency,
         .srcColorBlendFactor = vulkan_util_blend_factor_translate(info.src_color_blend_factor),
         .dstColorBlendFactor = vulkan_util_blend_factor_translate(info.dst_color_blend_factor),
         .colorBlendOp        = vulkan_util_blend_op_translate(info.color_blend_op),
@@ -1465,8 +1465,6 @@ void vulkan_device_destroy_pipeline(gfx_pipeline* pipeline)
 }
 
 //--------------------------------------------------------
-
-// TODO: Move come of these functions to front end use rhi_ wrappers instead
 
 gfx_frame_sync* vulkan_frame_begin(gfx_context* context)
 {
@@ -1700,7 +1698,14 @@ rhi_error_codes vulkan_set_scissor(gfx_cmd_buf* cmd_buf, gfx_scissor scissor)
     return Success;
 }
 
-rhi_error_codes vulkan_draw(void)
+rhi_error_codes vulkan_bind_pipeline(gfx_cmd_buf* cmd_buf, gfx_pipeline pipeline)
 {
-    return FailedUnknown;
+    vkCmdBindPipeline(*(VkCommandBuffer*) cmd_buf->backend, VK_PIPELINE_BIND_POINT_GRAPHICS, ((pipeline_backend*) (pipeline.backend))->pipeline);
+    return Success;
+}
+
+rhi_error_codes vulkan_draw(gfx_cmd_buf* cmd_buf, uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance)
+{
+    vkCmdDraw(*(VkCommandBuffer*) cmd_buf->backend, vertex_count, instance_count, first_vertex, first_instance);
+    return Success;
 }

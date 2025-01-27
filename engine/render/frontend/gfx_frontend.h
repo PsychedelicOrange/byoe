@@ -69,6 +69,7 @@ gfx_frame_sync* (*rhi_frame_begin)(gfx_context* context);
 rhi_error_codes (*rhi_frame_end)(gfx_context* context);
 // Begin/End RenderPass
 //---------------------------
+// TODO: Make all gfx_cmf_buf* consts
 
 rhi_error_codes (*rhi_wait_on_previous_cmds)(const gfx_frame_sync* in_flight_sync);
 rhi_error_codes (*rhi_acquire_image)(gfx_swapchain* swapchain, const gfx_frame_sync* in_flight_sync);
@@ -87,7 +88,9 @@ rhi_error_codes (*rhi_end_render_pass)(gfx_cmd_buf* cmd_buf);
 rhi_error_codes (*rhi_set_viewport)(gfx_cmd_buf* cmd_buf, gfx_viewport viewport);
 rhi_error_codes (*rhi_set_scissor)(gfx_cmd_buf* cmd_buf, gfx_scissor scissor);
 
-rhi_error_codes (*rhi_draw)(void);
+rhi_error_codes (*rhi_bind_pipeline)(gfx_cmd_buf* cmd_buf, gfx_pipeline pipeline);
+
+rhi_error_codes (*rhi_draw)(gfx_cmd_buf* cmd_buf, uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance);
 
 uint32_t rhi_get_back_buffer_idx(const gfx_swapchain* swapchain);
 uint32_t rhi_get_current_frame_idx(const gfx_context* ctx);

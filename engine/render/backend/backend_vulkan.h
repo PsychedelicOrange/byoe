@@ -69,6 +69,8 @@ rhi_error_codes vulkan_end_render_pass(gfx_cmd_buf* cmd_buf);
 rhi_error_codes vulkan_set_viewport(gfx_cmd_buf* cmd_buf, gfx_viewport viewport);
 rhi_error_codes vulkan_set_scissor(gfx_cmd_buf* cmd_buf, gfx_scissor scissor);
 
-rhi_error_codes vulkan_draw(void);
+rhi_error_codes vulkan_bind_pipeline(gfx_cmd_buf* cmd_buf, gfx_pipeline pipeline);
+
+rhi_error_codes vulkan_draw(gfx_cmd_buf* cmd_buf, uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance);
 
 #endif    // BACKEND_VULKAN_N
