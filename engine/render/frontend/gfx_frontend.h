@@ -49,6 +49,9 @@ void       (*gfx_destroy_compute_shader)(gfx_shader* shader);
 gfx_shader (*gfx_create_vs_ps_shader)(const char* spv_file_path_vs, const char* spv_file_path_ps);
 void       (*gfx_destroy_vs_ps_shader)(gfx_shader* shader);
 
+gfx_pipeline (*gfx_create_pipeline)(gfx_pipeline_create_info info);
+void         (*gfx_destroy_pipeline)(gfx_pipeline* pipeline);
+
 //------------------------------------------
 // RHI function pointers
 //------------------------------------------

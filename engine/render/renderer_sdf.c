@@ -34,6 +34,7 @@ typedef struct renderer_internal_state
     gfx_context      gfxcontext;
     gfx_shader       raymarchCS;
     gfx_shader       screenQuadShader;
+    gfx_pipeline     screenQuadPipeline;
 } renderer_internal_state;
 
 //---------------------------------------------------------
@@ -56,35 +57,46 @@ static void renderer_internal_sdf_resize(GLFWwindow* window, int width, int heig
     rhi_resize_swapchain(&s_RendererSDFInternalState.gfxcontext.swapchain, width, height);
 }
 
-// static void renderer_internal_sdf_hot_reload_shaders(void)
-// {
-//     // reload the raymarch shader
-//     glDeleteProgram(s_RendererSDFInternalState.raymarchShaderID);
-//     s_RendererSDFInternalState.raymarchShaderID = create_shader("engine/shaders/screen_quad.vert", "engine/shaders/raymarch_sdf_scene.frag");
-// }
+static void renderer_internal_destroy_shaders(void)
+{
+    gfx_destroy_compute_shader(&s_RendererSDFInternalState.raymarchCS);
+    gfx_destroy_vs_ps_shader(&s_RendererSDFInternalState.screenQuadShader);
+}
 
-// static void renderer_internal_sdf_clear_screen(color_rgba color)
-// {
-//     glClearColor(color.r, color.g, color.b, color.a);
-//     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-// }
+static void renderer_internal_create_shaders(void)
+{
+    s_RendererSDFInternalState.raymarchCS       = gfx_create_compute_shader("./game/shaders_built/raymarch_sdf_scene.comp.spv");
+    s_RendererSDFInternalState.screenQuadShader = gfx_create_vs_ps_shader("./game/shaders_built/screen_quad.vert.spv", "./game/shaders_built/screen_quad.frag.spv");
+}
 
-// static void renderer_internal_sdf_set_pipeline_settings(void)
-// {
-//     // Enable Depth testing
-//     glEnable(GL_DEPTH_TEST);
-// }
+static void renderer_internal_destroy_pipelines(void)
+{
+    gfx_destroy_pipeline(&s_RendererSDFInternalState.screenQuadPipeline);
+}
 
-// static void renderer_internal_sdf_set_raymarch_shader_global_uniforms(void)
-// {
-//     int resolution[2] = {s_RendererSDFInternalState.width, s_RendererSDFInternalState.height};
-//     setUniformVec2Int(s_RendererSDFInternalState.raymarchShaderID, resolution, "resolution");
+static void renderer_internal_create_pipelines(void)
+{
+    gfx_pipeline_create_info scrn_pipeline_ci = {0};
+    scrn_pipeline_ci.type                     = graphics;
+    scrn_pipeline_ci.shader                   = s_RendererSDFInternalState.screenQuadShader;
+    scrn_pipeline_ci.draw_type                = triangle;
+    scrn_pipeline_ci.polygon_mode             = GFX_POLYGON_MODE_FILL;
+    scrn_pipeline_ci.color_formats_count      = 1;
+    scrn_pipeline_ci.color_formats[0]         = screen;
 
-//     const Camera camera                 = gamestate_get_global_instance()->camera;
-//     mat4s        projection             = glms_perspective(camera.fov, (float) s_RendererSDFInternalState.width / (float) s_RendererSDFInternalState.height, camera.near_plane, camera.far_plane);
-//     s_RendererSDFInternalState.viewproj = glms_mul(projection, camera.lookAt);
-//     setUniformMat4(s_RendererSDFInternalState.raymarchShaderID, s_RendererSDFInternalState.viewproj, "viewproj");
-// }
+    s_RendererSDFInternalState.screenQuadPipeline = gfx_create_pipeline(scrn_pipeline_ci);
+}
+
+static void renderer_internal_sdf_hot_reload_shaders(void)
+{
+    gfx_flush_gpu_work();
+
+    renderer_internal_destroy_shaders();
+    renderer_internal_create_shaders();
+
+    renderer_internal_destroy_pipelines();
+    renderer_internal_create_pipelines();
+}
 
 static bool render_internal_sdf_init_gfx_ctx(uint32_t width, uint32_t height)
 {
@@ -125,12 +137,8 @@ bool renderer_sdf_init(renderer_desc desc)
 
     bool success = render_internal_sdf_init_gfx_ctx(desc.width, desc.height);
 
-    s_RendererSDFInternalState.raymarchCS       = gfx_create_compute_shader("./game/shaders_built/raymarch_sdf_scene.comp.spv");
-    s_RendererSDFInternalState.screenQuadShader = gfx_create_vs_ps_shader("./game/shaders_built/screen_quad.vert.spv", "./game/shaders_built/screen_quad.frag.spv");
-
-    // gfx_pipeline_create_info scrn_pipeline_ci = {0};
-
-    // gfx_pipeline scrn_quad_pipeline = gfx_create_pipeline(scrn_pipeline_ci);
+    renderer_internal_create_shaders();
+    renderer_internal_create_pipelines();
 
     return success;
 }
@@ -138,8 +146,8 @@ bool renderer_sdf_init(renderer_desc desc)
 void renderer_sdf_destroy(void)
 {
     gfx_flush_gpu_work();
-    gfx_destroy_compute_shader(&s_RendererSDFInternalState.raymarchCS);
-    gfx_destroy_vs_ps_shader(&s_RendererSDFInternalState.screenQuadShader);
+    renderer_internal_destroy_shaders();
+    renderer_internal_destroy_pipelines();
 
     gfx_destroy_gfx_cmd_pool(&s_RendererSDFInternalState.gfxcontext.draw_cmds_pool);
     for (uint32_t i = 0; i < MAX_FRAME_INFLIGHT; i++) {

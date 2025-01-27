@@ -235,6 +235,7 @@ typedef struct SDF_Node
 
 typedef enum gfx_format
 {
+    none_format,
     r8int,
     r8uint,
     r8f,
@@ -302,7 +303,7 @@ typedef enum gfx_cull_mode
     back,
     front,
     back_and_front,
-    none
+    no_cull
 } gfx_cull_mode;
 
 typedef enum gfx_blend_op

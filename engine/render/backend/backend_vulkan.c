@@ -188,7 +188,7 @@ static VkCullModeFlags vulkan_util_cull_mode_translate(gfx_cull_mode cull_mode)
         case back: return VK_CULL_MODE_BACK_BIT;
         case front: return VK_CULL_MODE_FRONT_BIT;
         case back_and_front: return VK_CULL_MODE_FRONT_AND_BACK;
-        case none: return VK_CULL_MODE_NONE;
+        case no_cull: return VK_CULL_MODE_NONE;
         default: return VK_CULL_MODE_BACK_BIT;
     }
 }
@@ -211,6 +211,7 @@ static VkCompareOp vulkan_util_compare_op_translate(gfx_compare_op compare_op)
 static VkFormat vulkan_util_format_translate(gfx_format format)
 {
     switch (format) {
+        case none_format: return VK_FORMAT_UNDEFINED;
         case r8int: return VK_FORMAT_R8_SINT;
         case r8uint: return VK_FORMAT_R8_UINT;
         case r8f: return VK_FORMAT_R8_UNORM;
@@ -1155,6 +1156,7 @@ gfx_shader vulkan_device_create_compute_shader(const char* spv_file_path)
         backend->stage_ci = (VkPipelineShaderStageCreateInfo){
             .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage  = VK_SHADER_STAGE_COMPUTE_BIT,
+            .pName  = "main",
             .module = backend->modules.CS};
     }
     return shader;
@@ -1175,6 +1177,7 @@ gfx_shader vulkan_device_create_vs_ps_shader(const char* spv_file_path_vs, const
         backend_vs->stage_ci = (VkPipelineShaderStageCreateInfo){
             .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage  = VK_SHADER_STAGE_VERTEX_BIT,
+            .pName  = "main",
             .module = backend_vs->modules.VS};
     }
 
@@ -1188,6 +1191,7 @@ gfx_shader vulkan_device_create_vs_ps_shader(const char* spv_file_path_vs, const
         backend_ps->stage_ci = (VkPipelineShaderStageCreateInfo){
             .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage  = VK_SHADER_STAGE_FRAGMENT_BIT,
+            .pName  = "main",
             .module = backend_ps->modules.PS};
     }
 
@@ -1231,7 +1235,8 @@ static gfx_pipeline vulkan_internal_create_compute_pipeline(gfx_pipeline_create_
 
 typedef struct pipeline_backend
 {
-    VkPipeline pipeline;
+    VkPipeline       pipeline;
+    VkPipelineLayout layout;
 } pipeline_backend;
 
 #define NUM_DYNAMIC_STATES 2
@@ -1244,25 +1249,25 @@ static gfx_pipeline vulkan_internal_create_gfx_pipeline(gfx_pipeline_create_info
     //----------------------------
     // Vertex Input Layout Stage
     //----------------------------
-    // DISABLED FOR TESTING SCREEN QUAD
-    // VkVertexInputBindingDescription vertex_binding_description = {
-    //     .binding   = 0,
-    //     .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
-    //     .stride    = 0};
+    // NULLED FOR TESTING SCREEN QUAD
+    //VkVertexInputBindingDescription vertex_binding_description = {
+    //    .binding   = 0,
+    //    .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
+    //    .stride    = 0};
 
-    // VkVertexInputAttributeDescription input_attrib = {
-    //     .binding  = 0,
-    //     .location = 0,
-    //     .format   = VK_FORMAT_R32G32B32A32_SFLOAT,
-    //     .offset   = 0};
+    //VkVertexInputAttributeDescription input_attrib = {
+    //    .binding  = 0,
+    //    .location = 0,
+    //    .format   = VK_FORMAT_R32G32B32A32_SFLOAT,
+    //    .offset   = 0};
 
-    // VkPipelineVertexInputStateCreateInfo vertex_input_sci = {
-    //     .sType                           = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-    //     .pNext                           = NULL,
-    //     .vertexBindingDescriptionCount   = 0,
-    //     .pVertexBindingDescriptions      = NULL,
-    //     .vertexAttributeDescriptionCount = 0,
-    //     .pVertexAttributeDescriptions    = NULL};
+    VkPipelineVertexInputStateCreateInfo vertex_input_sci = {
+        .sType                           = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+        .pNext                           = NULL,
+        .vertexBindingDescriptionCount   = 0,
+        .pVertexBindingDescriptions      = NULL,
+        .vertexAttributeDescriptionCount = 0,
+        .pVertexAttributeDescriptions    = NULL};
 
     //----------------------------
     // Input Assembly Stage
@@ -1401,13 +1406,27 @@ static gfx_pipeline vulkan_internal_create_gfx_pipeline(gfx_pipeline_create_info
         stages[current_stage++]    = ps_backend->stage_ci;
     }
 
+    pipeline_backend* backend = malloc(sizeof(pipeline_backend));
+    memset(backend, 0, sizeof(pipeline_backend));
+
+    VkPipelineLayoutCreateInfo layout_ci = {
+        .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .pNext                  = NULL,
+        .flags                  = 0,
+        .pushConstantRangeCount = 0,
+        .pPushConstantRanges    = NULL,
+        .setLayoutCount         = 0,
+        .pSetLayouts            = NULL};
+
+    vkCreatePipelineLayout(VKDEVICE, &layout_ci, NULL, &backend->layout);
+
     VkGraphicsPipelineCreateInfo graphics_pipeline_ci = {
         .sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
         .pNext               = &pipeline_rendering_ci,
-        .layout              = VK_NULL_HANDLE,
+        .layout              = backend->layout,
         .basePipelineHandle  = VK_NULL_HANDLE,
         .basePipelineIndex   = -1,
-        .pVertexInputState   = NULL,
+        .pVertexInputState   = &vertex_input_sci,
         .pInputAssemblyState = &input_assembly_sci,
         .pRasterizationState = &rasterization_sci,
         .pColorBlendState    = &color_blend_sci,
@@ -1420,8 +1439,7 @@ static gfx_pipeline vulkan_internal_create_gfx_pipeline(gfx_pipeline_create_info
         .stageCount          = stage_count,
         .renderPass          = VK_NULL_HANDLE};    // renderPass is NULL since we are using VK_KHR_dynamic_rendering extension
 
-    pipeline_backend* backend = malloc(sizeof(pipeline_backend));
-    VK_CHECK_RESULT(vkCreateGraphicsPipelines(VKDEVICE, VK_NULL_HANDLE, 1, &graphics_pipeline_ci, NULL, (VkPipeline*) backend->pipeline), "[Vulkan] could not create grapihcs pipeline");
+    VK_CHECK_RESULT(vkCreateGraphicsPipelines(VKDEVICE, VK_NULL_HANDLE, 1, &graphics_pipeline_ci, NULL, &backend->pipeline), "[Vulkan] could not create grapihcs pipeline");
 
     free(stages);
 
@@ -1441,6 +1459,7 @@ void vulkan_device_destroy_pipeline(gfx_pipeline* pipeline)
 {
     uuid_destroy(&pipeline->uuid);
     vkDestroyPipeline(VKDEVICE, ((pipeline_backend*) (pipeline->backend))->pipeline, NULL);
+    vkDestroyPipelineLayout(VKDEVICE, ((pipeline_backend*) (pipeline->backend))->layout, NULL);
     free(pipeline->backend);
     pipeline->backend = NULL;
 }
