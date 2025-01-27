@@ -531,6 +531,24 @@ typedef struct gfx_pipeline
     void*         backend;
 } gfx_pipeline;
 
+typedef struct gfx_viewport
+{
+    uint32_t x;
+    uint32_t y;
+    uint32_t width;
+    uint32_t height;
+    uint32_t min_depth;
+    uint32_t max_depth;
+} gfx_viewport;
+
+typedef struct gfx_scissor
+{
+    uint32_t x;
+    uint32_t y;
+    uint32_t width;
+    uint32_t height;
+} gfx_scissor;
+
 //-----------------------------------
 // High-level structs
 //-----------------------------------

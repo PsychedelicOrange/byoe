@@ -1655,6 +1655,32 @@ rhi_error_codes vulkan_end_gfx_cmd_recording(gfx_cmd_buf* cmd_buf)
 
 //--------------------------------------------------------
 
+rhi_error_codes vulkan_set_viewport(gfx_cmd_buf* cmd_buf, gfx_viewport viewport)
+{
+    VkCommandBuffer commandBuffer = *(VkCommandBuffer*) cmd_buf->backend;
+    VkViewport      vkViewport    = {
+        (float) viewport.x,
+        (float) viewport.y,
+        (float) viewport.width,
+        (float) viewport.height,
+        (float) viewport.min_depth,
+        (float) viewport.max_depth};
+
+    vkCmdSetViewport(commandBuffer, 0, 1, &vkViewport);
+    return Success;
+}
+
+rhi_error_codes vulkan_set_scissor(gfx_cmd_buf* cmd_buf, gfx_scissor scissor)
+{
+    VkCommandBuffer commandBuffer = *(VkCommandBuffer*) cmd_buf->backend;
+    VkRect2D        vkScissor     = {
+        {scissor.x, scissor.y},
+        {scissor.width, scissor.height}};
+
+    vkCmdSetScissor(commandBuffer, 0, 1, &vkScissor);
+    return Success;
+}
+
 rhi_error_codes vulkan_draw(void)
 {
     return FailedUnknown;
