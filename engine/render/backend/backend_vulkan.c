@@ -40,10 +40,10 @@ DEFINE_CLAMP(int)
 // - [x] Complete Swapchain: sync primitives API + acquire/present/submit API
 // - [x] command pool in renderer_sdf
 // - [x] command buffers X2
-// - [ ] basic rendering using begin rendering API for drawing a screen quad without vertices --> KHR_dynamic_rendering renderpass API
+// - [x] basic rendering using begin rendering API for drawing a screen quad without vertices --> KHR_dynamic_rendering renderpass API
 //      - [x] shader loading API
-//      - [ ] pipeline API
-//      - [ ] draw API
+//      - [x] pipeline API
+//      - [x] draw API
 // - [ ] Descriptors API + pipeline layout handling etc.
 // - [ ] UBOs + Push constants API + setup descriptor sets for the resources x2
 // - [ ] texture_2d (rw views) API for binding the r/w texture to composition pass
