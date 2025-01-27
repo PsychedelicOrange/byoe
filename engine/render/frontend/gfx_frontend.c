@@ -55,7 +55,7 @@ int gfx_init(rhi_api api)
         rhi_end_render_pass   = vulkan_end_render_pass;
 
         rhi_set_viewport = vulkan_set_viewport;
-        rhi_set_scissor  = rhi_set_scissor;
+        rhi_set_scissor  = vulkan_set_scissor;
 
         rhi_draw = vulkan_draw;
     }

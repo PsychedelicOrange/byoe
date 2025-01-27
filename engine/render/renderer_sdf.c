@@ -87,16 +87,16 @@ static void renderer_internal_create_pipelines(void)
     s_RendererSDFInternalState.screenQuadPipeline = gfx_create_pipeline(scrn_pipeline_ci);
 }
 
-static void renderer_internal_sdf_hot_reload_shaders(void)
-{
-    gfx_flush_gpu_work();
+// static void renderer_internal_sdf_hot_reload_shaders(void)
+// {
+//     gfx_flush_gpu_work();
 
-    renderer_internal_destroy_shaders();
-    renderer_internal_create_shaders();
+//     renderer_internal_destroy_shaders();
+//     renderer_internal_create_shaders();
 
-    renderer_internal_destroy_pipelines();
-    renderer_internal_create_pipelines();
-}
+//     renderer_internal_destroy_pipelines();
+//     renderer_internal_create_pipelines();
+// }
 
 static bool render_internal_sdf_init_gfx_ctx(uint32_t width, uint32_t height)
 {
@@ -186,14 +186,15 @@ void renderer_sdf_render(void)
 
         rhi_begin_gfx_cmd_recording(cmd_buff);
 
+        color_rgba clear_color = {{{1.0f, (float) sin(0.0025f * (float) s_RendererSDFInternalState.frameCount), 1.0f, 1.0f}}};
         gfx_render_pass clear_screen_pass = {
             .is_swap_pass            = true,
             .swapchain               = &s_RendererSDFInternalState.gfxcontext.swapchain,
-            .extents                 = {(float) s_RendererSDFInternalState.width, (float) s_RendererSDFInternalState.height},
+            .extents                 = {{(float) s_RendererSDFInternalState.width, (float) s_RendererSDFInternalState.height}},
             .color_attachments_count = 1,
             .color_attachments[0]    = {
                    .clear       = true,
-                   .clear_color = (color_rgba){1.0f, (float) sin(0.0025f * (float) s_RendererSDFInternalState.frameCount), 1.0f, 1.0f}}};
+                   .clear_color = clear_color}};
         rhi_begin_render_pass(cmd_buff, clear_screen_pass, s_RendererSDFInternalState.gfxcontext.swapchain.current_backbuffer_idx);
 
         // rhi_bind_pipeline(cmd_buff, scrn_quad_pipeline);
