@@ -335,9 +335,22 @@ static VkInstance vulkan_internal_create_instance(void)
 
     const char* instance_layers[] = {VK_LAYER_KHRONOS_VALIDATION_NAME};
 
+    uint32_t   glfwExtensionsCount = 0;
+    const char** glfwExtensions;
+    glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionsCount);
+    LOG_WARN("[Vulkan] GLFW loaded extensions count : %u", glfwExtensionsCount);
+
+    for (uint32_t i = 0; i < glfwExtensionsCount; ++i) {
+        LOG_INFO("GLFW requried extension: %s", glfwExtensions[i]);
+    }
+
+         
     const char* instance_extensions[] = {
 #ifdef _WIN32
         VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
+    #elif __APPLE__
+        VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME,
+        "VK_EXT_metal_surface",
 #endif
         VK_KHR_SURFACE_EXTENSION_NAME,
         VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
@@ -357,6 +370,10 @@ static VkInstance vulkan_internal_create_instance(void)
         .ppEnabledLayerNames     = instance_layers,
         .enabledExtensionCount   = sizeof(instance_extensions) / sizeof(const char*),
         .ppEnabledExtensionNames = instance_extensions};
+
+#ifdef __APPLE__
+    info_ci.flags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+#endif
 
     VkInstance instance;
     VK_CHECK_RESULT(vkCreateInstance(&info_ci, NULL, &instance), "Failed to create vulkan instance");
