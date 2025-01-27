@@ -208,31 +208,31 @@ static VkCompareOp vulkan_util_compare_op_translate(gfx_compare_op compare_op)
     }
 }
 
-// static VkFormat vulkan_util_format_translate(gfx_format format)
-// {
-//     switch (format) {
-//         case r8int: return VK_FORMAT_R8_SINT;
-//         case r8uint: return VK_FORMAT_R8_UINT;
-//         case r8f: return VK_FORMAT_R8_UNORM;
-//         case r16f: return VK_FORMAT_R16_SFLOAT;
-//         case r32f: return VK_FORMAT_R32_SFLOAT;
-//         case r32uint: return VK_FORMAT_R32_UINT;
-//         case r32int: return VK_FORMAT_R32_SINT;
-//         case rgbint: return VK_FORMAT_R8G8B8_SINT;
-//         case rgbuint: return VK_FORMAT_R8G8B8_UINT;
-//         case rgbunorm: return VK_FORMAT_R8G8B8_UNORM;
-//         case rgb32f: return VK_FORMAT_R32G32B32_SFLOAT;
-//         case rgbaint: return VK_FORMAT_R8G8B8A8_SINT;
-//         case rgbauint: return VK_FORMAT_R8G8B8A8_UINT;
-//         case rgbaunorm: return VK_FORMAT_R8G8B8A8_UNORM;
-//         case rgba32f: return VK_FORMAT_R32G32B32A32_SFLOAT;
-//         case depth32f: return VK_FORMAT_D32_SFLOAT;
-//         case depth16unorm: return VK_FORMAT_D16_UNORM;
-//         case depthstencil: return VK_FORMAT_D24_UNORM_S8_UINT;
-//         case screen: return VK_FORMAT_B8G8R8A8_UNORM;
-//         default: return VK_FORMAT_UNDEFINED;
-//     }
-// }
+static VkFormat vulkan_util_format_translate(gfx_format format)
+{
+    switch (format) {
+        case r8int: return VK_FORMAT_R8_SINT;
+        case r8uint: return VK_FORMAT_R8_UINT;
+        case r8f: return VK_FORMAT_R8_UNORM;
+        case r16f: return VK_FORMAT_R16_SFLOAT;
+        case r32f: return VK_FORMAT_R32_SFLOAT;
+        case r32uint: return VK_FORMAT_R32_UINT;
+        case r32int: return VK_FORMAT_R32_SINT;
+        case rgbint: return VK_FORMAT_R8G8B8_SINT;
+        case rgbuint: return VK_FORMAT_R8G8B8_UINT;
+        case rgbunorm: return VK_FORMAT_R8G8B8_UNORM;
+        case rgb32f: return VK_FORMAT_R32G32B32_SFLOAT;
+        case rgbaint: return VK_FORMAT_R8G8B8A8_SINT;
+        case rgbauint: return VK_FORMAT_R8G8B8A8_UINT;
+        case rgbaunorm: return VK_FORMAT_R8G8B8A8_UNORM;
+        case rgba32f: return VK_FORMAT_R32G32B32A32_SFLOAT;
+        case depth32f: return VK_FORMAT_D32_SFLOAT;
+        case depth16unorm: return VK_FORMAT_D16_UNORM;
+        case depthstencil: return VK_FORMAT_D24_UNORM_S8_UINT;
+        case screen: return VK_FORMAT_B8G8R8A8_UNORM;
+        default: return VK_FORMAT_UNDEFINED;
+    }
+}
 
 //--------------------------------------------------------
 
@@ -248,6 +248,7 @@ static VkResult vulkan_internal_tag_object(const char* name, VkObjectType type, 
     if (func != NULL)
         return func(VKDEVICE, &info);
     else
+
         return VK_ERROR_EXTENSION_NOT_PRESENT;
 }
 
@@ -1145,7 +1146,7 @@ gfx_shader vulkan_device_create_compute_shader(const char* spv_file_path)
 
         backend->modules.CS = vulkan_internal_create_shader_handle(spv_file_path);
 
-        backend->stage_ci = (VkPipelineShaderStageCreateInfo) {
+        backend->stage_ci = (VkPipelineShaderStageCreateInfo){
             .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage  = VK_SHADER_STAGE_COMPUTE_BIT,
             .module = backend->modules.CS};
@@ -1165,7 +1166,7 @@ gfx_shader vulkan_device_create_vs_ps_shader(const char* spv_file_path_vs, const
 
         backend_vs->modules.VS = vulkan_internal_create_shader_handle(spv_file_path_vs);
 
-        backend_vs->stage_ci = (VkPipelineShaderStageCreateInfo) {
+        backend_vs->stage_ci = (VkPipelineShaderStageCreateInfo){
             .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage  = VK_SHADER_STAGE_VERTEX_BIT,
             .module = backend_vs->modules.VS};
@@ -1178,7 +1179,7 @@ gfx_shader vulkan_device_create_vs_ps_shader(const char* spv_file_path_vs, const
 
         backend_ps->modules.PS = vulkan_internal_create_shader_handle(spv_file_path_ps);
 
-        backend_ps->stage_ci = (VkPipelineShaderStageCreateInfo) {
+        backend_ps->stage_ci = (VkPipelineShaderStageCreateInfo){
             .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage  = VK_SHADER_STAGE_FRAGMENT_BIT,
             .module = backend_ps->modules.PS};
@@ -1227,6 +1228,8 @@ typedef struct pipeline_backend
     VkPipeline pipeline;
 } pipeline_backend;
 
+#define NUM_DYNAMIC_STATES 2
+
 static gfx_pipeline vulkan_internal_create_gfx_pipeline(gfx_pipeline_create_info info)
 {
     gfx_pipeline pipeline = {0};
@@ -1273,7 +1276,6 @@ static gfx_pipeline vulkan_internal_create_gfx_pipeline(gfx_pipeline_create_info
         .viewportCount = 1,
         .scissorCount  = 1};
 
-    const uint32_t NUM_DYNAMIC_STATES                            = 2;
     VkDynamicState dynamic_state_descriptors[NUM_DYNAMIC_STATES] = {
         VK_DYNAMIC_STATE_VIEWPORT,
         VK_DYNAMIC_STATE_SCISSOR};
@@ -1321,8 +1323,6 @@ static gfx_pipeline vulkan_internal_create_gfx_pipeline(gfx_pipeline_create_info
     //----------------------------
     // Depth Stencil Stage
     //----------------------------
-    // TODO: stencil testing is always disabled so change that
-
     VkPipelineDepthStencilStateCreateInfo depthStencilSCI = {
         .sType                 = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
         .pNext                 = NULL,
@@ -1340,7 +1340,12 @@ static gfx_pipeline vulkan_internal_create_gfx_pipeline(gfx_pipeline_create_info
         .back.writeMask        = 0,
         .minDepthBounds        = 0,
         .maxDepthBounds        = 0,
-        .front                 = depthStencilSCI.back};
+        .front.failOp          = VK_STENCIL_OP_KEEP,
+        .front.passOp          = VK_STENCIL_OP_KEEP,
+        .front.compareOp       = VK_COMPARE_OP_ALWAYS,
+        .front.compareMask     = 0,
+        .front.reference       = 0,
+        .front.depthFailOp     = VK_STENCIL_OP_KEEP};
 
     //----------------------------
     // Multi sample State (MSAA)
@@ -1363,28 +1368,32 @@ static gfx_pipeline vulkan_internal_create_gfx_pipeline(gfx_pipeline_create_info
         .sType                   = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR,
         .colorAttachmentCount    = info.color_formats_count,
         .pColorAttachmentFormats = NULL,
-        .depthAttachmentFormat   = VK_FORMAT_UNDEFINED};
+        .depthAttachmentFormat   = vulkan_util_format_translate(info.depth_format)};
 
-    // VkFormat formats[MAX_RT];
-    // for (auto& attachment: pipelineInfo.colorAttachmentFormats)
-    //     formats.push_back(VKUtilities::TextureFormatToVK(attachment));
+    VkFormat colorAttachmentFormats[MAX_RT] = {0};
+    for (uint32_t i = 0; i < info.color_formats_count; i++) {
+        colorAttachmentFormats[i] = vulkan_util_format_translate(info.color_formats[i]);
+    }
+    pipeline_rendering_ci.pColorAttachmentFormats = colorAttachmentFormats;
 
     //----------------------------
-    // Graphics Pipeline
+    // Gfx Pipeline
     //----------------------------
-    // VkGraphicsPipelineCreateInfo graphics_pipeline_ci = {
-    //     .sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-    //     .pNext               = pipeline_rendering_ci,
-    //     .layout              =,                   // Assume m_PipelineLayout is predefined
-    //     .renderPass          = VK_NULL_HANDLE,    // Render pass setup is omitted here
-    //     .pVertexInputState   = NULL,
-    //     .pInputAssemblyState = &input_assembly_sci,
-    //     .pViewportState      = &viewport_sci,
-    //     .pRasterizationState = &rasterization_sci,
-    //     .pColorBlendState    = &color_blend_sci,
-    //     .pDynamicState       = &dynamic_state_ci};
 
-    // std::vector<VkPipelineShaderStageCreateInfo> shaderStages = static_cast<VKShader*>(shader)->getShaderStages();
+    uint32_t stage_count = 0;
+    if (info.shader.stages.VS) stage_count++;
+    if (info.shader.stages.PS) stage_count++;
+    VkPipelineShaderStageCreateInfo* stages        = (VkPipelineShaderStageCreateInfo*) malloc(stage_count * sizeof(VkPipelineShaderStageCreateInfo));
+    uint32_t                         current_stage = 0;
+    if (info.shader.stages.VS) {
+        shader_backend* vs_backend = (shader_backend*) info.shader.stages.VS;
+        stages[current_stage++]    = vs_backend->stage_ci;
+    }
+
+    if (info.shader.stages.PS) {
+        shader_backend* ps_backend = (shader_backend*) info.shader.stages.PS;
+        stages[current_stage++]    = ps_backend->stage_ci;
+    }
 
     VkGraphicsPipelineCreateInfo graphics_pipeline_ci = {
         .sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
@@ -1401,13 +1410,14 @@ static gfx_pipeline vulkan_internal_create_gfx_pipeline(gfx_pipeline_create_info
         .pDynamicState       = &dynamic_state_ci,
         .pViewportState      = &viewport_sci,
         .pDepthStencilState  = &depthStencilSCI,
-        .pStages             = NULL,
-        .stageCount          = 0,
-        .renderPass          = VK_NULL_HANDLE};
+        .pStages             = stages,
+        .stageCount          = stage_count,
+        .renderPass          = VK_NULL_HANDLE};    // renderPass is NULL since we are using VK_KHR_dynamic_rendering extension
 
     pipeline_backend* backend = malloc(sizeof(pipeline_backend));
-    VK_CHECK_RESULT(vkCreateGraphicsPipelines(VKDEVICE, VK_NULL_HANDLE, 1, &graphics_pipeline_ci, NULL, (VkPipeline*)backend->pipeline), "[Vulkan] could not create grapihcs pipeline");
-    // VK_TAG_OBJECT(bufferName, VK_OBJECT_TYPE_PIPELINE, (uint64_t) m_Pipeline);
+    VK_CHECK_RESULT(vkCreateGraphicsPipelines(VKDEVICE, VK_NULL_HANDLE, 1, &graphics_pipeline_ci, NULL, (VkPipeline*) backend->pipeline), "[Vulkan] could not create grapihcs pipeline");
+
+    free(stages);
 
     pipeline.backend = backend;
 

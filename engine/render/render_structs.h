@@ -48,8 +48,8 @@ STRUCT(
     };)
 
 STRUCT(bounding_sphere,
-    vec3  pos;
-    float radius;)
+       vec3  pos;
+       float radius;)
 
 //------------------------
 // SDF Renderer Structs
@@ -94,73 +94,73 @@ ENUM(SDF_NodeType,
 
 // TODO: If data memory gets too much, push the material to a separate buffer and use a bindless model
 STRUCT(SDF_Material,
-    vec4 diffuse;)
+       vec4 diffuse;)
 
 //-----------------------------
 
 STRUCT(sphere_props,
-    float radius;)
+       float radius;)
 
 STRUCT(box_props,
-    vec3s dimensions;)
+       vec3s dimensions;)
 
 STRUCT(round_box_props,
-    vec3s dimensions;
-    float roundness;)
+       vec3s dimensions;
+       float roundness;)
 
 STRUCT(box_frame_props,
-    vec3s dimensions;
-    float thickness;)
+       vec3s dimensions;
+       float thickness;)
 
 STRUCT(torus_props,
-    vec2 thickness;)
+       vec2 thickness;)
 
 STRUCT(torus_capped_props,
-    vec2  thickness;
-    float radiusA;
-    float radiusB;)
+       vec2  thickness;
+       float radiusA;
+       float radiusB;)
 
 STRUCT(capsule_props,
-    vec3  start;
-    vec3  end;
-    float radius;)
+       vec3  start;
+       vec3  end;
+       float radius;)
 
 STRUCT(vertical_capsule_props,
-    float radius;
-    float height;)
+       float radius;
+       float height;)
 
 STRUCT(cylinder_props,
-    float radius;
-    float height;)
+       float radius;
+       float height;)
 
 STRUCT(rounded_cylinder_props,
-    float radiusA;
-    float radiusB;
-    float height;)
+       float radiusA;
+       float radiusB;
+       float height;)
 
 STRUCT(ellipsoid_props,
-    vec3s radii;)
+       vec3s radii;)
 
 STRUCT(hexagonal_prism_props,
-    float radius;
-    float height;)
+       float radius;
+       float height;)
 
 STRUCT(triangular_prism_props,
-    float radius;
-    float height;)
+       float radius;
+       float height;)
 
 STRUCT(cone_props,
-    float angle;
-    float height;)
+       float angle;
+       float height;)
 
 STRUCT(capped_cone_props,
-    float radiusTop;
-    float radiusBottom;
-    float height;)
+       float radiusTop;
+       float radiusBottom;
+       float height;)
 
 STRUCT(plane_props,
-    vec3s normal;
-    float distance;)
+       vec3s normal;
+       float distance;)
 
 //-----------------------------
 
@@ -198,12 +198,12 @@ STRUCT(
 // Blending -> these are blending method b/w two primitives (eg. smooth union, XOR, etc. )  ( again refer iq)
 // Since it's shared as union it's the same size as of SDF_Primitive
 STRUCT(SDF_Object,
-    SDF_BlendType type;
-    uint32_t      _pad0[3];
-    Transform     transform;
-    uint32_t      prim_a;
-    uint32_t      prim_b;
-    uint32_t      _pad_to_128_bytes_boundary[14];)
+       SDF_BlendType type;
+       uint32_t      _pad0[3];
+       Transform     transform;
+       uint32_t      prim_a;
+       uint32_t      prim_b;
+       uint32_t      _pad_to_128_bytes_boundary[14];)
 
 #ifndef SHADER_INCLUDE
 // This struct cannot be directly translated to the GPU, we need another helper struct to flatten it (defined in sdf_scene.h)
@@ -276,6 +276,83 @@ typedef enum gfx_fence_type
     cpu,
     gpu
 } gfx_fence_type;
+
+typedef enum gfx_pipeline_type
+{
+    graphics,
+    compute
+} gfx_pipeline_type;
+
+typedef enum gfx_draw_type
+{
+    point,
+    triangle,
+    line
+} gfx_draw_type;
+
+typedef enum gfx_polygon_mode
+{
+    GFX_POLYGON_MODE_FILL,
+    GFX_POLYGON_MODE_WIRE,
+    GFX_POLYGON_MODE_POINT
+} gfx_polygon_mode;
+
+typedef enum gfx_cull_mode
+{
+    back,
+    front,
+    back_and_front,
+    none
+} gfx_cull_mode;
+
+typedef enum gfx_blend_op
+{
+    add,
+    subtract,
+    reverse_subtract,
+    min,
+    max
+} gfx_blend_op;
+
+typedef enum gfx_blend_factor
+{
+    zero,
+    one,
+    src_color,
+    one_minus_src_color,
+    dst_color,
+    one_minus_dst_color,
+    src_alpha,
+    one_minus_src_alpha,
+    dst_alpha,
+    one_minus_dst_alpha,
+    constant_color,
+    one_minus_constant_color,
+    constant_alpha,
+    one_minus_constant_alpha,
+    src_alpha_saturate
+} gfx_blend_factor;
+
+typedef enum gfx_compare_op
+{
+    never,
+    less,
+    equal,
+    less_or_equal,
+    greater,
+    not_equal,
+    greater_or_equal,
+    always
+} gfx_compare_op;
+
+typedef enum gfx_descriptor_type
+{
+    uniform_buffer,
+    storage_buffer,
+    combined_image_sampler,
+    sampler,
+    storage_image
+} gfx_descriptor_type;
 
 typedef struct gfx_config
 {
@@ -392,94 +469,60 @@ typedef struct gfx_shader
     } stages;
 } gfx_shader;
 
-typedef enum gfx_pipeline_type
+typedef struct gfx_descriptor_binding
 {
-    graphics,
-    compute
-} gfx_pipeline_type;
+    uint32_t            binding;
+    uint32_t            set;
+    gfx_descriptor_type type;
+    uint32_t            count;
+    gfx_shader_stage    stage_flags;
+} gfx_descriptor_binding;
 
-typedef enum gfx_draw_type
+typedef struct gfx_descriptor_set
 {
-    point,
-    triangle,
-    line
-} gfx_draw_type;
+    gfx_descriptor_binding* bindings;
+    uint32_t                binding_count;
+} gfx_descriptor_set;
 
-typedef enum gfx_polygon_mode
+typedef struct gfx_push_constant_range
 {
-    GFX_POLYGON_MODE_FILL,
-    GFX_POLYGON_MODE_WIRE,
-    GFX_POLYGON_MODE_POINT
-} gfx_polygon_mode;
+    uint32_t         size;
+    uint32_t         offset;
+    gfx_shader_stage stage_flags;
+} gfx_push_constant_range;
 
-typedef enum gfx_cull_mode
+typedef struct gfx_root_signature
 {
-    back,
-    front,
-    back_and_front,
-    none
-} gfx_cull_mode;
-
-typedef enum gfx_blend_op
-{
-    add,
-    subtract,
-    reverse_subtract,
-    min,
-    max
-} gfx_blend_op;
-
-typedef enum gfx_blend_factor
-{
-    zero,
-    one,
-    src_color,
-    one_minus_src_color,
-    dst_color,
-    one_minus_dst_color,
-    src_alpha,
-    one_minus_src_alpha,
-    dst_alpha,
-    one_minus_dst_alpha,
-    constant_color,
-    one_minus_constant_color,
-    constant_alpha,
-    one_minus_constant_alpha,
-    src_alpha_saturate
-} gfx_blend_factor;
-
-typedef enum gfx_compare_op
-{
-    never,
-    less,
-    equal,
-    less_or_equal,
-    greater,
-    not_equal,
-    greater_or_equal,
-    always
-} gfx_compare_op;
+    gfx_descriptor_set*      descriptor_sets;
+    gfx_push_constant_range* push_constants;
+    uint32_t                 descriptor_set_count;
+    uint32_t                 push_constant_count;
+    void*                    backend;
+} gfx_root_signature;
 
 typedef struct gfx_pipeline_create_info
 {
-    gfx_shader        shader;
-    gfx_draw_type     draw_type;
-    gfx_format        color_formats[MAX_RT];
-    uint32_t          color_formats_count;
-    gfx_format        depth_format;
-    gfx_pipeline_type type;
-    bool              enable_depth_test;
-    bool              enable_depth_write;
-    bool              enable_transparency;
-    gfx_polygon_mode  polygon_mode;
-    gfx_cull_mode     cull_mode;
-    gfx_compare_op    depth_compare;
-    gfx_blend_factor  src_color_blend_factor;
-    gfx_blend_factor  dst_color_blend_factor;
-    gfx_blend_op      color_blend_op;
-    gfx_blend_factor  src_alpha_blend_factor;
-    gfx_blend_factor  dst_alpha_blend_factor;
-    gfx_blend_op      alpha_blend_op;
+    gfx_shader         shader;
+    gfx_root_signature root_sig;
+    gfx_format         color_formats[MAX_RT];
+    gfx_draw_type      draw_type;
+    uint32_t           color_formats_count;
+    gfx_format         depth_format;
+    gfx_pipeline_type  type;
+    bool               enable_depth_test;
+    bool               enable_depth_write;
+    bool               enable_transparency;
+    bool               _pad0;
+    gfx_polygon_mode   polygon_mode;
+    gfx_cull_mode      cull_mode;
+    gfx_compare_op     depth_compare;
+    gfx_blend_factor   src_color_blend_factor;
+    gfx_blend_factor   dst_color_blend_factor;
+    gfx_blend_op       color_blend_op;
+    gfx_blend_factor   src_alpha_blend_factor;
+    gfx_blend_factor   dst_alpha_blend_factor;
+    gfx_blend_op       alpha_blend_op;
+    uint64_t           _pad1;
 } gfx_pipeline_create_info;
 
 typedef struct gfx_pipeline
