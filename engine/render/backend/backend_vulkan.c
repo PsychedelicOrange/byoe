@@ -466,6 +466,9 @@ static QueueFamPropsArrayView vulkan_internal_query_queue_props(VkPhysicalDevice
 static queue_indices vulkan_internal_get_queue_family_indices(QueueFamPropsArrayView props, VkPhysicalDevice gpu, VkSurfaceKHR surface)
 {
     queue_indices indices = {0};
+    indices.gfx           = UINT32_MAX;
+    indices.present       = UINT32_MAX;
+    indices.async_compute = UINT32_MAX;
 
     for (uint32_t i = 0; i < props.size; ++i) {
         VkQueueFamilyProperties queue_prop = props.arr[i];
@@ -481,6 +484,9 @@ static queue_indices vulkan_internal_get_queue_family_indices(QueueFamPropsArray
 
         if (queue_prop.queueFlags & VK_QUEUE_COMPUTE_BIT && !(queue_prop.queueFlags & VK_QUEUE_GRAPHICS_BIT))
             indices.async_compute = i;
+
+        //if (indices.gfx != UINT32_MAX && indices.present != UINT32_MAX && indices.async_compute != UINT32_MAX)
+        //    break;
     }
     return indices;
 }

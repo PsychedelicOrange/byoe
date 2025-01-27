@@ -179,14 +179,13 @@ void renderer_sdf_render(void)
         rhi_begin_gfx_cmd_recording(cmd_buff);
 
         gfx_render_pass clear_screen_pass = {
-            .is_swap_pass = true,
-            .swapchain    = &s_RendererSDFInternalState.gfxcontext.swapchain,
-            // .extents                 = {(float) s_RendererSDFInternalState.width, (float) s_RendererSDFInternalState.height},
+            .is_swap_pass            = true,
+            .swapchain               = &s_RendererSDFInternalState.gfxcontext.swapchain,
+            .extents                 = {(float) s_RendererSDFInternalState.width, (float) s_RendererSDFInternalState.height},
             .color_attachments_count = 1,
             .color_attachments[0]    = {
-                   .clear = true,
-                //    .clear_color = (color_rgba) {1.0f, (float) sin(0.0025f * (float) s_RendererSDFInternalState.frameCount), 1.0f, 1.0f}}
-            }};
+                   .clear       = true,
+                   .clear_color = (color_rgba){1.0f, (float) sin(0.0025f * (float) s_RendererSDFInternalState.frameCount), 1.0f, 1.0f}}};
         rhi_begin_render_pass(cmd_buff, clear_screen_pass, s_RendererSDFInternalState.gfxcontext.swapchain.current_backbuffer_idx);
 
         // rhi_bind_pipeline(cmd_buff, scrn_quad_pipeline);
