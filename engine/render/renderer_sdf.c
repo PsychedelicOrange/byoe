@@ -77,16 +77,16 @@ static void renderer_internal_destroy_pipelines(void)
 static void renderer_internal_create_pipelines(void)
 {
     gfx_pipeline_create_info scrn_pipeline_ci = {0};
-    scrn_pipeline_ci.type                     = graphics;
+    scrn_pipeline_ci.type                     = GFX_PIPELINE_TYPE_GRAPHICS;
     scrn_pipeline_ci.shader                   = s_RendererSDFInternalState.screenQuadShader;
-    scrn_pipeline_ci.draw_type                = triangle;
+    scrn_pipeline_ci.draw_type                = GFX_DRAW_TYPE_TRIANGLE;
     scrn_pipeline_ci.polygon_mode             = GFX_POLYGON_MODE_FILL;
-    scrn_pipeline_ci.cull_mode                = no_cull;
+    scrn_pipeline_ci.cull_mode                = GFX_CULL_MODE_NO_CULL;
     scrn_pipeline_ci.enable_depth_test        = false;
     scrn_pipeline_ci.enable_depth_write       = false;
     scrn_pipeline_ci.enable_transparency      = false;
     scrn_pipeline_ci.color_formats_count      = 1;
-    scrn_pipeline_ci.color_formats[0]         = screen;
+    scrn_pipeline_ci.color_formats[0]         = GFX_FORMAT_SCREEN;
 
     s_RendererSDFInternalState.screenQuadPipeline = gfx_create_pipeline(scrn_pipeline_ci);
 }

@@ -235,60 +235,59 @@ typedef struct SDF_Node
 
 typedef enum gfx_format
 {
-    none_format,
-    r8int,
-    r8uint,
-    r8f,
-    r16f,
-    r32f,
-    r32uint,
-    r32unorm,
-    r32int,
-    rgbint,
-    rgbuint,
-    rgbunorm,
-    rgb32f,
-    rgbaint,
-    rgbauint,
-    rgbaunorm,
-    rgba32f,
-    depth32f,
-    depth16unorm,
-    depthstencil,    // d24s8 standard
-    screen           // bgra8_unorm swapchain preferred format
+    GFX_FORMAT_NONE,
+    GFX_FORMAT_R8INT,
+    GFX_FORMAT_R8UINT,
+    GFX_FORMAT_R8F,
+    GFX_FORMAT_R16F,
+    GFX_FORMAT_R32F,
+    GFX_FORMAT_R32UINT,
+    GFX_FORMAT_R32UNORM,
+    GFX_FORMAT_R32INT,
+    GFX_FORMAT_RGBINT,
+    GFX_FORMAT_RGBUINT,
+    GFX_FORMAT_RGBUNORM,
+    GFX_FORMAT_RGB32F,
+    GFX_FORMAT_RGBAINT,
+    GFX_FORMAT_RGBAUNORM,
+    GFX_FORMAT_RGBA32F,
+    GFX_FORMAT_DEPTH32F,
+    GFX_FORMAT_DEPTH16UNORM,
+    GFX_FORMAT_DEPTHSTENCIL,    // d24s8 standard
+    GFX_FORMAT_SCREEN           // bgra8_unorm swapchain preferred format
 } gfx_format;
 
 typedef enum gfx_shader_stage
 {
-    vs,
-    ps,
-    cs,
-    gs,
-    tes,
-    tcs,
-    ms,
-    as,
-    ray_hit,
-    ray_gen
+    GFX_SHADER_STAGE_VS,
+    GFX_SHADER_STAGE_PS,
+    GFX_SHADER_STAGE_CS,
+    GFX_SHADER_STAGE_GS,
+    GFX_SHADER_STAGE_TES,
+    GFX_SHADER_STAGE_TCS,
+    GFX_SHADER_STAGE_MS,
+    GFX_SHADER_STAGE_AS,
+    GFX_SHADER_STAGE_RAY_HIT,
+    GFX_SHADER_STAGE_RAY_GEN
 } gfx_shader_stage;
 
 typedef enum gfx_fence_type
 {
-    cpu,
-    gpu
+    GFX_FENCE_TYPE_CPU,
+    GFX_FENCE_TYPE_GPU
 } gfx_fence_type;
 
 typedef enum gfx_pipeline_type
 {
-    graphics,
-    compute
+    GFX_PIPELINE_TYPE_GRAPHICS,
+    GFX_PIPELINE_TYPE_COMPUTE
 } gfx_pipeline_type;
 
 typedef enum gfx_draw_type
 {
-    point,
-    triangle,
-    line
+    GFX_DRAW_TYPE_POINT,
+    GFX_DRAW_TYPE_TRIANGLE,
+    GFX_DRAW_TYPE_LINE
 } gfx_draw_type;
 
 typedef enum gfx_polygon_mode
@@ -300,59 +299,63 @@ typedef enum gfx_polygon_mode
 
 typedef enum gfx_cull_mode
 {
-    back,
-    front,
-    back_and_front,
-    no_cull
+    GFX_CULL_MODE_BACK,
+    GFX_CULL_MODE_FRONT,
+    GFX_CULL_MODE_BACK_AND_FRONT,
+    GFX_CULL_MODE_NO_CULL
 } gfx_cull_mode;
 
 typedef enum gfx_blend_op
 {
-    add,
-    subtract,
-    reverse_subtract,
-    min,
-    max
+    GFX_BLEND_OP_ADD,
+    GFX_BLEND_OP_SUBTRACT,
+    GFX_BLEND_OP_REVERSE_SUBTRACT,
+    GFX_BLEND_OP_MIN,
+    GFX_BLEND_OP_MAX
 } gfx_blend_op;
 
 typedef enum gfx_blend_factor
 {
-    zero,
-    one,
-    src_color,
-    one_minus_src_color,
-    dst_color,
-    one_minus_dst_color,
-    src_alpha,
-    one_minus_src_alpha,
-    dst_alpha,
-    one_minus_dst_alpha,
-    constant_color,
-    one_minus_constant_color,
-    constant_alpha,
-    one_minus_constant_alpha,
-    src_alpha_saturate
+    GFX_BLEND_FACTOR_ZERO,
+    GFX_BLEND_FACTOR_ONE,
+    GFX_BLEND_FACTOR_SRC_COLOR,
+    GFX_BLEND_FACTOR_ONE_MINUS_SRC_COLOR,
+    GFX_BLEND_FACTOR_DST_COLOR,
+    GFX_BLEND_FACTOR_ONE_MINUS_DST_COLOR,
+    GFX_BLEND_FACTOR_SRC_ALPHA,
+    GFX_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+    GFX_BLEND_FACTOR_DST_ALPHA,
+    GFX_BLEND_FACTOR_ONE_MINUS_DST_ALPHA,
+    GFX_BLEND_FACTOR_CONSTANT_COLOR,
+    GFX_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR,
+    GFX_BLEND_FACTOR_CONSTANT_ALPHA,
+    GFX_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA,
+    GFX_BLEND_FACTOR_SRC_ALPHA_SATURATE
 } gfx_blend_factor;
 
 typedef enum gfx_compare_op
 {
-    never,
-    less,
-    equal,
-    less_or_equal,
-    greater,
-    not_equal,
-    greater_or_equal,
-    always
+    GFX_COMPARE_OP_NEVER,
+    GFX_COMPARE_OP_LESS,
+    GFX_COMPARE_OP_EQUAL,
+    GFX_COMPARE_OP_LESS_OR_EQUAL,
+    GFX_COMPARE_OP_GREATER,
+    GFX_COMPARE_OP_NOT_EQUAL,
+    GFX_COMPARE_OP_GREATER_OR_EQUAL,
+    GFX_COMPARE_OP_ALWAYS
 } gfx_compare_op;
 
 typedef enum gfx_descriptor_type
 {
-    uniform_buffer,
-    storage_buffer,
-    combined_image_sampler,
-    sampler,
-    storage_image
+    GFX_DESCRIPTOR_TYPE_SAMPLER,
+    GFX_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+    GFX_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+    GFX_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+    GFX_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+    GFX_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+    GFX_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
+    GFX_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
+    GFX_DESCRIPTOR_TYPE_INPUT_ATTACHMENT
 } gfx_descriptor_type;
 
 typedef struct gfx_config
@@ -479,27 +482,65 @@ typedef struct gfx_descriptor_binding
     gfx_shader_stage    stage_flags;
 } gfx_descriptor_binding;
 
+typedef struct gfx_descriptor_set_layout
+{
+    random_uuid_t           uuid;
+    gfx_descriptor_binding* bindings;
+    void*                   backend;
+    uint32_t                binding_count;
+} gfx_descriptor_set_layout;
+
 typedef struct gfx_descriptor_set
 {
-    gfx_descriptor_binding* bindings;
-    uint32_t                binding_count;
+    random_uuid_t uuid;
+    uint32_t      table_idx;
+    uint32_t      num_descriptors;
+    void*         backend;
 } gfx_descriptor_set;
+
+typedef struct gfx_push_constant
+{
+    random_uuid_t uuid;
+    uint32_t      table_idx;
+    void*         data;
+    uint32_t      size;
+    uint32_t      offset;
+    void*         backend;
+} gfx_push_constant;
 
 typedef struct gfx_push_constant_range
 {
     uint32_t         size;
     uint32_t         offset;
-    gfx_shader_stage stage_flags;
+    gfx_shader_stage stage;
 } gfx_push_constant_range;
+
+typedef struct gfx_descriptor_table
+{
+    random_uuid_t       uuid;
+    uint32_t            set_count;
+    uint32_t            push_constants_count;
+    gfx_descriptor_set* sets;
+    gfx_push_constant*  push_constants;
+} gfx_descriptor_table;
 
 typedef struct gfx_root_signature
 {
-    gfx_descriptor_set*      descriptor_sets;
-    gfx_push_constant_range* push_constants;
-    uint32_t                 descriptor_set_count;
-    uint32_t                 push_constant_count;
-    void*                    backend;
+    random_uuid_t              uuid;
+    gfx_descriptor_set_layout* descriptor_set_layouts;
+    gfx_push_constant_range*   push_constants;
+    uint32_t                   descriptor_layout_count;
+    uint32_t                   push_constant_count;
+    void*                      backend;
 } gfx_root_signature;
+
+typedef struct gfx_resource
+{
+    void*               handle;
+    gfx_descriptor_type type;
+    uint32_t            set;
+    uint32_t            binding;
+} gfx_resource;
 
 typedef struct gfx_pipeline_create_info
 {

@@ -125,49 +125,46 @@ static vulkan_context s_VkCtx;
 
 //--------------------------------------------------------
 // Util functions
-
 static VkPrimitiveTopology vulkan_util_draw_type_translate(gfx_draw_type draw_type)
 {
     switch (draw_type) {
-        case point: return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
-        case line: return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
-        case triangle: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        case GFX_DRAW_TYPE_POINT: return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+        case GFX_DRAW_TYPE_LINE: return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+        case GFX_DRAW_TYPE_TRIANGLE: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
         default: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     }
 }
 
-// Function to translate blend operations
 static VkBlendOp vulkan_util_blend_op_translate(gfx_blend_op blend_op)
 {
     switch (blend_op) {
-        case add: return VK_BLEND_OP_ADD;
-        case subtract: return VK_BLEND_OP_SUBTRACT;
-        case reverse_subtract: return VK_BLEND_OP_REVERSE_SUBTRACT;
-        case min: return VK_BLEND_OP_MIN;
-        case max: return VK_BLEND_OP_MAX;
+        case GFX_BLEND_OP_ADD: return VK_BLEND_OP_ADD;
+        case GFX_BLEND_OP_SUBTRACT: return VK_BLEND_OP_SUBTRACT;
+        case GFX_BLEND_OP_REVERSE_SUBTRACT: return VK_BLEND_OP_REVERSE_SUBTRACT;
+        case GFX_BLEND_OP_MIN: return VK_BLEND_OP_MIN;
+        case GFX_BLEND_OP_MAX: return VK_BLEND_OP_MAX;
         default: return VK_BLEND_OP_ADD;
     }
 }
 
-// Function to translate blend factors
 static VkBlendFactor vulkan_util_blend_factor_translate(gfx_blend_factor blend_factor)
 {
     switch (blend_factor) {
-        case zero: return VK_BLEND_FACTOR_ZERO;
-        case one: return VK_BLEND_FACTOR_ONE;
-        case src_color: return VK_BLEND_FACTOR_SRC_COLOR;
-        case one_minus_src_color: return VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
-        case dst_color: return VK_BLEND_FACTOR_DST_COLOR;
-        case one_minus_dst_color: return VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
-        case src_alpha: return VK_BLEND_FACTOR_SRC_ALPHA;
-        case one_minus_src_alpha: return VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-        case dst_alpha: return VK_BLEND_FACTOR_DST_ALPHA;
-        case one_minus_dst_alpha: return VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
-        case constant_color: return VK_BLEND_FACTOR_CONSTANT_COLOR;
-        case one_minus_constant_color: return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR;
-        case constant_alpha: return VK_BLEND_FACTOR_CONSTANT_ALPHA;
-        case one_minus_constant_alpha: return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA;
-        case src_alpha_saturate: return VK_BLEND_FACTOR_SRC_ALPHA_SATURATE;
+        case GFX_BLEND_FACTOR_ZERO: return VK_BLEND_FACTOR_ZERO;
+        case GFX_BLEND_FACTOR_ONE: return VK_BLEND_FACTOR_ONE;
+        case GFX_BLEND_FACTOR_SRC_COLOR: return VK_BLEND_FACTOR_SRC_COLOR;
+        case GFX_BLEND_FACTOR_ONE_MINUS_SRC_COLOR: return VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
+        case GFX_BLEND_FACTOR_DST_COLOR: return VK_BLEND_FACTOR_DST_COLOR;
+        case GFX_BLEND_FACTOR_ONE_MINUS_DST_COLOR: return VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
+        case GFX_BLEND_FACTOR_SRC_ALPHA: return VK_BLEND_FACTOR_SRC_ALPHA;
+        case GFX_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA: return VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        case GFX_BLEND_FACTOR_DST_ALPHA: return VK_BLEND_FACTOR_DST_ALPHA;
+        case GFX_BLEND_FACTOR_ONE_MINUS_DST_ALPHA: return VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
+        case GFX_BLEND_FACTOR_CONSTANT_COLOR: return VK_BLEND_FACTOR_CONSTANT_COLOR;
+        case GFX_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR: return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR;
+        case GFX_BLEND_FACTOR_CONSTANT_ALPHA: return VK_BLEND_FACTOR_CONSTANT_ALPHA;
+        case GFX_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA: return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA;
+        case GFX_BLEND_FACTOR_SRC_ALPHA_SATURATE: return VK_BLEND_FACTOR_SRC_ALPHA_SATURATE;
         default: return VK_BLEND_FACTOR_ONE;
     }
 }
@@ -185,10 +182,10 @@ static VkPolygonMode vulkan_util_polygon_mode_translate(gfx_polygon_mode polygon
 static VkCullModeFlags vulkan_util_cull_mode_translate(gfx_cull_mode cull_mode)
 {
     switch (cull_mode) {
-        case back: return VK_CULL_MODE_BACK_BIT;
-        case front: return VK_CULL_MODE_FRONT_BIT;
-        case back_and_front: return VK_CULL_MODE_FRONT_AND_BACK;
-        case no_cull: return VK_CULL_MODE_NONE;
+        case GFX_CULL_MODE_BACK: return VK_CULL_MODE_BACK_BIT;
+        case GFX_CULL_MODE_FRONT: return VK_CULL_MODE_FRONT_BIT;
+        case GFX_CULL_MODE_BACK_AND_FRONT: return VK_CULL_MODE_FRONT_AND_BACK;
+        case GFX_CULL_MODE_NO_CULL: return VK_CULL_MODE_NONE;
         default: return VK_CULL_MODE_NONE;
     }
 }
@@ -196,42 +193,57 @@ static VkCullModeFlags vulkan_util_cull_mode_translate(gfx_cull_mode cull_mode)
 static VkCompareOp vulkan_util_compare_op_translate(gfx_compare_op compare_op)
 {
     switch (compare_op) {
-        case never: return VK_COMPARE_OP_NEVER;
-        case less: return VK_COMPARE_OP_LESS;
-        case equal: return VK_COMPARE_OP_EQUAL;
-        case less_or_equal: return VK_COMPARE_OP_LESS_OR_EQUAL;
-        case greater: return VK_COMPARE_OP_GREATER;
-        case not_equal: return VK_COMPARE_OP_NOT_EQUAL;
-        case greater_or_equal: return VK_COMPARE_OP_GREATER_OR_EQUAL;
-        case always: return VK_COMPARE_OP_ALWAYS;
-        default: return VK_COMPARE_OP_ALWAYS;    // Fallback to always as default
+        case GFX_COMPARE_OP_NEVER: return VK_COMPARE_OP_NEVER;
+        case GFX_COMPARE_OP_LESS: return VK_COMPARE_OP_LESS;
+        case GFX_COMPARE_OP_EQUAL: return VK_COMPARE_OP_EQUAL;
+        case GFX_COMPARE_OP_LESS_OR_EQUAL: return VK_COMPARE_OP_LESS_OR_EQUAL;
+        case GFX_COMPARE_OP_GREATER: return VK_COMPARE_OP_GREATER;
+        case GFX_COMPARE_OP_NOT_EQUAL: return VK_COMPARE_OP_NOT_EQUAL;
+        case GFX_COMPARE_OP_GREATER_OR_EQUAL: return VK_COMPARE_OP_GREATER_OR_EQUAL;
+        case GFX_COMPARE_OP_ALWAYS: return VK_COMPARE_OP_ALWAYS;
+        default: return VK_COMPARE_OP_ALWAYS;
     }
 }
 
 static VkFormat vulkan_util_format_translate(gfx_format format)
 {
     switch (format) {
-        case none_format: return VK_FORMAT_UNDEFINED;
-        case r8int: return VK_FORMAT_R8_SINT;
-        case r8uint: return VK_FORMAT_R8_UINT;
-        case r8f: return VK_FORMAT_R8_UNORM;
-        case r16f: return VK_FORMAT_R16_SFLOAT;
-        case r32f: return VK_FORMAT_R32_SFLOAT;
-        case r32uint: return VK_FORMAT_R32_UINT;
-        case r32int: return VK_FORMAT_R32_SINT;
-        case rgbint: return VK_FORMAT_R8G8B8_SINT;
-        case rgbuint: return VK_FORMAT_R8G8B8_UINT;
-        case rgbunorm: return VK_FORMAT_R8G8B8_UNORM;
-        case rgb32f: return VK_FORMAT_R32G32B32_SFLOAT;
-        case rgbaint: return VK_FORMAT_R8G8B8A8_SINT;
-        case rgbauint: return VK_FORMAT_R8G8B8A8_UINT;
-        case rgbaunorm: return VK_FORMAT_R8G8B8A8_UNORM;
-        case rgba32f: return VK_FORMAT_R32G32B32A32_SFLOAT;
-        case depth32f: return VK_FORMAT_D32_SFLOAT;
-        case depth16unorm: return VK_FORMAT_D16_UNORM;
-        case depthstencil: return VK_FORMAT_D24_UNORM_S8_UINT;
-        case screen: return VK_FORMAT_B8G8R8A8_UNORM;
+        case GFX_FORMAT_NONE: return VK_FORMAT_UNDEFINED;
+        case GFX_FORMAT_R8INT: return VK_FORMAT_R8_SINT;
+        case GFX_FORMAT_R8UINT: return VK_FORMAT_R8_UINT;
+        case GFX_FORMAT_R8F: return VK_FORMAT_R8_UNORM;
+        case GFX_FORMAT_R16F: return VK_FORMAT_R16_SFLOAT;
+        case GFX_FORMAT_R32F: return VK_FORMAT_R32_SFLOAT;
+        case GFX_FORMAT_R32UINT: return VK_FORMAT_R32_UINT;
+        case GFX_FORMAT_R32INT: return VK_FORMAT_R32_SINT;
+        case GFX_FORMAT_RGBINT: return VK_FORMAT_R8G8B8_SINT;
+        case GFX_FORMAT_RGBUINT: return VK_FORMAT_R8G8B8_UINT;
+        case GFX_FORMAT_RGBUNORM: return VK_FORMAT_R8G8B8_UNORM;
+        case GFX_FORMAT_RGB32F: return VK_FORMAT_R32G32B32_SFLOAT;
+        case GFX_FORMAT_RGBAINT: return VK_FORMAT_R8G8B8A8_SINT;
+        case GFX_FORMAT_RGBAUNORM: return VK_FORMAT_R8G8B8A8_UNORM;
+        case GFX_FORMAT_RGBA32F: return VK_FORMAT_R32G32B32A32_SFLOAT;
+        case GFX_FORMAT_DEPTH32F: return VK_FORMAT_D32_SFLOAT;
+        case GFX_FORMAT_DEPTH16UNORM: return VK_FORMAT_D16_UNORM;
+        case GFX_FORMAT_DEPTHSTENCIL: return VK_FORMAT_D24_UNORM_S8_UINT;
+        case GFX_FORMAT_SCREEN: return VK_FORMAT_B8G8R8A8_UNORM;
         default: return VK_FORMAT_UNDEFINED;
+    }
+}
+
+static VkDescriptorType vulkan_util_descriptor_type_translate(gfx_descriptor_type descriptor_type)
+{
+    switch (descriptor_type) {
+        case GFX_DESCRIPTOR_TYPE_SAMPLER: return VK_DESCRIPTOR_TYPE_SAMPLER;
+        case GFX_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        case GFX_DESCRIPTOR_TYPE_SAMPLED_IMAGE: return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        case GFX_DESCRIPTOR_TYPE_STORAGE_IMAGE: return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        case GFX_DESCRIPTOR_TYPE_UNIFORM_BUFFER: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        case GFX_DESCRIPTOR_TYPE_STORAGE_BUFFER: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        case GFX_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER: return VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+        case GFX_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+        case GFX_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: return VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+        default: return VK_DESCRIPTOR_TYPE_MAX_ENUM;    // Use the maximum value to indicate an invalid type
     }
 }
 
@@ -1032,7 +1044,7 @@ gfx_frame_sync vulkan_device_create_frame_sync(void)
 
     {
         uuid_generate(&frame_sync.image_ready.uuid);
-        frame_sync.image_ready.visibility = gpu;
+        frame_sync.image_ready.visibility = GFX_FENCE_TYPE_GPU;
         frame_sync.image_ready.value      = UINT32_MAX;
         frame_sync.image_ready.backend    = malloc(sizeof(VkSemaphore));
         vulkan_internal_create_sema(frame_sync.image_ready.backend);
@@ -1041,7 +1053,7 @@ gfx_frame_sync vulkan_device_create_frame_sync(void)
 
     {
         uuid_generate(&frame_sync.rendering_done.uuid);
-        frame_sync.rendering_done.visibility = gpu;
+        frame_sync.rendering_done.visibility = GFX_FENCE_TYPE_GPU;
         frame_sync.rendering_done.value      = UINT32_MAX;
         frame_sync.rendering_done.backend    = malloc(sizeof(VkSemaphore));
         vulkan_internal_create_sema(frame_sync.rendering_done.backend);
@@ -1050,7 +1062,7 @@ gfx_frame_sync vulkan_device_create_frame_sync(void)
 
     if (!g_gfxConfig.use_timeline_semaphores) {
         uuid_generate(&frame_sync.in_flight.uuid);
-        frame_sync.in_flight.visibility = cpu;
+        frame_sync.in_flight.visibility = GFX_FENCE_TYPE_CPU;
         frame_sync.in_flight.value      = UINT32_MAX;
         frame_sync.in_flight.backend    = malloc(sizeof(VkFence));
         vulkan_internal_create_fence(frame_sync.in_flight.backend);
@@ -1069,7 +1081,7 @@ void vulkan_device_destroy_frame_sync(gfx_frame_sync* frame_sync)
     vulkan_internal_destroy_sema(*(VkSemaphore*) frame_sync->rendering_done.backend);
     vulkan_internal_destroy_sema(*(VkSemaphore*) frame_sync->image_ready.backend);
 
-    if (!g_gfxConfig.use_timeline_semaphores && frame_sync->in_flight.visibility == cpu)
+    if (!g_gfxConfig.use_timeline_semaphores && frame_sync->in_flight.visibility == GFX_FENCE_TYPE_CPU)
         vulkan_internal_destroy_fence(*(VkFence*) frame_sync->in_flight.backend);
 
     free(frame_sync->rendering_done.backend);
@@ -1166,7 +1178,7 @@ gfx_shader vulkan_device_create_compute_shader(const char* spv_file_path)
     shader_backend* backend = malloc(sizeof(shader_backend));
     if (backend) {
         shader.stages.CS = backend;
-        backend->stage   = cs;
+        backend->stage   = GFX_SHADER_STAGE_CS;
 
         backend->modules.CS = vulkan_internal_create_shader_handle(spv_file_path);
 
@@ -1187,7 +1199,7 @@ gfx_shader vulkan_device_create_vs_ps_shader(const char* spv_file_path_vs, const
     shader_backend* backend_vs = malloc(sizeof(shader_backend));
     if (backend_vs) {
         shader.stages.VS  = backend_vs;
-        backend_vs->stage = vs;
+        backend_vs->stage = GFX_SHADER_STAGE_VS;
 
         backend_vs->modules.VS = vulkan_internal_create_shader_handle(spv_file_path_vs);
 
@@ -1201,7 +1213,7 @@ gfx_shader vulkan_device_create_vs_ps_shader(const char* spv_file_path_vs, const
     shader_backend* backend_ps = malloc(sizeof(shader_backend));
     if (backend_ps) {
         shader.stages.PS  = backend_ps;
-        backend_ps->stage = ps;
+        backend_ps->stage = GFX_SHADER_STAGE_PS;
 
         backend_ps->modules.PS = vulkan_internal_create_shader_handle(spv_file_path_ps);
 
@@ -1467,7 +1479,7 @@ static gfx_pipeline vulkan_internal_create_gfx_pipeline(gfx_pipeline_create_info
 
 gfx_pipeline vulkan_device_create_pipeline(gfx_pipeline_create_info info)
 {
-    if (info.type == graphics) return vulkan_internal_create_gfx_pipeline(info);
+    if (info.type == GFX_PIPELINE_TYPE_GRAPHICS) return vulkan_internal_create_gfx_pipeline(info);
     else
         return vulkan_internal_create_compute_pipeline(info);
 }
