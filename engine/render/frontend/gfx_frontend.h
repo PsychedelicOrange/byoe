@@ -55,8 +55,9 @@ void         (*gfx_destroy_pipeline)(gfx_pipeline* pipeline);
 gfx_root_signature (*gfx_create_root_signature)(const gfx_descriptor_set_layout* set_layouts, uint32_t set_layout_count, const gfx_push_constant_range* push_constants, uint32_t push_constant_count);
 void               (*gfx_destroy_root_signature)(gfx_root_signature* root_sig);
 
-//gfx_descriptor_table (*gfx_create_descriptor_table)(const gfx_root_signature* root_signature);
-//void                 (*gfx_destroy_descriptor_table)(gfx_descriptor_table* descriptor_table);
+gfx_descriptor_table (*gfx_create_descriptor_table)(const gfx_root_signature* root_signature, gfx_resource* resources, uint32_t num_resources);
+void                 (*gfx_destroy_descriptor_table)(gfx_descriptor_table* descriptor_table);
+void                 (*gfx_update_descriptor_table)(gfx_descriptor_table* descriptor_table, gfx_resource* resources, uint32_t num_resources);
 
 //------------------------------------------
 // RHI function pointers
@@ -95,6 +96,9 @@ rhi_error_codes (*rhi_set_viewport)(const gfx_cmd_buf* cmd_buf, gfx_viewport vie
 rhi_error_codes (*rhi_set_scissor)(const gfx_cmd_buf* cmd_buf, gfx_scissor scissor);
 
 rhi_error_codes (*rhi_bind_pipeline)(const gfx_cmd_buf* cmd_buf, gfx_pipeline pipeline);
+rhi_error_codes (*rhi_bind_root_signature)(const gfx_root_signature* root_signature);
+rhi_error_codes (*rhi_bind_descriptor_table)(const gfx_descriptor_table* descriptor_table);
+rhi_error_codes (*rhi_bind_push_constants)(gfx_push_constant* push_constants, uint32_t num_push_constants);
 
 rhi_error_codes (*rhi_draw)(const gfx_cmd_buf* cmd_buf, uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance);
 

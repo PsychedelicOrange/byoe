@@ -489,7 +489,6 @@ typedef struct gfx_descriptor_set_layout
 {
     random_uuid_t           uuid;
     gfx_descriptor_binding* bindings;
-    void*                   backend;
     uint32_t                binding_count;
 } gfx_descriptor_set_layout;
 
@@ -523,10 +522,8 @@ typedef struct gfx_descriptor_table
 {
     random_uuid_t       uuid;
     uint32_t            set_count;
-    uint32_t            push_constants_count;
+    uint32_t            _pad0;
     gfx_descriptor_set* sets;
-    gfx_push_constant*  push_constants;
-    uint64_t            _pad0;
 } gfx_descriptor_table;
 
 typedef struct gfx_root_signature
