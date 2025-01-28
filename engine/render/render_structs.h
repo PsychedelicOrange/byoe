@@ -10,6 +10,8 @@
 
 #include "../scene/transform.h"
 
+// TODO: use the BitSet DS for flags don't waste space on booleans
+
 //-----------------------------
 // RayMarching Settings
 #define MAX_STEPS    128
@@ -454,9 +456,9 @@ typedef struct gfx_cmd_buf
 
 typedef struct gfx_cmd_queue
 {
-    gfx_cmd_buf** cmds;
-    uint32_t      cmds_count;
-    uint32_t      _pad0;
+    const gfx_cmd_buf** cmds;
+    uint32_t            cmds_count;
+    uint32_t            _pad0;
 } gfx_cmd_queue;
 
 typedef struct gfx_shader
@@ -630,7 +632,6 @@ typedef struct gfx_attachment
     bool         _pad0[7];
 } gfx_attachment;
 
-// TODO: use a BitSet DS for flags don't waste space on booleans
 typedef struct gfx_render_pass
 {
     alignas(16) vec2s extents;

@@ -54,23 +54,23 @@ rhi_error_codes vulkan_frame_end(gfx_context* context);
 
 rhi_error_codes vulkan_wait_on_previous_cmds(const gfx_frame_sync* in_flight_sync);
 rhi_error_codes vulkan_acquire_image(gfx_swapchain* swapchain, const gfx_frame_sync* in_flight_sync);
-rhi_error_codes vulkan_gfx_cmd_enque_submit(gfx_cmd_queue* cmd_queue, gfx_cmd_buf* cmd_buff);
-rhi_error_codes vulkan_gfx_cmd_submit_queue(gfx_cmd_queue* cmd_queue, gfx_frame_sync* frame_sync);
-rhi_error_codes vulkan_present(gfx_swapchain* swapchain, gfx_frame_sync* frame_sync);
+rhi_error_codes vulkan_gfx_cmd_enque_submit(gfx_cmd_queue* cmd_queue, const gfx_cmd_buf* cmd_buff);
+rhi_error_codes vulkan_gfx_cmd_submit_queue(const gfx_cmd_queue* cmd_queue, gfx_frame_sync* frame_sync);
+rhi_error_codes vulkan_present(const gfx_swapchain* swapchain, const gfx_frame_sync* frame_sync);
 
 rhi_error_codes vulkan_resize_swapchain(gfx_swapchain* swapchain, uint32_t width, uint32_t height);
 
-rhi_error_codes vulkan_begin_gfx_cmd_recording(gfx_cmd_buf* cmd_buf);
-rhi_error_codes vulkan_end_gfx_cmd_recording(gfx_cmd_buf* cmd_buf);
+rhi_error_codes vulkan_begin_gfx_cmd_recording(const gfx_cmd_buf* cmd_buf);
+rhi_error_codes vulkan_end_gfx_cmd_recording(const gfx_cmd_buf* cmd_buf);
 
-rhi_error_codes vulkan_begin_render_pass(gfx_cmd_buf* cmd_buf, gfx_render_pass render_pass, uint32_t backbuffer_index);
-rhi_error_codes vulkan_end_render_pass(gfx_cmd_buf* cmd_buf);
+rhi_error_codes vulkan_begin_render_pass(const gfx_cmd_buf* cmd_buf, gfx_render_pass render_pass, uint32_t backbuffer_index);
+rhi_error_codes vulkan_end_render_pass(const gfx_cmd_buf* cmd_buf);
 
-rhi_error_codes vulkan_set_viewport(gfx_cmd_buf* cmd_buf, gfx_viewport viewport);
-rhi_error_codes vulkan_set_scissor(gfx_cmd_buf* cmd_buf, gfx_scissor scissor);
+rhi_error_codes vulkan_set_viewport(const gfx_cmd_buf* cmd_buf, gfx_viewport viewport);
+rhi_error_codes vulkan_set_scissor(const gfx_cmd_buf* cmd_buf, gfx_scissor scissor);
 
-rhi_error_codes vulkan_bind_pipeline(gfx_cmd_buf* cmd_buf, gfx_pipeline pipeline);
+rhi_error_codes vulkan_bind_pipeline(const gfx_cmd_buf* cmd_buf, gfx_pipeline pipeline);
 
-rhi_error_codes vulkan_draw(gfx_cmd_buf* cmd_buf, uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance);
+rhi_error_codes vulkan_draw(const gfx_cmd_buf* cmd_buf, uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance);
 
 #endif    // BACKEND_VULKAN_N

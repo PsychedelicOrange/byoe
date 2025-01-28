@@ -347,7 +347,7 @@ static VkInstance vulkan_internal_create_instance(void)
 
     const char* instance_layers[] = {VK_LAYER_KHRONOS_VALIDATION_NAME};
 
-    uint32_t   glfwExtensionsCount = 0;
+    uint32_t     glfwExtensionsCount = 0;
     const char** glfwExtensions;
     glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionsCount);
     LOG_WARN("[Vulkan] GLFW loaded extensions count : %u", glfwExtensionsCount);
@@ -356,11 +356,10 @@ static VkInstance vulkan_internal_create_instance(void)
         LOG_INFO("GLFW requried extension: %s", glfwExtensions[i]);
     }
 
-         
     const char* instance_extensions[] = {
 #ifdef _WIN32
         VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
-    #elif __APPLE__
+#elif __APPLE__
         VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME,
         "VK_EXT_metal_surface",
 #endif
@@ -1510,7 +1509,7 @@ gfx_frame_sync* vulkan_frame_begin(gfx_context* context)
     return curr_frame_sync;
 }
 
-rhi_error_codes vulkan_begin_render_pass(gfx_cmd_buf* cmd_buf, gfx_render_pass render_pass, uint32_t backbuffer_index)
+rhi_error_codes vulkan_begin_render_pass(const gfx_cmd_buf* cmd_buf, gfx_render_pass render_pass, uint32_t backbuffer_index)
 {
     VkRenderingAttachmentInfo color_attachments[MAX_RT] = {0};
 
@@ -1562,13 +1561,13 @@ rhi_error_codes vulkan_begin_render_pass(gfx_cmd_buf* cmd_buf, gfx_render_pass r
     return Success;
 }
 
-rhi_error_codes vulkan_end_render_pass(gfx_cmd_buf* cmd_buf)
+rhi_error_codes vulkan_end_render_pass(const gfx_cmd_buf* cmd_buf)
 {
     vulkan_internal_cmd_end_rendering(*(VkCommandBuffer*) cmd_buf->backend);
     return Success;
 }
 
-rhi_error_codes vulkan_gfx_cmd_enque_submit(gfx_cmd_queue* cmd_queue, gfx_cmd_buf* cmd_buff)
+rhi_error_codes vulkan_gfx_cmd_enque_submit(gfx_cmd_queue* cmd_queue, const gfx_cmd_buf* cmd_buff)
 {
     cmd_queue->cmds[cmd_queue->cmds_count] = cmd_buff;
     cmd_queue->cmds_count++;
@@ -1612,7 +1611,7 @@ rhi_error_codes vulkan_acquire_image(gfx_swapchain* swapchain, const gfx_frame_s
         return FailedSwapAcquire;
 }
 
-rhi_error_codes vulkan_gfx_cmd_submit_queue(gfx_cmd_queue* cmd_queue, gfx_frame_sync* frame_sync)
+rhi_error_codes vulkan_gfx_cmd_submit_queue(const gfx_cmd_queue* cmd_queue, gfx_frame_sync* frame_sync)
 {
     // Flatten all the gfx_cmd_buff into a VkCommandBuffer Array
     VkCommandBuffer* vk_cmd_buffs = malloc(cmd_queue->cmds_count * sizeof(VkCommandBuffer));
@@ -1641,7 +1640,7 @@ rhi_error_codes vulkan_gfx_cmd_submit_queue(gfx_cmd_queue* cmd_queue, gfx_frame_
     return Success;
 }
 
-rhi_error_codes vulkan_present(gfx_swapchain* swapchain, gfx_frame_sync* frame_sync)
+rhi_error_codes vulkan_present(const gfx_swapchain* swapchain, const gfx_frame_sync* frame_sync)
 {
     VkPresentInfoKHR presentInfo = {
         .sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
@@ -1681,7 +1680,7 @@ rhi_error_codes vulkan_resize_swapchain(gfx_swapchain* swapchain, uint32_t width
     return Success;
 }
 
-rhi_error_codes vulkan_begin_gfx_cmd_recording(gfx_cmd_buf* cmd_buf)
+rhi_error_codes vulkan_begin_gfx_cmd_recording(const gfx_cmd_buf* cmd_buf)
 {
     VkCommandBufferBeginInfo begin = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -1693,7 +1692,7 @@ rhi_error_codes vulkan_begin_gfx_cmd_recording(gfx_cmd_buf* cmd_buf)
     return Success;
 }
 
-rhi_error_codes vulkan_end_gfx_cmd_recording(gfx_cmd_buf* cmd_buf)
+rhi_error_codes vulkan_end_gfx_cmd_recording(const gfx_cmd_buf* cmd_buf)
 {
     VK_CHECK_RESULT(vkEndCommandBuffer(*(VkCommandBuffer*) cmd_buf->backend), "[Vulkan] Failed to end recoding command buffer");
     return Success;
@@ -1701,7 +1700,7 @@ rhi_error_codes vulkan_end_gfx_cmd_recording(gfx_cmd_buf* cmd_buf)
 
 //--------------------------------------------------------
 
-rhi_error_codes vulkan_set_viewport(gfx_cmd_buf* cmd_buf, gfx_viewport viewport)
+rhi_error_codes vulkan_set_viewport(const gfx_cmd_buf* cmd_buf, gfx_viewport viewport)
 {
     VkCommandBuffer commandBuffer = *(VkCommandBuffer*) cmd_buf->backend;
     VkViewport      vkViewport    = {
@@ -1716,7 +1715,7 @@ rhi_error_codes vulkan_set_viewport(gfx_cmd_buf* cmd_buf, gfx_viewport viewport)
     return Success;
 }
 
-rhi_error_codes vulkan_set_scissor(gfx_cmd_buf* cmd_buf, gfx_scissor scissor)
+rhi_error_codes vulkan_set_scissor(const gfx_cmd_buf* cmd_buf, gfx_scissor scissor)
 {
     VkCommandBuffer commandBuffer = *(VkCommandBuffer*) cmd_buf->backend;
     VkRect2D        vkScissor     = {
@@ -1727,13 +1726,13 @@ rhi_error_codes vulkan_set_scissor(gfx_cmd_buf* cmd_buf, gfx_scissor scissor)
     return Success;
 }
 
-rhi_error_codes vulkan_bind_pipeline(gfx_cmd_buf* cmd_buf, gfx_pipeline pipeline)
+rhi_error_codes vulkan_bind_pipeline(const gfx_cmd_buf* cmd_buf, gfx_pipeline pipeline)
 {
     vkCmdBindPipeline(*(VkCommandBuffer*) cmd_buf->backend, VK_PIPELINE_BIND_POINT_GRAPHICS, ((pipeline_backend*) (pipeline.backend))->pipeline);
     return Success;
 }
 
-rhi_error_codes vulkan_draw(gfx_cmd_buf* cmd_buf, uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance)
+rhi_error_codes vulkan_draw(const gfx_cmd_buf* cmd_buf, uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance)
 {
     vkCmdDraw(*(VkCommandBuffer*) cmd_buf->backend, vertex_count, instance_count, first_vertex, first_instance);
     return Success;
