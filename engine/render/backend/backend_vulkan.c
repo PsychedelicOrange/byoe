@@ -1504,7 +1504,6 @@ gfx_root_signature vulkan_device_create_root_signature(const gfx_descriptor_set_
 
     VkDescriptorSetLayout* vk_descriptor_set_layouts = NULL;
     if (set_layout_count > 0) {
-        vk_descriptor_set_layouts = malloc(sizeof(VkDescriptorSetLayout) * set_layout_count);
 
         for (uint32_t i = 0; i < set_layout_count; ++i) {
             const gfx_descriptor_set_layout* set_layout = &set_layouts[i];
