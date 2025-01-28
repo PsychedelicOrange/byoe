@@ -20,27 +20,27 @@
 
 typedef struct renderer_internal_state
 {
-    uint32_t         numPrimitives;
-    uint32_t         width;
-    uint32_t         height;
-    uint32_t         raymarchShaderID;
-    GLFWwindow*      window;
-    const SDF_Scene* scene;
-    uint64_t         frameCount;
-    bool             captureSwapchain;
-    bool             _pad0[3];
-    mat4s            viewproj;
-    texture_readback lastTextureReadback;
-    gfx_context      gfxcontext;
-    gfx_shader       raymarchCS;
-    gfx_shader       screenQuadShader;
-    gfx_pipeline     screenQuadPipeline;
+    uint32_t           numPrimitives;
+    uint32_t           width;
+    uint32_t           height;
+    uint32_t           raymarchShaderID;
+    GLFWwindow*        window;
+    const SDF_Scene*   scene;
+    uint64_t           frameCount;
+    bool               captureSwapchain;
+    bool               _pad0[3];
+    mat4s              viewproj;
+    texture_readback   lastTextureReadback;
+    gfx_context        gfxcontext;
+    gfx_shader         raymarchCS;
+    gfx_shader         screenQuadShader;
+    gfx_pipeline       screenQuadPipeline;
+    gfx_root_signature screenShaderRootSig;
 } renderer_internal_state;
 
 //---------------------------------------------------------
 static renderer_internal_state s_RendererSDFInternalState;
 //---------------------------------------------------------
-//-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 // Private functions
 // Resize callback
 static void renderer_internal_sdf_resize(GLFWwindow* window, int width, int height)
@@ -71,13 +71,17 @@ static void renderer_internal_create_shaders(void)
 
 static void renderer_internal_destroy_pipelines(void)
 {
+    gfx_destroy_root_signature(&s_RendererSDFInternalState.screenShaderRootSig);
     gfx_destroy_pipeline(&s_RendererSDFInternalState.screenQuadPipeline);
 }
 
 static void renderer_internal_create_pipelines(void)
 {
+    s_RendererSDFInternalState.screenShaderRootSig = gfx_create_root_signature(NULL, 0, NULL, 0);
+
     gfx_pipeline_create_info scrn_pipeline_ci = {0};
     scrn_pipeline_ci.type                     = GFX_PIPELINE_TYPE_GRAPHICS;
+    scrn_pipeline_ci.root_sig                 = s_RendererSDFInternalState.screenShaderRootSig;
     scrn_pipeline_ci.shader                   = s_RendererSDFInternalState.screenQuadShader;
     scrn_pipeline_ci.draw_type                = GFX_DRAW_TYPE_TRIANGLE;
     scrn_pipeline_ci.polygon_mode             = GFX_POLYGON_MODE_FILL;
@@ -90,17 +94,6 @@ static void renderer_internal_create_pipelines(void)
 
     s_RendererSDFInternalState.screenQuadPipeline = gfx_create_pipeline(scrn_pipeline_ci);
 }
-
-// static void renderer_internal_sdf_hot_reload_shaders(void)
-// {
-//     gfx_flush_gpu_work();
-
-//     renderer_internal_destroy_shaders();
-//     renderer_internal_create_shaders();
-
-//     renderer_internal_destroy_pipelines();
-//     renderer_internal_create_pipelines();
-// }
 
 static bool render_internal_sdf_init_gfx_ctx(uint32_t width, uint32_t height)
 {
@@ -124,7 +117,7 @@ static bool render_internal_sdf_init_gfx_ctx(uint32_t width, uint32_t height)
     }
 }
 
-//-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+//----------------------------------------------------------------
 
 bool renderer_sdf_init(renderer_desc desc)
 {

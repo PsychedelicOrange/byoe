@@ -52,9 +52,11 @@ void       (*gfx_destroy_vs_ps_shader)(gfx_shader* shader);
 gfx_pipeline (*gfx_create_pipeline)(gfx_pipeline_create_info info);
 void         (*gfx_destroy_pipeline)(gfx_pipeline* pipeline);
 
-gfx_root_signature gfx_create_root_signature(const gfx_descriptor_set_layout* set_layouts, uint32_t set_layout_count, const gfx_push_constant_range* push_constants, uint32_t push_constant_count);
+gfx_root_signature (*gfx_create_root_signature)(const gfx_descriptor_set_layout* set_layouts, uint32_t set_layout_count, const gfx_push_constant_range* push_constants, uint32_t push_constant_count);
+void               (*gfx_destroy_root_signature)(gfx_root_signature* root_sig);
 
-gfx_descriptor_table gfx_create_descriptor_table(const gfx_root_signature* root_signature);
+//gfx_descriptor_table (*gfx_create_descriptor_table)(const gfx_root_signature* root_signature);
+//void                 (*gfx_destroy_descriptor_table)(gfx_descriptor_table* descriptor_table);
 
 //------------------------------------------
 // RHI function pointers

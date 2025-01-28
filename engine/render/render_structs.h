@@ -270,7 +270,8 @@ typedef enum gfx_shader_stage
     GFX_SHADER_STAGE_MS,
     GFX_SHADER_STAGE_AS,
     GFX_SHADER_STAGE_RAY_HIT,
-    GFX_SHADER_STAGE_RAY_GEN
+    GFX_SHADER_STAGE_RAY_ANY_HIT,
+    GFX_SHADER_STAGE_RAY_CLOSEST_HIT
 } gfx_shader_stage;
 
 typedef enum gfx_fence_type
@@ -530,12 +531,12 @@ typedef struct gfx_descriptor_table
 
 typedef struct gfx_root_signature
 {
-    random_uuid_t              uuid;
-    gfx_descriptor_set_layout* descriptor_set_layouts;
-    gfx_push_constant_range*   push_constants;
-    uint32_t                   descriptor_layout_count;
-    uint32_t                   push_constant_count;
-    void*                      backend;
+    random_uuid_t                    uuid;
+    const gfx_descriptor_set_layout* descriptor_set_layouts;
+    const gfx_push_constant_range*   push_constants;
+    uint32_t                         descriptor_layout_count;
+    uint32_t                         push_constant_count;
+    void*                            backend;
 } gfx_root_signature;
 
 typedef struct gfx_resource
