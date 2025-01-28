@@ -969,7 +969,7 @@ gfx_swapchain vulkan_device_create_swapchain(uint32_t width, uint32_t height)
         .imageColorSpace       = backend->format.colorSpace,
         .imageExtent           = backend->extents,
         .imageArrayLayers      = 1,
-        .imageUsage            = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT,
+        .imageUsage            = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
         .imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE,
         .compositeAlpha        = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
         .queueFamilyIndexCount = 0,
