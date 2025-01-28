@@ -556,21 +556,22 @@ static queue_indices vulkan_internal_get_queue_family_indices(QueueFamPropsArray
 
 static TypedGrowableArray vulkan_internal_create_queue_family_infos(queue_indices indices)
 {
-    TypedGrowableArray queueFamilyInfos = typed_growable_array_create(sizeof(VkDeviceQueueCreateInfo), 0);
+    const uint32_t     NUM_QUEUES       = 3;    // gfx, present, async
+    TypedGrowableArray queueFamilyInfos = typed_growable_array_create(sizeof(VkDeviceQueueCreateInfo), NUM_QUEUES);
 
     static float queuePriority = 1.0f;
 
     VkDeviceQueueCreateInfo* gfxQueueInfo = malloc(sizeof(VkDeviceQueueCreateInfo));
-    *gfxQueueInfo = (VkDeviceQueueCreateInfo) {
-        .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-        .queueFamilyIndex = indices.gfx,
-        .queueCount       = 1,
-        .pQueuePriorities = &queuePriority};
+    *gfxQueueInfo                         = (VkDeviceQueueCreateInfo){
+                                .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+                                .queueFamilyIndex = indices.gfx,
+                                .queueCount       = 1,
+                                .pQueuePriorities = &queuePriority};
     typed_growable_array_append(&queueFamilyInfos, gfxQueueInfo);
 
     if (indices.gfx != indices.present) {
         VkDeviceQueueCreateInfo* presentQueueInfo = malloc(sizeof(VkDeviceQueueCreateInfo));
-        *presentQueueInfo                         = (VkDeviceQueueCreateInfo) {
+        *presentQueueInfo                         = (VkDeviceQueueCreateInfo){
                                     .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
                                     .queueFamilyIndex = indices.present,
                                     .queueCount       = 1,
@@ -580,7 +581,7 @@ static TypedGrowableArray vulkan_internal_create_queue_family_infos(queue_indice
 
     if (indices.async_compute != indices.gfx) {
         VkDeviceQueueCreateInfo* computeQueueInfo = malloc(sizeof(VkDeviceQueueCreateInfo));
-        *computeQueueInfo                         = (VkDeviceQueueCreateInfo) {
+        *computeQueueInfo                         = (VkDeviceQueueCreateInfo){
                                     .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
                                     .queueFamilyIndex = indices.async_compute,
                                     .queueCount       = 1,
@@ -1234,7 +1235,7 @@ gfx_shader vulkan_device_create_compute_shader(const char* spv_file_path)
 
         backend->modules.CS = vulkan_internal_create_shader_handle(spv_file_path);
 
-        backend->stage_ci = (VkPipelineShaderStageCreateInfo) {
+        backend->stage_ci = (VkPipelineShaderStageCreateInfo){
             .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage  = VK_SHADER_STAGE_COMPUTE_BIT,
             .pName  = "main",
@@ -1255,7 +1256,7 @@ gfx_shader vulkan_device_create_vs_ps_shader(const char* spv_file_path_vs, const
 
         backend_vs->modules.VS = vulkan_internal_create_shader_handle(spv_file_path_vs);
 
-        backend_vs->stage_ci = (VkPipelineShaderStageCreateInfo) {
+        backend_vs->stage_ci = (VkPipelineShaderStageCreateInfo){
             .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage  = VK_SHADER_STAGE_VERTEX_BIT,
             .pName  = "main",
@@ -1269,7 +1270,7 @@ gfx_shader vulkan_device_create_vs_ps_shader(const char* spv_file_path_vs, const
 
         backend_ps->modules.PS = vulkan_internal_create_shader_handle(spv_file_path_ps);
 
-        backend_ps->stage_ci = (VkPipelineShaderStageCreateInfo) {
+        backend_ps->stage_ci = (VkPipelineShaderStageCreateInfo){
             .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage  = VK_SHADER_STAGE_FRAGMENT_BIT,
             .pName  = "main",
@@ -1552,7 +1553,7 @@ gfx_root_signature vulkan_device_create_root_signature(const gfx_descriptor_set_
 
         for (uint32_t j = 0; j < set_layout->binding_count; ++j) {
             const gfx_descriptor_binding binding = set_layout->bindings[j];
-            vk_bindings[j]                       = (VkDescriptorSetLayoutBinding) {
+            vk_bindings[j]                       = (VkDescriptorSetLayoutBinding){
                                       .binding            = binding.binding,
                                       .descriptorType     = vulkan_util_descriptor_type_translate(binding.type),
                                       .descriptorCount    = binding.count,
@@ -1579,7 +1580,7 @@ gfx_root_signature vulkan_device_create_root_signature(const gfx_descriptor_set_
 
         for (uint32_t i = 0; i < push_constant_count; ++i) {
             const gfx_push_constant_range push_constant = push_constants[i];
-            vk_push_constants[i]                        = (VkPushConstantRange) {
+            vk_push_constants[i]                        = (VkPushConstantRange){
                                        .offset     = push_constant.offset,
                                        .size       = push_constant.size,
                                        .stageFlags = vulkan_util_shader_stage_bits(push_constant.stage),

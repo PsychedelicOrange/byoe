@@ -7,7 +7,7 @@ TypedGrowableArray typed_growable_array_create(uint32_t element_size, uint32_t i
 {
     TypedGrowableArray array;
     array.data         = malloc(element_size * initial_capacity);
-    array.size         = initial_capacity;
+    array.size         = 0;
     array.capacity     = initial_capacity;
     array.element_size = element_size;
     return array;
