@@ -1511,7 +1511,7 @@ gfx_root_signature vulkan_device_create_root_signature(const gfx_descriptor_set_
     for (uint32_t i = 0; i < set_layout_count; ++i) {
         vk_descriptor_set_layouts = malloc(sizeof(VkDescriptorSetLayout) * set_layout_count);
 
-        gfx_descriptor_set_layout*     set_layout = &set_layouts[i];
+        const gfx_descriptor_set_layout* set_layout = &set_layouts[i];
 
         VkDescriptorSetLayoutBinding* vk_bindings = malloc(sizeof(VkDescriptorSetLayoutBinding) * set_layout->binding_count);
 
@@ -1564,7 +1564,7 @@ gfx_root_signature vulkan_device_create_root_signature(const gfx_descriptor_set_
 
     root_sig.backend = malloc(sizeof(root_signature_backend));
     VK_CHECK_RESULT(vkCreatePipelineLayout(VKDEVICE, &pipeline_layout_ci, NULL, &((root_signature_backend*) root_sig.backend)->pipeline_layout), "[Vulkan] cannot create pipeline layout");
-    free(vk_push_constants);  
+    free(vk_push_constants);
     free(vk_descriptor_set_layouts);
 
     root_sig.descriptor_set_layouts  = (gfx_descriptor_set_layout*) set_layouts;
@@ -1585,17 +1585,24 @@ void vulkan_device_destroy_root_signature(gfx_root_signature* root_sig)
 
 typedef struct descriptor_table_backend
 {
+    VkPipelineLayout pipeline_layout;
     VkDescriptorPool pool;
+    VkDescriptorSet* sets;
+    uint32_t         num_sets;
 } descriptor_table_backend;
 
-gfx_descriptor_table vulkan_device_create_descriptor_table(const gfx_root_signature* root_signature, gfx_resource* resources, uint32_t num_resources)
+gfx_descriptor_table vulkan_device_create_descriptor_table(const gfx_root_signature* root_signature)
 {
     gfx_descriptor_table descriptor_table = {0};
     uuid_generate(&descriptor_table.uuid);
 
     descriptor_table_backend* backend = malloc(sizeof(descriptor_table_backend));
 
-    // TODO: either expose customization options or make it generic enough without affecting perf
+    // cache pipeline layout from root_signature vulkan backend
+    backend->pipeline_layout = ((root_signature_backend*) (root_signature->backend))->pipeline_layout;
+    backend->num_sets        = root_signature->descriptor_layout_count;
+
+    // TODO: either expose customization options or make it generic enough without affecting perf!
     VkDescriptorPoolSize pool_sizes[] = {
         {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 128},
         {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 128},
@@ -1613,13 +1620,6 @@ gfx_descriptor_table vulkan_device_create_descriptor_table(const gfx_root_signat
 
     VK_CHECK_RESULT(vkCreateDescriptorPool(VKDEVICE, &pool_ci, NULL, &backend->pool), "[Vulkan] Failed to allocate descriptor pool");
 
-    VkDescriptorSet* vk_descriptor_sets = malloc(sizeof(VkDescriptorSet) * root_signature->descriptor_layout_count);
-    if (!vk_descriptor_sets) {
-        fprintf(stderr, "Failed to allocate memory for Vulkan descriptor sets\n");
-        return descriptor_table;
-    }
-
-    // Allocate descriptor sets
     VkDescriptorSetAllocateInfo alloc_info = {
         .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
         .pNext              = NULL,
@@ -1628,26 +1628,20 @@ gfx_descriptor_table vulkan_device_create_descriptor_table(const gfx_root_signat
         .pSetLayouts        = (const VkDescriptorSetLayout*) root_signature->descriptor_set_layouts,
     };
 
-    result = vkAllocateDescriptorSets(vk_device, &alloc_info, vk_descriptor_sets);
-    if (result != VK_SUCCESS) {
-        fprintf(stderr, "Failed to allocate Vulkan descriptor sets\n");
-        vkDestroyDescriptorPool(vk_device, vk_descriptor_pool, NULL);
-        free(vk_descriptor_sets);
-        return descriptor_table;
-    }
+    VK_CHECK_RESULT(vkAllocateDescriptorSets(VKDEVICE, &alloc_info, backend->sets), "[Vulkan] Failed to allocated descriptor sets");
 
-    // Fill in descriptor table structure
-    descriptor_table.descriptor_pool      = vk_descriptor_pool;
-    descriptor_table.descriptor_sets      = vk_descriptor_sets;
-    descriptor_table.descriptor_set_count = root_signature->set_layout_count;
+    descriptor_table.backend   = backend;
+    descriptor_table.set_count = root_signature->descriptor_layout_count;
 
     return descriptor_table;
 }
 
 void vulkan_device_destroy_descriptor_table(gfx_descriptor_table* descriptor_table)
 {
+    (void) descriptor_table;
 }
 
+#if TBD
 void vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_table, gfx_resource* resources, uint32_t num_resources)
 {
     VkDescriptorSetAllocateInfo alloc_info = {
@@ -1696,7 +1690,7 @@ void vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_tabl
         vkUpdateDescriptorSets(VKDevice::Get().getDevice(), 1, &write, 0, NULL);
     }
 }
-
+#endif
 //--------------------------------------------------------
 // RHI
 //--------------------------------------------------------

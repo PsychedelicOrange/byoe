@@ -55,7 +55,7 @@ void         (*gfx_destroy_pipeline)(gfx_pipeline* pipeline);
 gfx_root_signature (*gfx_create_root_signature)(const gfx_descriptor_set_layout* set_layouts, uint32_t set_layout_count, const gfx_push_constant_range* push_constants, uint32_t push_constant_count);
 void               (*gfx_destroy_root_signature)(gfx_root_signature* root_sig);
 
-gfx_descriptor_table (*gfx_create_descriptor_table)(const gfx_root_signature* root_signature, gfx_resource* resources, uint32_t num_resources);
+gfx_descriptor_table (*gfx_create_descriptor_table)(const gfx_root_signature* root_signature);
 void                 (*gfx_destroy_descriptor_table)(gfx_descriptor_table* descriptor_table);
 void                 (*gfx_update_descriptor_table)(gfx_descriptor_table* descriptor_table, gfx_resource* resources, uint32_t num_resources);
 

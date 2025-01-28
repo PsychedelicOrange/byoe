@@ -492,14 +492,6 @@ typedef struct gfx_descriptor_set_layout
     uint32_t                binding_count;
 } gfx_descriptor_set_layout;
 
-typedef struct gfx_descriptor_set
-{
-    random_uuid_t uuid;
-    uint32_t      table_idx;
-    uint32_t      num_descriptors;
-    void*         backend;
-} gfx_descriptor_set;
-
 typedef struct gfx_push_constant
 {
     random_uuid_t uuid;
@@ -520,10 +512,10 @@ typedef struct gfx_push_constant_range
 
 typedef struct gfx_descriptor_table
 {
-    random_uuid_t       uuid;
-    uint32_t            set_count;
-    uint32_t            _pad0;
-    gfx_descriptor_set* sets;
+    random_uuid_t uuid;
+    void*         backend;
+    uint32_t      set_count;
+    uint32_t      _pad0;
 } gfx_descriptor_table;
 
 typedef struct gfx_root_signature
