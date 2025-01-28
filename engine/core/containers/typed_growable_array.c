@@ -26,7 +26,6 @@ void typed_growable_array_free(TypedGrowableArray* array)
 
 void* typed_growable_array_get_element(TypedGrowableArray* array, uint32_t index)
 {
-    if (index >= array->capacity) return NULL;
     return (char*) array->data + (index * array->element_size);
 }
 

@@ -62,7 +62,7 @@ int gfx_init(rhi_api api)
         rhi_set_viewport = vulkan_set_viewport;
         rhi_set_scissor  = vulkan_set_scissor;
 
-        rhi_bind_gfx_pipeline = vulkan_bind_gfx_pipeline;
+        rhi_bind_gfx_pipeline     = vulkan_bind_gfx_pipeline;
         rhi_bind_compute_pipeline = vulkan_bind_compute_pipeline;
 
         rhi_draw = vulkan_draw;

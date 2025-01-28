@@ -337,7 +337,6 @@ static void vulkan_internal_cmd_end_rendering(VkCommandBuffer commandBuffer)
 
 static VkInstance vulkan_internal_create_instance(void)
 {
-    // Debug create info
     VkDebugUtilsMessengerCreateInfoEXT debug_ci = {
         .sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
         .pNext           = NULL,
@@ -371,21 +370,42 @@ static VkInstance vulkan_internal_create_instance(void)
     LOG_WARN("[Vulkan] GLFW loaded extensions count : %u", glfwExtensionsCount);
 
     for (uint32_t i = 0; i < glfwExtensionsCount; ++i) {
-        LOG_INFO("GLFW requried extension: %s", glfwExtensions[i]);
+        LOG_INFO("GLFW required extension: %s", glfwExtensions[i]);
     }
 
-    const char* instance_extensions[] = {
+    const char* base_extensions[] = {
 #ifdef _WIN32
         VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
 #elif __APPLE__
         VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME,
-        "VK_EXT_metal_surface",
 #endif
         VK_KHR_SURFACE_EXTENSION_NAME,
         VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
         VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
         "VK_EXT_debug_report",
     };
+
+    uint32_t baseExtensionsCount  = sizeof(base_extensions) / sizeof(base_extensions[0]);
+    uint32_t totalExtensionsCount = baseExtensionsCount + glfwExtensionsCount;
+
+    const uint32_t EXTENSION_MAX_CHAR_LEN = 256;
+    const char**   instance_extensions    = calloc(totalExtensionsCount, sizeof(char) * EXTENSION_MAX_CHAR_LEN);
+    if (!instance_extensions) {
+        LOG_ERROR("[MemoryAllocFailure] Failed to allocate memory for instance extensions.");
+    }
+
+    for (uint32_t i = 0; i < baseExtensionsCount; ++i) {
+        instance_extensions[i] = base_extensions[i];
+    }
+
+    for (uint32_t i = 0; i < glfwExtensionsCount; ++i) {
+        instance_extensions[baseExtensionsCount + i] = glfwExtensions[i];
+    }
+
+    LOG_INFO("Total Vulkan instance extensions requested:");
+    for (uint32_t i = 0; i < totalExtensionsCount; ++i) {
+        LOG_INFO("\t%s", instance_extensions[i]);
+    }
 
     // TODO: Use a StringView DS for this to work fine
     //    TypedGrowableArray instance_extensions = typed_growable_array_create(sizeof(const char*) * 255, glfwExtensionsCount);
@@ -397,7 +417,7 @@ static VkInstance vulkan_internal_create_instance(void)
         .pApplicationInfo        = &app_info,
         .enabledLayerCount       = sizeof(instance_layers) / sizeof(const char*),
         .ppEnabledLayerNames     = instance_layers,
-        .enabledExtensionCount   = sizeof(instance_extensions) / sizeof(const char*),
+        .enabledExtensionCount   = totalExtensionsCount,
         .ppEnabledExtensionNames = instance_extensions};
 
 #ifdef __APPLE__
@@ -407,8 +427,7 @@ static VkInstance vulkan_internal_create_instance(void)
     VkInstance instance;
     VK_CHECK_RESULT(vkCreateInstance(&info_ci, NULL, &instance), "Failed to create vulkan instance");
 
-    //free(glfwExtensions);
-    //typed_growable_array_free(&instance_extensions);
+    free(instance_extensions);
 
     vulkan_internal_create_debug_utils_messenger(instance, &debug_ci, NULL, &s_VkCtx.debug_messenger);
     return instance;
@@ -513,9 +532,6 @@ static QueueFamPropsArrayView vulkan_internal_query_queue_props(VkPhysicalDevice
 static queue_indices vulkan_internal_get_queue_family_indices(QueueFamPropsArrayView props, VkPhysicalDevice gpu, VkSurfaceKHR surface)
 {
     queue_indices indices = {0};
-    indices.gfx           = UINT32_MAX;
-    indices.present       = UINT32_MAX;
-    indices.async_compute = UINT32_MAX;
 
     for (uint32_t i = 0; i < props.size; ++i) {
         VkQueueFamilyProperties queue_prop = props.arr[i];
@@ -540,26 +556,44 @@ static queue_indices vulkan_internal_get_queue_family_indices(QueueFamPropsArray
 
 static TypedGrowableArray vulkan_internal_create_queue_family_infos(queue_indices indices)
 {
-    const int          NUM_QUEUES       = 3;    // Graphics, Present, Async Compute
-    TypedGrowableArray queueFamilyInfos = typed_growable_array_create(sizeof(VkDeviceQueueCreateInfo), NUM_QUEUES);
+    TypedGrowableArray queueFamilyInfos = typed_growable_array_create(sizeof(VkDeviceQueueCreateInfo), 0);
 
-    static float            queuePriority   = 1.0f;
-    VkDeviceQueueCreateInfo queueCreateInfo = {
+    static float queuePriority = 1.0f;
+
+    VkDeviceQueueCreateInfo* gfxQueueInfo = malloc(sizeof(VkDeviceQueueCreateInfo));
+    *gfxQueueInfo = (VkDeviceQueueCreateInfo) {
         .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
         .queueFamilyIndex = indices.gfx,
         .queueCount       = 1,
         .pQueuePriorities = &queuePriority};
+    typed_growable_array_append(&queueFamilyInfos, gfxQueueInfo);
 
-    VkDeviceQueueCreateInfo* gfx_q_ci = typed_growable_array_get_element(&queueFamilyInfos, 0);
-    memcpy(gfx_q_ci, &queueCreateInfo, sizeof(VkDeviceQueueCreateInfo));
+    if (indices.gfx != indices.present) {
+        VkDeviceQueueCreateInfo* presentQueueInfo = malloc(sizeof(VkDeviceQueueCreateInfo));
+        *presentQueueInfo                         = (VkDeviceQueueCreateInfo) {
+                                    .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+                                    .queueFamilyIndex = indices.present,
+                                    .queueCount       = 1,
+                                    .pQueuePriorities = &queuePriority};
+        typed_growable_array_append(&queueFamilyInfos, presentQueueInfo);
+    }
 
-    VkDeviceQueueCreateInfo* present_q_ci = typed_growable_array_get_element(&queueFamilyInfos, 1);
-    queueCreateInfo.queueFamilyIndex      = indices.present;
-    memcpy(present_q_ci, &queueCreateInfo, sizeof(VkDeviceQueueCreateInfo));
+    if (indices.async_compute != indices.gfx) {
+        VkDeviceQueueCreateInfo* computeQueueInfo = malloc(sizeof(VkDeviceQueueCreateInfo));
+        *computeQueueInfo                         = (VkDeviceQueueCreateInfo) {
+                                    .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+                                    .queueFamilyIndex = indices.async_compute,
+                                    .queueCount       = 1,
+                                    .pQueuePriorities = &queuePriority};
+        typed_growable_array_append(&queueFamilyInfos, computeQueueInfo);
+    }
 
-    VkDeviceQueueCreateInfo* async_compute_q_ci = typed_growable_array_get_element(&queueFamilyInfos, 2);
-    queueCreateInfo.queueFamilyIndex            = indices.async_compute;
-    memcpy(async_compute_q_ci, &queueCreateInfo, sizeof(VkDeviceQueueCreateInfo));
+    LOG_ERROR("queue create info count: %d", queueFamilyInfos.size);
+
+    for (uint32_t i = 0; i < queueFamilyInfos.size; i++) {
+        VkDeviceQueueCreateInfo* info = (VkDeviceQueueCreateInfo*) typed_growable_array_get_element(&queueFamilyInfos, i);
+        LOG_INFO("%d", info->queueFamilyIndex);
+    }
 
     return queueFamilyInfos;
 }
@@ -596,7 +630,7 @@ static VkDevice vulkan_internal_create_logical_device(device_create_info_ex info
 #ifdef __APPLE__
         VK_EXT_ROBUSTNESS_2_EXTENSION_NAME,
         VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
-        "VK_KHR_portability_subset"
+        "VK_KHR_portability_subset",
 #endif
     };
 
@@ -1200,7 +1234,7 @@ gfx_shader vulkan_device_create_compute_shader(const char* spv_file_path)
 
         backend->modules.CS = vulkan_internal_create_shader_handle(spv_file_path);
 
-        backend->stage_ci = (VkPipelineShaderStageCreateInfo){
+        backend->stage_ci = (VkPipelineShaderStageCreateInfo) {
             .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage  = VK_SHADER_STAGE_COMPUTE_BIT,
             .pName  = "main",
@@ -1221,7 +1255,7 @@ gfx_shader vulkan_device_create_vs_ps_shader(const char* spv_file_path_vs, const
 
         backend_vs->modules.VS = vulkan_internal_create_shader_handle(spv_file_path_vs);
 
-        backend_vs->stage_ci = (VkPipelineShaderStageCreateInfo){
+        backend_vs->stage_ci = (VkPipelineShaderStageCreateInfo) {
             .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage  = VK_SHADER_STAGE_VERTEX_BIT,
             .pName  = "main",
@@ -1235,7 +1269,7 @@ gfx_shader vulkan_device_create_vs_ps_shader(const char* spv_file_path_vs, const
 
         backend_ps->modules.PS = vulkan_internal_create_shader_handle(spv_file_path_ps);
 
-        backend_ps->stage_ci = (VkPipelineShaderStageCreateInfo){
+        backend_ps->stage_ci = (VkPipelineShaderStageCreateInfo) {
             .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage  = VK_SHADER_STAGE_FRAGMENT_BIT,
             .pName  = "main",
@@ -1518,7 +1552,7 @@ gfx_root_signature vulkan_device_create_root_signature(const gfx_descriptor_set_
 
         for (uint32_t j = 0; j < set_layout->binding_count; ++j) {
             const gfx_descriptor_binding binding = set_layout->bindings[j];
-            vk_bindings[j]                       = (VkDescriptorSetLayoutBinding){
+            vk_bindings[j]                       = (VkDescriptorSetLayoutBinding) {
                                       .binding            = binding.binding,
                                       .descriptorType     = vulkan_util_descriptor_type_translate(binding.type),
                                       .descriptorCount    = binding.count,
@@ -1545,7 +1579,7 @@ gfx_root_signature vulkan_device_create_root_signature(const gfx_descriptor_set_
 
         for (uint32_t i = 0; i < push_constant_count; ++i) {
             const gfx_push_constant_range push_constant = push_constants[i];
-            vk_push_constants[i]                        = (VkPushConstantRange){
+            vk_push_constants[i]                        = (VkPushConstantRange) {
                                        .offset     = push_constant.offset,
                                        .size       = push_constant.size,
                                        .stageFlags = vulkan_util_shader_stage_bits(push_constant.stage),

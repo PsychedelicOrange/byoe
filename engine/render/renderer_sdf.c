@@ -196,8 +196,8 @@ void renderer_sdf_render(void)
 
         rhi_bind_gfx_pipeline(cmd_buff, s_RendererSDFInternalState.screenQuadPipeline);
 
-        rhi_set_viewport(cmd_buff, (gfx_viewport){.x = 0, .y = 0, .width = s_RendererSDFInternalState.width, .height = s_RendererSDFInternalState.height, .min_depth = 0, .max_depth = 1});
-        rhi_set_scissor(cmd_buff, (gfx_scissor){.x = 0, .y = 0, .width = s_RendererSDFInternalState.width, .height = s_RendererSDFInternalState.height});
+        rhi_set_viewport(cmd_buff, (gfx_viewport) {.x = 0, .y = 0, .width = s_RendererSDFInternalState.width, .height = s_RendererSDFInternalState.height, .min_depth = 0, .max_depth = 1});
+        rhi_set_scissor(cmd_buff, (gfx_scissor) {.x = 0, .y = 0, .width = s_RendererSDFInternalState.width, .height = s_RendererSDFInternalState.height});
 
         ////
         ////renderer_internal_sdf_set_pipeline_settings();

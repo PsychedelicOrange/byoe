@@ -50,8 +50,8 @@ STRUCT(
     };)
 
 STRUCT(bounding_sphere,
-       vec3  pos;
-       float radius;)
+    vec3  pos;
+    float radius;)
 
 //------------------------
 // SDF Renderer Structs
@@ -96,73 +96,73 @@ ENUM(SDF_NodeType,
 
 // TODO: If data memory gets too much, push the material to a separate buffer and use a bindless model
 STRUCT(SDF_Material,
-       vec4 diffuse;)
+    vec4 diffuse;)
 
 //-----------------------------
 
 STRUCT(sphere_props,
-       float radius;)
+    float radius;)
 
 STRUCT(box_props,
-       vec3s dimensions;)
+    vec3s dimensions;)
 
 STRUCT(round_box_props,
-       vec3s dimensions;
-       float roundness;)
+    vec3s dimensions;
+    float roundness;)
 
 STRUCT(box_frame_props,
-       vec3s dimensions;
-       float thickness;)
+    vec3s dimensions;
+    float thickness;)
 
 STRUCT(torus_props,
-       vec2 thickness;)
+    vec2 thickness;)
 
 STRUCT(torus_capped_props,
-       vec2  thickness;
-       float radiusA;
-       float radiusB;)
+    vec2  thickness;
+    float radiusA;
+    float radiusB;)
 
 STRUCT(capsule_props,
-       vec3  start;
-       vec3  end;
-       float radius;)
+    vec3  start;
+    vec3  end;
+    float radius;)
 
 STRUCT(vertical_capsule_props,
-       float radius;
-       float height;)
+    float radius;
+    float height;)
 
 STRUCT(cylinder_props,
-       float radius;
-       float height;)
+    float radius;
+    float height;)
 
 STRUCT(rounded_cylinder_props,
-       float radiusA;
-       float radiusB;
-       float height;)
+    float radiusA;
+    float radiusB;
+    float height;)
 
 STRUCT(ellipsoid_props,
-       vec3s radii;)
+    vec3s radii;)
 
 STRUCT(hexagonal_prism_props,
-       float radius;
-       float height;)
+    float radius;
+    float height;)
 
 STRUCT(triangular_prism_props,
-       float radius;
-       float height;)
+    float radius;
+    float height;)
 
 STRUCT(cone_props,
-       float angle;
-       float height;)
+    float angle;
+    float height;)
 
 STRUCT(capped_cone_props,
-       float radiusTop;
-       float radiusBottom;
-       float height;)
+    float radiusTop;
+    float radiusBottom;
+    float height;)
 
 STRUCT(plane_props,
-       vec3s normal;
-       float distance;)
+    vec3s normal;
+    float distance;)
 
 //-----------------------------
 
@@ -200,12 +200,12 @@ STRUCT(
 // Blending -> these are blending method b/w two primitives (eg. smooth union, XOR, etc. )  ( again refer iq)
 // Since it's shared as union it's the same size as of SDF_Primitive
 STRUCT(SDF_Object,
-       SDF_BlendType type;
-       uint32_t      _pad0[3];
-       Transform     transform;
-       uint32_t      prim_a;
-       uint32_t      prim_b;
-       uint32_t      _pad_to_128_bytes_boundary[14];)
+    SDF_BlendType type;
+    uint32_t      _pad0[3];
+    Transform     transform;
+    uint32_t      prim_a;
+    uint32_t      prim_b;
+    uint32_t      _pad_to_128_bytes_boundary[14];)
 
 #ifndef SHADER_INCLUDE
 // This struct cannot be directly translated to the GPU, we need another helper struct to flatten it (defined in sdf_scene.h)
