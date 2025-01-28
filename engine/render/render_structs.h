@@ -502,6 +502,7 @@ typedef struct gfx_push_constant
 {
     random_uuid_t uuid;
     uint32_t      table_idx;
+    uint32_t      _pad0;
     void*         data;
     uint32_t      size;
     uint32_t      offset;
@@ -522,6 +523,7 @@ typedef struct gfx_descriptor_table
     uint32_t            push_constants_count;
     gfx_descriptor_set* sets;
     gfx_push_constant*  push_constants;
+    uint64_t            _pad0;
 } gfx_descriptor_table;
 
 typedef struct gfx_root_signature
@@ -540,6 +542,7 @@ typedef struct gfx_resource
     gfx_descriptor_type type;
     uint32_t            set;
     uint32_t            binding;
+    uint32_t            _pad0;
 } gfx_resource;
 
 typedef struct gfx_pipeline_create_info
@@ -571,6 +574,7 @@ typedef struct gfx_pipeline
 {
     random_uuid_t uuid;
     void*         backend;
+    uint64_t      _pad0;
 } gfx_pipeline;
 
 typedef struct gfx_viewport
@@ -626,6 +630,7 @@ typedef struct gfx_attachment
     bool         _pad0[7];
 } gfx_attachment;
 
+// TODO: use a BitSet DS for flags don't waste space on booleans
 typedef struct gfx_render_pass
 {
     alignas(16) vec2s extents;
