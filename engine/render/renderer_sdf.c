@@ -194,7 +194,7 @@ void renderer_sdf_render(void)
                    .clear_color = clear_color}};
         rhi_begin_render_pass(cmd_buff, clear_screen_pass, s_RendererSDFInternalState.gfxcontext.swapchain.current_backbuffer_idx);
 
-        rhi_bind_pipeline(cmd_buff, s_RendererSDFInternalState.screenQuadPipeline);
+        rhi_bind_gfx_pipeline(cmd_buff, s_RendererSDFInternalState.screenQuadPipeline);
 
         rhi_set_viewport(cmd_buff, (gfx_viewport){.x = 0, .y = 0, .width = s_RendererSDFInternalState.width, .height = s_RendererSDFInternalState.height, .min_depth = 0, .max_depth = 1});
         rhi_set_scissor(cmd_buff, (gfx_scissor){.x = 0, .y = 0, .width = s_RendererSDFInternalState.width, .height = s_RendererSDFInternalState.height});

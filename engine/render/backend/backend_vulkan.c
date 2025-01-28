@@ -1004,7 +1004,7 @@ void vulkan_device_destroy_gfx_cmd_pool(gfx_cmd_pool* pool)
     }
 }
 
-gfx_cmd_buf vulkan_create_gfx_cmd_buf(gfx_cmd_pool* pool)
+gfx_cmd_buf vulkan_device_create_gfx_cmd_buf(gfx_cmd_pool* pool)
 {
     VkCommandBufferAllocateInfo alloc = {
         .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -1927,9 +1927,15 @@ rhi_error_codes vulkan_set_scissor(const gfx_cmd_buf* cmd_buf, gfx_scissor sciss
     return Success;
 }
 
-rhi_error_codes vulkan_bind_pipeline(const gfx_cmd_buf* cmd_buf, gfx_pipeline pipeline)
+rhi_error_codes vulkan_bind_gfx_pipeline(const gfx_cmd_buf* cmd_buf, gfx_pipeline pipeline)
 {
     vkCmdBindPipeline(*(VkCommandBuffer*) cmd_buf->backend, VK_PIPELINE_BIND_POINT_GRAPHICS, ((pipeline_backend*) (pipeline.backend))->pipeline);
+    return Success;
+}
+
+rhi_error_codes vulkan_bind_compute_pipeline(const gfx_cmd_buf* cmd_buf, gfx_pipeline pipeline)
+{
+    vkCmdBindPipeline(*(VkCommandBuffer*) cmd_buf->backend, VK_PIPELINE_BIND_POINT_COMPUTE, ((pipeline_backend*) (pipeline.backend))->pipeline);
     return Success;
 }
 

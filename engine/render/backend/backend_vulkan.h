@@ -30,7 +30,7 @@ void          vulkan_device_destroy_swapchain(gfx_swapchain* sc);
 gfx_cmd_pool vulkan_device_create_gfx_cmd_pool(void);
 void         vulkan_device_destroy_gfx_cmd_pool(gfx_cmd_pool* pool);
 
-gfx_cmd_buf vulkan_create_gfx_cmd_buf(gfx_cmd_pool* pool);
+gfx_cmd_buf vulkan_device_create_gfx_cmd_buf(gfx_cmd_pool* pool);
 
 gfx_frame_sync vulkan_device_create_frame_sync(void);
 void           vulkan_device_destroy_frame_sync(gfx_frame_sync* frame_sync);
@@ -76,7 +76,8 @@ rhi_error_codes vulkan_end_render_pass(const gfx_cmd_buf* cmd_buf);
 rhi_error_codes vulkan_set_viewport(const gfx_cmd_buf* cmd_buf, gfx_viewport viewport);
 rhi_error_codes vulkan_set_scissor(const gfx_cmd_buf* cmd_buf, gfx_scissor scissor);
 
-rhi_error_codes vulkan_bind_pipeline(const gfx_cmd_buf* cmd_buf, gfx_pipeline pipeline);
+rhi_error_codes vulkan_bind_gfx_pipeline(const gfx_cmd_buf* cmd_buf, gfx_pipeline pipeline);
+rhi_error_codes vulkan_bind_compute_pipeline(const gfx_cmd_buf* cmd_buf, gfx_pipeline pipeline);
 
 rhi_error_codes vulkan_draw(const gfx_cmd_buf* cmd_buf, uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance);
 

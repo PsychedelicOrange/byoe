@@ -95,7 +95,8 @@ rhi_error_codes (*rhi_end_render_pass)(const gfx_cmd_buf* cmd_buf);
 rhi_error_codes (*rhi_set_viewport)(const gfx_cmd_buf* cmd_buf, gfx_viewport viewport);
 rhi_error_codes (*rhi_set_scissor)(const gfx_cmd_buf* cmd_buf, gfx_scissor scissor);
 
-rhi_error_codes (*rhi_bind_pipeline)(const gfx_cmd_buf* cmd_buf, gfx_pipeline pipeline);
+rhi_error_codes (*rhi_bind_gfx_pipeline)(const gfx_cmd_buf* cmd_buf, gfx_pipeline pipeline);
+rhi_error_codes (*rhi_bind_compute_pipeline)(const gfx_cmd_buf* cmd_buf, gfx_pipeline pipeline);
 rhi_error_codes (*rhi_bind_root_signature)(const gfx_root_signature* root_signature);
 rhi_error_codes (*rhi_bind_descriptor_table)(const gfx_descriptor_table* descriptor_table);
 rhi_error_codes (*rhi_bind_push_constants)(gfx_push_constant* push_constants, uint32_t num_push_constants);

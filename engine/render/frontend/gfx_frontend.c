@@ -23,7 +23,7 @@ int gfx_init(rhi_api api)
         gfx_create_gfx_cmd_pool  = vulkan_device_create_gfx_cmd_pool;
         gfx_destroy_gfx_cmd_pool = vulkan_device_destroy_gfx_cmd_pool;
 
-        gfx_create_gfx_cmd_buf = vulkan_create_gfx_cmd_buf;
+        gfx_create_gfx_cmd_buf = vulkan_device_create_gfx_cmd_buf;
 
         gfx_create_frame_sync  = vulkan_device_create_frame_sync;
         gfx_destroy_frame_sync = vulkan_device_destroy_frame_sync;
@@ -62,7 +62,8 @@ int gfx_init(rhi_api api)
         rhi_set_viewport = vulkan_set_viewport;
         rhi_set_scissor  = vulkan_set_scissor;
 
-        rhi_bind_pipeline = vulkan_bind_pipeline;
+        rhi_bind_gfx_pipeline = vulkan_bind_gfx_pipeline;
+        rhi_bind_compute_pipeline = vulkan_bind_compute_pipeline;
 
         rhi_draw = vulkan_draw;
     }
