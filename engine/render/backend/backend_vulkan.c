@@ -596,6 +596,7 @@ static VkDevice vulkan_internal_create_logical_device(device_create_info_ex info
 #ifdef __APPLE__
         VK_EXT_ROBUSTNESS_2_EXTENSION_NAME,
         VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
+        "VK_KHR_portability_subset"
 #endif
     };
 
