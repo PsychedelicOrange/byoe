@@ -238,18 +238,18 @@ static VkFormat vulkan_util_format_translate(gfx_format format)
     }
 }
 
-static VkDescriptorType vulkan_util_descriptor_type_translate(gfx_descriptor_type descriptor_type)
+static VkDescriptorType vulkan_util_descriptor_type_translate(gfx_resource_type descriptor_type)
 {
     switch (descriptor_type) {
-        case GFX_DESCRIPTOR_TYPE_SAMPLER: return VK_DESCRIPTOR_TYPE_SAMPLER;
-        case GFX_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        case GFX_DESCRIPTOR_TYPE_SAMPLED_IMAGE: return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-        case GFX_DESCRIPTOR_TYPE_STORAGE_IMAGE: return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-        case GFX_DESCRIPTOR_TYPE_UNIFORM_BUFFER: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        case GFX_DESCRIPTOR_TYPE_STORAGE_BUFFER: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        case GFX_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER: return VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
-        case GFX_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
-        case GFX_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: return VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+        case GFX_RESORUCE_TYPE_SAMPLER: return VK_DESCRIPTOR_TYPE_SAMPLER;
+        case GFX_RESOURCE_TYPE_COMBINED_IMAGE_SAMPLER: return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        case GFX_RESOURCE_TYPE_SAMPLED_IMAGE: return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        case GFX_RESOURCE_TYPE_STORAGE_IMAGE: return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        case GFX_RESOURCE_TYPE_UNIFORM_BUFFER: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        case GFX_RESOURCE_TYPE_STORAGE_BUFFER: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        case GFX_RESOURCE_TYPE_UNIFORM_TEXEL_BUFFER: return VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+        case GFX_RESOURCE_TYPE_STORAGE_TEXEL_BUFFER: return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+        case GFX_RESOURCE_TYPE_INPUT_ATTACHMENT: return VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
         default: return VK_DESCRIPTOR_TYPE_MAX_ENUM;    // Use the maximum value to indicate an invalid type
     }
 }
@@ -1711,8 +1711,8 @@ void vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_tabl
             .descriptorCount = 1};
 
         switch (res->type) {
-            case GFX_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-            case GFX_DESCRIPTOR_TYPE_STORAGE_BUFFER: {
+            case GFX_RESOURCE_TYPE_UNIFORM_BUFFER:
+            case GFX_RESOURCE_TYPE_STORAGE_BUFFER: {
                 VkDescriptorBufferInfo buffer_info = {
                     .buffer = (VkBuffer) res->handle,
                     .offset = 0,
@@ -1721,9 +1721,9 @@ void vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_tabl
                 writes[i].pBufferInfo    = &buffer_info;
                 break;
             }
-            case GFX_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-            case GFX_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-            case GFX_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
+            case GFX_RESOURCE_TYPE_SAMPLED_IMAGE:
+            case GFX_RESOURCE_TYPE_STORAGE_IMAGE:
+            case GFX_RESOURCE_TYPE_COMBINED_IMAGE_SAMPLER: {
                 VkDescriptorImageInfo image_info = {
                     .imageView   = (VkImageView) res->handle,
                     .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};

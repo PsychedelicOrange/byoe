@@ -348,18 +348,19 @@ typedef enum gfx_compare_op
     GFX_COMPARE_OP_ALWAYS
 } gfx_compare_op;
 
-typedef enum gfx_descriptor_type
+// TODO: Rename this as gfx_resource_type
+typedef enum gfx_resource_type
 {
-    GFX_DESCRIPTOR_TYPE_SAMPLER,
-    GFX_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-    GFX_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-    GFX_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-    GFX_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-    GFX_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-    GFX_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
-    GFX_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
-    GFX_DESCRIPTOR_TYPE_INPUT_ATTACHMENT
-} gfx_descriptor_type;
+    GFX_RESORUCE_TYPE_SAMPLER,
+    GFX_RESOURCE_TYPE_COMBINED_IMAGE_SAMPLER,
+    GFX_RESOURCE_TYPE_SAMPLED_IMAGE,
+    GFX_RESOURCE_TYPE_STORAGE_IMAGE,
+    GFX_RESOURCE_TYPE_UNIFORM_BUFFER,
+    GFX_RESOURCE_TYPE_STORAGE_BUFFER,
+    GFX_RESOURCE_TYPE_UNIFORM_TEXEL_BUFFER,
+    GFX_RESOURCE_TYPE_STORAGE_TEXEL_BUFFER,
+    GFX_RESOURCE_TYPE_INPUT_ATTACHMENT
+} gfx_resource_type;
 
 typedef struct gfx_config
 {
@@ -480,7 +481,7 @@ typedef struct gfx_descriptor_binding
 {
     uint32_t            binding;
     uint32_t            set;
-    gfx_descriptor_type type;
+    gfx_resource_type type;
     uint32_t            count;
     gfx_shader_stage    stage_flags;
 } gfx_descriptor_binding;
@@ -531,7 +532,7 @@ typedef struct gfx_root_signature
 typedef struct gfx_resource
 {
     void*               handle;
-    gfx_descriptor_type type;
+    gfx_resource_type type;
     uint32_t            set;
     uint32_t            binding;
     uint32_t            _pad0;
