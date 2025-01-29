@@ -431,13 +431,6 @@ typedef struct gfx_uniform_buffer
 typedef struct gfx_texture
 {
     random_uuid_t uuid;
-    // TODO: Move to texture_props --> indices to texture_prop_pool(s)
-    union
-    {
-        bool is_read_write;
-        bool is_read_only;
-        bool is_write_only;
-    } rw_rules;
     void*      backend;
 } gfx_texture;
 
