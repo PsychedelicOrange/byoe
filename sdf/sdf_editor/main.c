@@ -16,7 +16,9 @@
 #include "add_primitive.h"
 #include "file_browser.h"
 #include "menu.h"
+#include "render/render_utils.h"
 #include "sidebar.h"
+#include "viewport.h"
 
 #include "icon.h"
 #include "logging/log.h"
@@ -30,6 +32,29 @@ sidebar_state              sidebar;
 struct file_browser        browser;
 struct add_primitive_state add_prim;
 struct media               media;
+struct viewport_state      viewport;
+/* Mouse update */
+struct mouse
+{
+    float lastX, lastY;
+    float isRightMouseDown;
+    float isLeftMouseDown;
+    float scroll;
+} mouse;
+
+static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
+{
+    (void) window;
+    float xoffset = xpos - mouse.lastX;
+    float yoffset = mouse.lastY - ypos;    // reversed since y-coordinates go from bottom to top
+    mouse.lastX   = xpos;
+    mouse.lastY   = ypos;
+
+    xoffset *= 0.1;
+    yoffset *= 0.1;
+
+    update_camera_mouse_callback(&viewport, xoffset, yoffset);
+}
 
 /* Keyboard shortcuts */
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
@@ -52,7 +77,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     }
     // toggle menu bar
     if (key == GLFW_KEY_LEFT_ALT && action == GLFW_RELEASE) {
-        //keyPressed=0;
+        //keyPressed = 0;
         menu.show = !menu.show;
         if (menu.show) {
             sidebar.y      = WINDOW_HEIGHT * 0.03;
@@ -65,6 +90,10 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     // toggle sidebar
     if (key == GLFW_KEY_TAB && action == GLFW_PRESS) {
         sidebar.show = !sidebar.show;
+    }
+    // reload viewport
+    if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
+        viewport = viewport_default(menu.window);
     }
     // editor shortcuts
     if (1) {    // add mouse pointer in editor condition
@@ -95,6 +124,7 @@ void init_glad()
 
 void window_size_callback(GLFWwindow* window, int width, int height)
 {
+    viewport_window_resize_callback(&viewport, width, height);
     menu.window[0] = width;
     menu.window[1] = height;
     sidebar.height = height;
@@ -103,22 +133,15 @@ void window_size_callback(GLFWwindow* window, int width, int height)
 
 GLFWwindow* create_glfw_window()
 {
-    /* GLFW */
-    glfwSetErrorCallback(error_callback);
-    if (!glfwInit()) {
-        fprintf(stderr, "[GFLW] failed to init!\n");
-        exit(1);
-    }
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-#ifdef __APPLE__
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-#endif
-    GLFWwindow* win = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "sdf_editor", NULL, NULL);
+    render_utils_init_glfw();
+    GLFWwindow* win = render_utils_create_glfw_window("sdf-editor", WINDOW_WIDTH, WINDOW_HEIGHT);
     glfwSetKeyCallback(win, key_callback);
     glfwSetDropCallback(win, drop_callback);
     glfwSetWindowSizeCallback(win, window_size_callback);
+    glfwSetCursorPosCallback(win, cursor_position_callback);
+    if (glfwRawMouseMotionSupported())
+        glfwSetInputMode(win, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+    glfwSetInputMode(win, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     glfwMakeContextCurrent(win);
     return win;
 }
@@ -136,6 +159,7 @@ void load_fonts_cursor(struct nk_glfw* glfw, struct nk_context* ctx)
     nk_glfw3_font_stash_end(glfw);
     //nk_style_load_all_cursors(ctx, atlas->cursors);
 }
+
 void load_icons()
 {
     glEnable(GL_TEXTURE_2D);
@@ -151,6 +175,7 @@ void load_icons()
     media.icons.movie_file   = icon_load("resources/movie.png");
     media_init(&media);
 }
+
 int main(void)
 {
     /* boiler */
@@ -180,6 +205,7 @@ int main(void)
     menu     = menu_default(window);
     sidebar  = sidebar_default(window);
     add_prim = add_primitive_default(window);
+    viewport = viewport_default(window);
 
     while (!glfwWindowShouldClose(win)) {
         /* Input */
@@ -235,6 +261,20 @@ int main(void)
                 break;
         }
 
+        /* Determine viewport size */
+        if (sidebar.show) {
+            viewport.x = sidebar.width;
+            viewport.w = window[0] - sidebar.width;
+            viewport_window_resize_callback(&viewport, viewport.w, viewport.h);
+        } else {
+            viewport.x = 0;
+            viewport.w = window[0];
+            viewport_window_resize_callback(&viewport, viewport.w, viewport.h);
+        }
+
+        /* Draw viewport */
+        viewport_draw(&viewport);
+
         /* Draw GUI */
         nk_glfw3_new_frame(&glfw);
         draw_add_primitive(ctx, &add_prim);
@@ -245,8 +285,6 @@ int main(void)
         /* Draw */
         glfwGetWindowSize(win, &window[0], &window[1]);
         glViewport(0, 0, window[0], window[1]);
-        glClear(GL_COLOR_BUFFER_BIT);
-        glClearColor(bg.r, bg.g, bg.b, bg.a);
         /* IMPORTANT: `nk_glfw_render` modifies some global OpenGL state
          * with blending, scissor, face culling, depth test and viewport and
          * defaults everything back into a default state.

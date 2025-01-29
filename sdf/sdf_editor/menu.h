@@ -3,7 +3,8 @@
 /* MENU */
 #include "nuklear_include.h"
 
-typedef enum menu_action{
+typedef enum menu_action
+{
     menu_no_action,
     menu_open,
     menu_new,
@@ -11,14 +12,16 @@ typedef enum menu_action{
     menu_save_as,
     menu_exit,
     menu_view_sidebar
-}menu_action;
+} menu_action;
 
-typedef struct menu_state{
-    int show;
-    float item_spacing;
+typedef struct menu_state
+{
+    int         show;
+    float       h;
+    float       item_spacing;
     menu_action current_action;
-    int window[2];
-}menu_state;
+    int         window[2];
+} menu_state;
 
 menu_state menu_default(int window[2]);
 

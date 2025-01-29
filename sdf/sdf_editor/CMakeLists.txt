@@ -10,6 +10,8 @@ file(GLOB_RECURSE editor_source
     "file_browser.c"
 	"icon.c"
 	"add_primitive.c"
+	"viewport.c"
+	"../../game/camera_controller.c"
 )
 
 # Set the C standard for this project
