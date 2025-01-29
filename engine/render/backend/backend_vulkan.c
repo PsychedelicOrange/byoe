@@ -272,6 +272,28 @@ static VkShaderStageFlagBits vulkan_util_shader_stage_bits(gfx_shader_stage shad
     }
 }
 
+VkImageType vulkan_util_texture_image_type_translate(gfx_texture_type type) {
+    switch (type) {
+        case GFX_TEXTURE_TYPE_1D:       return VK_IMAGE_TYPE_1D;
+        case GFX_TEXTURE_TYPE_2D:       
+        case GFX_TEXTURE_TYPE_CUBEMAP:  
+        case GFX_TEXTURE_TYPE_2D_ARRAY: return VK_IMAGE_TYPE_2D;
+        case GFX_TEXTURE_TYPE_3D:       return VK_IMAGE_TYPE_3D;
+        default:                        return VK_IMAGE_TYPE_MAX_ENUM;
+    }
+}
+
+VkImageViewType vulkan_util_texture_view_type_translate(gfx_texture_type type) {
+    switch (type) {
+        case GFX_TEXTURE_TYPE_1D:       return VK_IMAGE_VIEW_TYPE_1D;
+        case GFX_TEXTURE_TYPE_2D:       return VK_IMAGE_VIEW_TYPE_2D;
+        case GFX_TEXTURE_TYPE_3D:       return VK_IMAGE_VIEW_TYPE_3D;
+        case GFX_TEXTURE_TYPE_CUBEMAP:  return VK_IMAGE_VIEW_TYPE_CUBE;
+        case GFX_TEXTURE_TYPE_2D_ARRAY: return VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+        default:                        return VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+    }
+}
+
 //--------------------------------------------------------
 
 static VkResult vulkan_internal_tag_object(const char* name, VkObjectType type, uint64_t handle)
@@ -1738,20 +1760,74 @@ void vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_tabl
         vkUpdateDescriptorSets(VKDEVICE, num_resources, writes, 0, NULL);
 }
 
+uint32_t vulkan_internal_find_memory_type(VkPhysicalDevice physical_device, uint32_t type_filter, VkMemoryPropertyFlags properties) {
+    VkPhysicalDeviceMemoryProperties memory_properties;
+    vkGetPhysicalDeviceMemoryProperties(physical_device, &memory_properties);
+
+    for (uint32_t i = 0; i < memory_properties.memoryTypeCount; i++) {
+        if ((type_filter & (1 << i)) && (memory_properties.memoryTypes[i].propertyFlags & properties) == properties) {
+            return i;
+        }
+    }
+    return UINT32_MAX;
+}
+
+typedef struct texture_backend
+{
+    VkImage image;
+    VkDeviceMemory memory;
+}texture_backend;
+
 gfx_resource vulkan_device_create_texure_resource(gfx_texture_create_desc desc)
 {
     gfx_resource resource = {0};
     uuid_generate(&resource.texture.uuid);
 
-    //gfx_texture* texture = &resource.texture;
+    gfx_texture* texture = &resource.texture;
+    texture_backend* backend = malloc(sizeof(texture_backend));
+    texture->backend = backend;
 
-    (void) desc;
+    VkImageCreateInfo image_info = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+        .pNext = NULL,
+        .flags = 0,
+        .imageType = vulkan_util_texture_image_type_translate(desc.type),
+        .format = vulkan_util_format_translate(desc.format),
+        .extent = {desc.width, desc.height, desc.depth},
+        .mipLevels = 1, // Note: No MIPS!
+        .arrayLayers = (desc.type == GFX_TEXTURE_TYPE_CUBEMAP) ? 6 : 1,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .tiling = VK_IMAGE_TILING_OPTIMAL,
+        .usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+    };
+
+    VK_CHECK_RESULT(vkCreateImage(VKDEVICE, &image_info, NULL, &backend->image), "[Vulkan] cannot create VkImage");
+
+    VkMemoryRequirements mem_requirements;
+    vkGetImageMemoryRequirements(VKDEVICE, backend->image, &mem_requirements);
+
+    VkMemoryAllocateInfo alloc_info = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .allocationSize = mem_requirements.size,
+        .memoryTypeIndex = vulkan_internal_find_memory_type(VKGPU, mem_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+    };
+
+    VK_CHECK_RESULT(vkAllocateMemory(VKDEVICE, &alloc_info, NULL, &backend->memory), "[Vulkan] cannot allocate memory for image");
+    vkBindImageMemory(VKDEVICE, backend->image, backend->memory, 0);
+
     return resource;
 }
 
 void vulkan_device_destroy_texure_resource(gfx_resource* resource)
 {
     (void) resource;
+
+    VkImage vk_image = ((texture_backend*)resource->texture.backend)->image;
+    vkDestroyImage(VKDEVICE, vk_image, NULL);
+    free(resource->texture.backend);
+    resource->texture.backend = NULL;
 }
 
 //--------------------------------------------------------
