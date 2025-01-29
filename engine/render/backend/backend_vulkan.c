@@ -1714,7 +1714,7 @@ void vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_tabl
             case GFX_RESOURCE_TYPE_UNIFORM_BUFFER:
             case GFX_RESOURCE_TYPE_STORAGE_BUFFER: {
                 VkDescriptorBufferInfo buffer_info = {
-                    .buffer = (VkBuffer) res->handle,
+                    .buffer = (VkBuffer) res->ubo.backend,
                     .offset = 0,
                     .range  = VK_WHOLE_SIZE};
                 writes[i].descriptorType = (VkDescriptorType) res->type;
@@ -1725,7 +1725,7 @@ void vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_tabl
             case GFX_RESOURCE_TYPE_STORAGE_IMAGE:
             case GFX_RESOURCE_TYPE_COMBINED_IMAGE_SAMPLER: {
                 VkDescriptorImageInfo image_info = {
-                    .imageView   = (VkImageView) res->handle,
+                    .imageView   = (VkImageView) res->texture.backend,
                     .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
                 writes[i].descriptorType = (VkDescriptorType) res->type;
                 writes[i].pImageInfo     = &image_info;
@@ -1736,6 +1736,22 @@ void vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_tabl
         }
     }
         vkUpdateDescriptorSets(VKDEVICE, num_resources, writes, 0, NULL);
+}
+
+gfx_resource vulkan_device_create_texure_resource(gfx_texture_create_desc desc)
+{
+    gfx_resource resource = {0};
+    uuid_generate(&resource.texture.uuid);
+
+    //gfx_texture* texture = &resource.texture;
+
+    (void) desc;
+    return resource;
+}
+
+void vulkan_device_destroy_texure_resource(gfx_resource* resource)
+{
+    (void) resource;
 }
 
 //--------------------------------------------------------

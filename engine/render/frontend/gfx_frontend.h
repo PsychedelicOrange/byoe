@@ -59,6 +59,9 @@ gfx_descriptor_table (*gfx_create_descriptor_table)(const gfx_root_signature* ro
 void (*gfx_destroy_descriptor_table)(gfx_descriptor_table* descriptor_table);
 void (*gfx_update_descriptor_table)(gfx_descriptor_table* descriptor_table, gfx_resource* resources, uint32_t num_resources);
 
+gfx_resource (*gfx_create_texure_resource)(gfx_texture_create_desc desc);
+void (*gfx_destroy_texure_resource)(gfx_resource* resource);
+
 //------------------------------------------
 // RHI function pointers
 //------------------------------------------

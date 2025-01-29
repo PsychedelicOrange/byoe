@@ -362,6 +362,15 @@ typedef enum gfx_resource_type
     GFX_RESOURCE_TYPE_INPUT_ATTACHMENT
 } gfx_resource_type;
 
+typedef enum gfx_texture_type
+{
+    GFX_TEXTURE_TYPE_1D,
+    GFX_TEXTURE_TYPE_2D,
+    GFX_TEXTURE_TYPE_3D,
+    GFX_TEXTURE_TYPE_CUBEMAP,
+    GFX_TEXTURE_TYPE_2D_ARRAY
+}gfx_texture_type;
+
 typedef struct gfx_config
 {
     bool use_timeline_semaphores;
@@ -429,9 +438,50 @@ typedef struct gfx_texture
         bool is_read_only;
         bool is_write_only;
     } rw_rules;
-    gfx_format format;
     void*      backend;
 } gfx_texture;
+
+typedef struct gfx_texture_create_desc
+{
+    uint32_t width;
+    uint32_t height;
+    uint32_t depth;
+    gfx_format format;
+    gfx_texture_type type;
+}gfx_texture_create_desc;
+
+typedef struct gfx_resource
+{
+    union{
+        gfx_texture texture;
+        gfx_uniform_buffer ubo;
+    };
+    gfx_resource_type type;
+    uint32_t          set;
+    uint32_t          binding;
+} gfx_resource;
+
+typedef struct gfx_resource_view {
+    random_uuid_t uuid;
+    gfx_resource* resource;
+    gfx_resource_type type;
+    
+    union {
+        struct {
+            gfx_format format;
+            uint32_t base_mip;
+            uint32_t mip_levels;
+            uint32_t base_layer;
+            uint32_t layer_count;
+        } image;
+
+        struct {
+            uint32_t offset;
+            uint32_t size;
+        } buffer;
+    };
+    void* backend;
+} gfx_resource_view;
 
 typedef struct gfx_cmd_pool
 {
@@ -484,6 +534,7 @@ typedef struct gfx_descriptor_binding
     gfx_resource_type type;
     uint32_t            count;
     gfx_shader_stage    stage_flags;
+    gfx_resource_view res_view;
 } gfx_descriptor_binding;
 
 typedef struct gfx_descriptor_set_layout
@@ -528,15 +579,6 @@ typedef struct gfx_root_signature
     uint32_t                         push_constant_count;
     void*                            backend;
 } gfx_root_signature;
-
-typedef struct gfx_resource
-{
-    void*               handle;
-    gfx_resource_type type;
-    uint32_t            set;
-    uint32_t            binding;
-    uint32_t            _pad0;
-} gfx_resource;
 
 typedef struct gfx_pipeline_create_info
 {
