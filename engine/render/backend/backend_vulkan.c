@@ -44,12 +44,19 @@ DEFINE_CLAMP(int)
 //      - [x] shader loading API
 //      - [x] pipeline API
 //      - [x] draw API
-// - [ ] Descriptors API + pipeline layout handling etc.
-// - [ ] UBOs + Push constants API + setup descriptor sets for the resources x2
+// - [x] Descriptors API + pipeline layout handling etc.
 // - [ ] texture_2d (rw views) API for binding the r/w texture to composition pass
-// - [ ] CS dispatch -> SDF raymarching shader
+//      - [ ] Texture resource API (good thing is that we don't care about image loading and mipmaps)
+//      - [ ] create a 2D RW texure resource and attach it to a CS using descriptors API and check on renderdoc
+//      - [ ] fix any issues with the descriptor API
+//      - [ ] bind this to the screen_quad pass --> extend API for resource views here
 // - [ ] Barriers (image memory) and Transition layout API + single time command buffers
+// - [ ] UBOs + Push constants API + setup descriptor sets for the resources x2
+//      - [ ] UBO resource API
+//      - [ ] use above API to bind Push Constant and UBO to upload SDF_NodeGPUData and curr_node_draw_idx
+// - [ ] CS dispatch -> SDF raymarching shader
 // ----------------------> renderer_backend Draft-1
+// Draft-2 Goals: resource memory pool RAAI kinda simulation + backend* design consistency using macros + MSAA
 
 typedef struct swapchain_backend
 {
