@@ -562,7 +562,7 @@ static TypedGrowableArray vulkan_internal_create_queue_family_infos(queue_indice
     static float queuePriority = 1.0f;
 
     VkDeviceQueueCreateInfo* gfxQueueInfo = malloc(sizeof(VkDeviceQueueCreateInfo));
-    *gfxQueueInfo                         = (VkDeviceQueueCreateInfo){
+    *gfxQueueInfo                         = (VkDeviceQueueCreateInfo) {
                                 .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
                                 .queueFamilyIndex = indices.gfx,
                                 .queueCount       = 1,
@@ -571,7 +571,7 @@ static TypedGrowableArray vulkan_internal_create_queue_family_infos(queue_indice
 
     if (indices.gfx != indices.present) {
         VkDeviceQueueCreateInfo* presentQueueInfo = malloc(sizeof(VkDeviceQueueCreateInfo));
-        *presentQueueInfo                         = (VkDeviceQueueCreateInfo){
+        *presentQueueInfo                         = (VkDeviceQueueCreateInfo) {
                                     .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
                                     .queueFamilyIndex = indices.present,
                                     .queueCount       = 1,
@@ -581,7 +581,7 @@ static TypedGrowableArray vulkan_internal_create_queue_family_infos(queue_indice
 
     if (indices.async_compute != indices.gfx) {
         VkDeviceQueueCreateInfo* computeQueueInfo = malloc(sizeof(VkDeviceQueueCreateInfo));
-        *computeQueueInfo                         = (VkDeviceQueueCreateInfo){
+        *computeQueueInfo                         = (VkDeviceQueueCreateInfo) {
                                     .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
                                     .queueFamilyIndex = indices.async_compute,
                                     .queueCount       = 1,
@@ -1235,7 +1235,7 @@ gfx_shader vulkan_device_create_compute_shader(const char* spv_file_path)
 
         backend->modules.CS = vulkan_internal_create_shader_handle(spv_file_path);
 
-        backend->stage_ci = (VkPipelineShaderStageCreateInfo){
+        backend->stage_ci = (VkPipelineShaderStageCreateInfo) {
             .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage  = VK_SHADER_STAGE_COMPUTE_BIT,
             .pName  = "main",
@@ -1256,7 +1256,7 @@ gfx_shader vulkan_device_create_vs_ps_shader(const char* spv_file_path_vs, const
 
         backend_vs->modules.VS = vulkan_internal_create_shader_handle(spv_file_path_vs);
 
-        backend_vs->stage_ci = (VkPipelineShaderStageCreateInfo){
+        backend_vs->stage_ci = (VkPipelineShaderStageCreateInfo) {
             .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage  = VK_SHADER_STAGE_VERTEX_BIT,
             .pName  = "main",
@@ -1270,7 +1270,7 @@ gfx_shader vulkan_device_create_vs_ps_shader(const char* spv_file_path_vs, const
 
         backend_ps->modules.PS = vulkan_internal_create_shader_handle(spv_file_path_ps);
 
-        backend_ps->stage_ci = (VkPipelineShaderStageCreateInfo){
+        backend_ps->stage_ci = (VkPipelineShaderStageCreateInfo) {
             .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage  = VK_SHADER_STAGE_FRAGMENT_BIT,
             .pName  = "main",
@@ -1535,17 +1535,19 @@ void vulkan_device_destroy_pipeline(gfx_pipeline* pipeline)
 
 typedef struct root_signature_backend
 {
-    VkPipelineLayout pipeline_layout;
+    VkPipelineLayout       pipeline_layout;
+    VkDescriptorSetLayout* vk_descriptor_set_layouts;
 } root_signature_backend;
 
 gfx_root_signature vulkan_device_create_root_signature(const gfx_descriptor_set_layout* set_layouts, uint32_t set_layout_count, const gfx_push_constant_range* push_constants, uint32_t push_constant_count)
 {
     gfx_root_signature root_sig = {0};
     uuid_generate(&root_sig.uuid);
+    root_signature_backend* backend = malloc(sizeof(root_signature_backend));
+    root_sig.backend                = backend;
 
-    VkDescriptorSetLayout* vk_descriptor_set_layouts = NULL;
     for (uint32_t i = 0; i < set_layout_count; ++i) {
-        vk_descriptor_set_layouts = malloc(sizeof(VkDescriptorSetLayout) * set_layout_count);
+        backend->vk_descriptor_set_layouts = malloc(sizeof(VkDescriptorSetLayout) * set_layout_count);
 
         const gfx_descriptor_set_layout* set_layout = &set_layouts[i];
 
@@ -1553,7 +1555,7 @@ gfx_root_signature vulkan_device_create_root_signature(const gfx_descriptor_set_
 
         for (uint32_t j = 0; j < set_layout->binding_count; ++j) {
             const gfx_descriptor_binding binding = set_layout->bindings[j];
-            vk_bindings[j]                       = (VkDescriptorSetLayoutBinding){
+            vk_bindings[j]                       = (VkDescriptorSetLayoutBinding) {
                                       .binding            = binding.binding,
                                       .descriptorType     = vulkan_util_descriptor_type_translate(binding.type),
                                       .descriptorCount    = binding.count,
@@ -1570,7 +1572,7 @@ gfx_root_signature vulkan_device_create_root_signature(const gfx_descriptor_set_
             .pBindings    = vk_bindings,
         };
 
-        VK_CHECK_RESULT(vkCreateDescriptorSetLayout(VKDEVICE, &set_layout_ci, NULL, &vk_descriptor_set_layouts[i]), "[Vulkan] cannot create descriptor set layout");
+        VK_CHECK_RESULT(vkCreateDescriptorSetLayout(VKDEVICE, &set_layout_ci, NULL, &backend->vk_descriptor_set_layouts[i]), "[Vulkan] cannot create descriptor set layout");
         free(vk_bindings);
     }
 
@@ -1580,7 +1582,7 @@ gfx_root_signature vulkan_device_create_root_signature(const gfx_descriptor_set_
 
         for (uint32_t i = 0; i < push_constant_count; ++i) {
             const gfx_push_constant_range push_constant = push_constants[i];
-            vk_push_constants[i]                        = (VkPushConstantRange){
+            vk_push_constants[i]                        = (VkPushConstantRange) {
                                        .offset     = push_constant.offset,
                                        .size       = push_constant.size,
                                        .stageFlags = vulkan_util_shader_stage_bits(push_constant.stage),
@@ -1593,15 +1595,13 @@ gfx_root_signature vulkan_device_create_root_signature(const gfx_descriptor_set_
         .pNext                  = NULL,
         .flags                  = 0,
         .setLayoutCount         = set_layout_count,
-        .pSetLayouts            = vk_descriptor_set_layouts,
+        .pSetLayouts            = backend->vk_descriptor_set_layouts,
         .pushConstantRangeCount = push_constant_count,
         .pPushConstantRanges    = vk_push_constants,
     };
 
-    root_sig.backend = malloc(sizeof(root_signature_backend));
     VK_CHECK_RESULT(vkCreatePipelineLayout(VKDEVICE, &pipeline_layout_ci, NULL, &((root_signature_backend*) root_sig.backend)->pipeline_layout), "[Vulkan] cannot create pipeline layout");
     free(vk_push_constants);
-    free(vk_descriptor_set_layouts);
 
     root_sig.descriptor_set_layouts  = (gfx_descriptor_set_layout*) set_layouts;
     root_sig.descriptor_layout_count = set_layout_count;
@@ -1614,14 +1614,19 @@ gfx_root_signature vulkan_device_create_root_signature(const gfx_descriptor_set_
 void vulkan_device_destroy_root_signature(gfx_root_signature* root_sig)
 {
     uuid_destroy(&root_sig->uuid);
+    for (uint32_t i = 0; i < root_sig->descriptor_layout_count; i++) {
+        vkDestroyDescriptorSetLayout(VKDEVICE, ((root_signature_backend*) (root_sig->backend))->vk_descriptor_set_layouts[i], NULL);
+    }
+
     vkDestroyPipelineLayout(VKDEVICE, ((root_signature_backend*) (root_sig->backend))->pipeline_layout, NULL);
+    free(((root_signature_backend*) (root_sig->backend))->vk_descriptor_set_layouts);
     free(root_sig->backend);
     root_sig->backend = NULL;
 }
 
 typedef struct descriptor_table_backend
 {
-    VkPipelineLayout pipeline_layout;
+    VkPipelineLayout pipeline_layout_ref_handle;
     VkDescriptorPool pool;
     VkDescriptorSet* sets;
     uint32_t         num_sets;
@@ -1635,8 +1640,8 @@ gfx_descriptor_table vulkan_device_create_descriptor_table(const gfx_root_signat
     descriptor_table_backend* backend = malloc(sizeof(descriptor_table_backend));
 
     // cache pipeline layout from root_signature vulkan backend
-    backend->pipeline_layout = ((root_signature_backend*) (root_signature->backend))->pipeline_layout;
-    backend->num_sets        = root_signature->descriptor_layout_count;
+    backend->pipeline_layout_ref_handle = ((root_signature_backend*) (root_signature->backend))->pipeline_layout;
+    backend->num_sets                   = root_signature->descriptor_layout_count;
 
     // TODO: either expose customization options or make it generic enough without affecting perf!
     VkDescriptorPoolSize pool_sizes[] = {
@@ -1675,25 +1680,25 @@ gfx_descriptor_table vulkan_device_create_descriptor_table(const gfx_root_signat
 void vulkan_device_destroy_descriptor_table(gfx_descriptor_table* descriptor_table)
 {
     (void) descriptor_table;
+    uuid_destroy(&descriptor_table->uuid);
+    vkDestroyDescriptorPool(VKDEVICE, ((descriptor_table_backend*)(descriptor_table->backend))->pool, NULL);
+    free(descriptor_table->backend);
+    descriptor_table->backend = NULL;
 }
 
-#if TBD
 void vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_table, gfx_resource* resources, uint32_t num_resources)
 {
-    VkDescriptorSetAllocateInfo alloc_info = {
-        .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-        .descriptorPool     = pool,
-        .descriptorSetCount = table->set_count,
-        .pSetLayouts        = layouts};
+    descriptor_table_backend* backend = (descriptor_table_backend*)(descriptor_table->backend);
+    VkDescriptorSet* sets = backend->sets;
 
-    vkAllocateDescriptorSets(VKDevice::Get().getDevice(), &alloc_info, descriptor_sets);
+    VkWriteDescriptorSet* writes = malloc(sizeof(VkWriteDescriptorSet) * num_resources);
 
-    for (uint32_t i = 0; i < resource_count; i++) {
+    for (uint32_t i = 0; i < num_resources; i++) {
         gfx_resource* res = &resources[i];
 
-        VkWriteDescriptorSet write = {
+         writes[i] = (VkWriteDescriptorSet){
             .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet          = descriptor_sets[res->set],
+            .dstSet          = sets[res->set],
             .dstBinding      = res->binding,
             .dstArrayElement = 0,
             .descriptorCount = 1};
@@ -1705,8 +1710,8 @@ void vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_tabl
                     .buffer = (VkBuffer) res->handle,
                     .offset = 0,
                     .range  = VK_WHOLE_SIZE};
-                write.descriptorType = (VkDescriptorType) res->type;
-                write.pBufferInfo    = &buffer_info;
+                writes[i].descriptorType = (VkDescriptorType) res->type;
+                writes[i].pBufferInfo    = &buffer_info;
                 break;
             }
             case GFX_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
@@ -1715,18 +1720,17 @@ void vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_tabl
                 VkDescriptorImageInfo image_info = {
                     .imageView   = (VkImageView) res->handle,
                     .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
-                write.descriptorType = (VkDescriptorType) res->type;
-                write.pImageInfo     = &image_info;
+                writes[i].descriptorType = (VkDescriptorType) res->type;
+                writes[i].pImageInfo     = &image_info;
                 break;
             }
             default:
                 break;
         }
-
-        vkUpdateDescriptorSets(VKDevice::Get().getDevice(), 1, &write, 0, NULL);
     }
+        vkUpdateDescriptorSets(VKDEVICE, num_resources, writes, 0, NULL);
 }
-#endif
+
 //--------------------------------------------------------
 // RHI
 //--------------------------------------------------------
