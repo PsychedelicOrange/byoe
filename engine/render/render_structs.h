@@ -369,7 +369,7 @@ typedef enum gfx_texture_type
     GFX_TEXTURE_TYPE_3D,
     GFX_TEXTURE_TYPE_CUBEMAP,
     GFX_TEXTURE_TYPE_2D_ARRAY
-}gfx_texture_type;
+} gfx_texture_type;
 
 typedef struct gfx_config
 {
@@ -431,41 +431,39 @@ typedef struct gfx_uniform_buffer
 typedef struct gfx_texture
 {
     random_uuid_t uuid;
-    void*      backend;
+    void*         backend;
 } gfx_texture;
 
 typedef struct gfx_texture_create_desc
 {
-    uint32_t width;
-    uint32_t height;
-    uint32_t depth;
-    gfx_format format;
+    uint32_t         width;
+    uint32_t         height;
+    uint32_t         depth;
+    gfx_format       format;
     gfx_texture_type type;
-}gfx_texture_create_desc;
+} gfx_texture_create_desc;
 
 typedef struct gfx_resource
 {
-    union{
-        gfx_texture texture;
+    union
+    {
+        gfx_texture        texture;
         gfx_uniform_buffer ubo;
     };
     gfx_resource_type type;
     uint32_t          set;
     uint32_t          binding;
 } gfx_resource;
-
-typedef struct gfx_resource_view {
-    random_uuid_t uuid;
-    gfx_resource* resource;
+typedef struct gfx_resource_view_desc {
+    gfx_resource*     resource;
     gfx_resource_type type;
-    
     union {
         struct {
             gfx_format format;
-            uint32_t base_mip;
-            uint32_t mip_levels;
-            uint32_t base_layer;
-            uint32_t layer_count;
+            uint32_t   base_mip;
+            uint32_t   mip_levels;
+            uint32_t   base_layer;
+            uint32_t   layer_count;
         } image;
 
         struct {
@@ -473,6 +471,12 @@ typedef struct gfx_resource_view {
             uint32_t size;
         } buffer;
     };
+} gfx_resource_view_desc;
+
+typedef struct gfx_resource_view {
+    random_uuid_t uuid;
+    gfx_resource* resource;
+    gfx_resource_type type;
     void* backend;
 } gfx_resource_view;
 
@@ -522,11 +526,11 @@ typedef struct gfx_shader
 
 typedef struct gfx_descriptor_binding
 {
-    uint32_t            binding;
-    uint32_t            set;
+    uint32_t          binding;
+    uint32_t          set;
     gfx_resource_type type;
-    uint32_t            count;
-    gfx_shader_stage    stage_flags;
+    uint32_t          count;
+    gfx_shader_stage  stage_flags;
     gfx_resource_view res_view;
 } gfx_descriptor_binding;
 

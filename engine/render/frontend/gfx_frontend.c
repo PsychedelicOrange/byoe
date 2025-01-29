@@ -37,12 +37,12 @@ int gfx_init(rhi_api api)
         gfx_create_pipeline  = vulkan_device_create_pipeline;
         gfx_destroy_pipeline = vulkan_device_destroy_pipeline;
 
-        gfx_create_root_signature    = vulkan_device_create_root_signature;
-        gfx_destroy_root_signature   = vulkan_device_destroy_root_signature;
+        gfx_create_root_signature  = vulkan_device_create_root_signature;
+        gfx_destroy_root_signature = vulkan_device_destroy_root_signature;
 
         gfx_create_descriptor_table  = vulkan_device_create_descriptor_table;
         gfx_destroy_descriptor_table = vulkan_device_destroy_descriptor_table;
-        gfx_update_descriptor_table = vulkan_device_update_descriptor_table;
+        gfx_update_descriptor_table  = vulkan_device_update_descriptor_table;
 
         // RHI
         rhi_frame_begin = vulkan_frame_begin;

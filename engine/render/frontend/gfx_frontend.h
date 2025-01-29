@@ -52,6 +52,9 @@ void (*gfx_destroy_vs_ps_shader)(gfx_shader* shader);
 gfx_pipeline (*gfx_create_pipeline)(gfx_pipeline_create_info info);
 void (*gfx_destroy_pipeline)(gfx_pipeline* pipeline);
 
+gfx_resource_view (*gfx_create_resource_view)(const gfx_resource_view_desc* desc);
+void (*gfx_destroy_resource_view)(gfx_resource_view* view);
+
 gfx_root_signature (*gfx_create_root_signature)(const gfx_descriptor_set_layout* set_layouts, uint32_t set_layout_count, const gfx_push_constant_range* push_constants, uint32_t push_constant_count);
 void (*gfx_destroy_root_signature)(gfx_root_signature* root_sig);
 

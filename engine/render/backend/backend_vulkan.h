@@ -53,7 +53,7 @@ void                 vulkan_device_destroy_descriptor_table(gfx_descriptor_table
 void                 vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_table, gfx_resource* resources, uint32_t num_resources);
 
 gfx_resource vulkan_device_create_texure_resource(gfx_texture_create_desc desc);
-void vulkan_device_destroy_texure_resource(gfx_resource* resource);
+void         vulkan_device_destroy_texure_resource(gfx_resource* resource);
 
 //------------------------------------------
 // RHI
