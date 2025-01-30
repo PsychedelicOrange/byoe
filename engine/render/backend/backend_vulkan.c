@@ -48,7 +48,7 @@ DEFINE_CLAMP(int)
 // - [ ] Texture API for binding the r/w texture to composition pass
 //      - [x] basic API to create types of textures
 //      - [x] resource view creation API --> VkImageView(s)
-//      - [ ] sampler API
+//      - [x] sampler API
 //      - [ ] create a 2D RW texture resource/view/sampler and attach it to a CS using descriptors API and check on renderdoc
 //      - [ ] fix any issues with the descriptor API
 //      - [ ] bind this to the screen_quad pass

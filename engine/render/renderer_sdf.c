@@ -117,6 +117,16 @@ static bool render_internal_sdf_init_gfx_ctx(uint32_t width, uint32_t height)
     }
 }
 
+static void renderer_internal_create_sdf_pass_resources(void)
+{
+    // create the shaders and pipeline
+    renderer_internal_create_shaders();
+    renderer_internal_create_pipelines();
+
+    // create the root signature and table to hold the resources/
+    // in this pass it's an RW texture2d and it's view
+}
+
 //----------------------------------------------------------------
 
 bool renderer_sdf_init(renderer_desc desc)
@@ -134,8 +144,7 @@ bool renderer_sdf_init(renderer_desc desc)
 
     bool success = render_internal_sdf_init_gfx_ctx(desc.width, desc.height);
 
-    renderer_internal_create_shaders();
-    renderer_internal_create_pipelines();
+    renderer_internal_create_sdf_pass_resources();
 
     return success;
 }
@@ -196,8 +205,8 @@ void renderer_sdf_render(void)
 
         rhi_bind_gfx_pipeline(cmd_buff, s_RendererSDFInternalState.screenQuadPipeline);
 
-        rhi_set_viewport(cmd_buff, (gfx_viewport) {.x = 0, .y = 0, .width = s_RendererSDFInternalState.width, .height = s_RendererSDFInternalState.height, .min_depth = 0, .max_depth = 1});
-        rhi_set_scissor(cmd_buff, (gfx_scissor) {.x = 0, .y = 0, .width = s_RendererSDFInternalState.width, .height = s_RendererSDFInternalState.height});
+        rhi_set_viewport(cmd_buff, (gfx_viewport){.x = 0, .y = 0, .width = s_RendererSDFInternalState.width, .height = s_RendererSDFInternalState.height, .min_depth = 0, .max_depth = 1});
+        rhi_set_scissor(cmd_buff, (gfx_scissor){.x = 0, .y = 0, .width = s_RendererSDFInternalState.width, .height = s_RendererSDFInternalState.height});
 
         ////
         ////renderer_internal_sdf_set_pipeline_settings();
