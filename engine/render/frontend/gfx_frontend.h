@@ -28,48 +28,48 @@ void gfx_ctx_ignite(gfx_context* ctx);
 void gfx_ctx_recreate_frame_sync(gfx_context* ctx);
 
 gfx_context (*gfx_ctx_init)(GLFWwindow* window, uint32_t width, uint32_t height);
-void        (*gfx_ctx_destroy)(gfx_context* ctx);
+void (*gfx_ctx_destroy)(gfx_context* ctx);
 
 void (*gfx_flush_gpu_work)(void);
 
 gfx_swapchain (*gfx_create_swapchain)(uint32_t width, uint32_t height);
-void          (*gfx_destroy_swapchain)(gfx_swapchain* sc);
+void (*gfx_destroy_swapchain)(gfx_swapchain* sc);
 
 gfx_cmd_pool (*gfx_create_gfx_cmd_pool)(void);
-void         (*gfx_destroy_gfx_cmd_pool)(gfx_cmd_pool*);
+void (*gfx_destroy_gfx_cmd_pool)(gfx_cmd_pool*);
 
 gfx_cmd_buf (*gfx_create_gfx_cmd_buf)(gfx_cmd_pool* pool);
 
 gfx_frame_sync (*gfx_create_frame_sync)(void);
-void           (*gfx_destroy_frame_sync)(gfx_frame_sync* in_flight_sync);
+void (*gfx_destroy_frame_sync)(gfx_frame_sync* in_flight_sync);
 
 gfx_shader (*gfx_create_compute_shader)(const char* spv_file_path);
-void       (*gfx_destroy_compute_shader)(gfx_shader* shader);
+void (*gfx_destroy_compute_shader)(gfx_shader* shader);
 
 gfx_shader (*gfx_create_vs_ps_shader)(const char* spv_file_path_vs, const char* spv_file_path_ps);
-void       (*gfx_destroy_vs_ps_shader)(gfx_shader* shader);
+void (*gfx_destroy_vs_ps_shader)(gfx_shader* shader);
 
 gfx_pipeline (*gfx_create_pipeline)(gfx_pipeline_create_info info);
-void         (*gfx_destroy_pipeline)(gfx_pipeline* pipeline);
+void (*gfx_destroy_pipeline)(gfx_pipeline* pipeline);
 
 gfx_resource_view (*gfx_create_resource_view)(const gfx_resource_view_desc* desc);
-void              (*gfx_destroy_resource_view)(gfx_resource_view* view);
+void (*gfx_destroy_resource_view)(gfx_resource_view* view);
 
 gfx_root_signature (*gfx_create_root_signature)(const gfx_descriptor_set_layout* set_layouts, uint32_t set_layout_count, const gfx_push_constant_range* push_constants, uint32_t push_constant_count);
-void               (*gfx_destroy_root_signature)(gfx_root_signature* root_sig);
+void (*gfx_destroy_root_signature)(gfx_root_signature* root_sig);
 
 gfx_descriptor_table (*gfx_create_descriptor_table)(const gfx_root_signature* root_signature);
-void                 (*gfx_destroy_descriptor_table)(gfx_descriptor_table* descriptor_table);
-void                 (*gfx_update_descriptor_table)(gfx_descriptor_table* descriptor_table, gfx_resource* resources, uint32_t num_resources);
+void (*gfx_destroy_descriptor_table)(gfx_descriptor_table* descriptor_table);
+void (*gfx_update_descriptor_table)(gfx_descriptor_table* descriptor_table, gfx_resource* resources, uint32_t num_resources);
 
 gfx_resource (*gfx_create_texure_resource)(gfx_texture_create_desc desc);
-void         (*gfx_destroy_texure_resource)(gfx_resource* resource);
+void (*gfx_destroy_texure_resource)(gfx_resource* resource);
 
 gfx_resource_view (*gfx_create_texture_res_view)(gfx_resource_view_desc desc);
-void              (*gfx_destroy_texture_res_view)(gfx_resource_view* view);
+void (*gfx_destroy_texture_res_view)(gfx_resource_view* view);
 
 gfx_sampler (*gfx_create_sampler)(gfx_sampler_create_desc desc);
-void        (*gfx_destroy_sampler)(gfx_sampler* sampler);
+void (*gfx_destroy_sampler)(gfx_sampler* sampler);
 
 //------------------------------------------
 // RHI function pointers
