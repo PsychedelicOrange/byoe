@@ -599,7 +599,7 @@ static TypedGrowableArray vulkan_internal_create_queue_family_infos(queue_indice
     static float queuePriority = 1.0f;
 
     VkDeviceQueueCreateInfo* gfxQueueInfo = malloc(sizeof(VkDeviceQueueCreateInfo));
-    *gfxQueueInfo                         = (VkDeviceQueueCreateInfo) {
+    *gfxQueueInfo                         = (VkDeviceQueueCreateInfo){
                                 .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
                                 .queueFamilyIndex = indices.gfx,
                                 .queueCount       = 1,
@@ -608,7 +608,7 @@ static TypedGrowableArray vulkan_internal_create_queue_family_infos(queue_indice
 
     if (indices.gfx != indices.present) {
         VkDeviceQueueCreateInfo* presentQueueInfo = malloc(sizeof(VkDeviceQueueCreateInfo));
-        *presentQueueInfo                         = (VkDeviceQueueCreateInfo) {
+        *presentQueueInfo                         = (VkDeviceQueueCreateInfo){
                                     .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
                                     .queueFamilyIndex = indices.present,
                                     .queueCount       = 1,
@@ -618,7 +618,7 @@ static TypedGrowableArray vulkan_internal_create_queue_family_infos(queue_indice
 
     if (indices.async_compute != indices.gfx) {
         VkDeviceQueueCreateInfo* computeQueueInfo = malloc(sizeof(VkDeviceQueueCreateInfo));
-        *computeQueueInfo                         = (VkDeviceQueueCreateInfo) {
+        *computeQueueInfo                         = (VkDeviceQueueCreateInfo){
                                     .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
                                     .queueFamilyIndex = indices.async_compute,
                                     .queueCount       = 1,
@@ -1272,7 +1272,7 @@ gfx_shader vulkan_device_create_compute_shader(const char* spv_file_path)
 
         backend->modules.CS = vulkan_internal_create_shader_handle(spv_file_path);
 
-        backend->stage_ci = (VkPipelineShaderStageCreateInfo) {
+        backend->stage_ci = (VkPipelineShaderStageCreateInfo){
             .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage  = VK_SHADER_STAGE_COMPUTE_BIT,
             .pName  = "main",
@@ -1293,7 +1293,7 @@ gfx_shader vulkan_device_create_vs_ps_shader(const char* spv_file_path_vs, const
 
         backend_vs->modules.VS = vulkan_internal_create_shader_handle(spv_file_path_vs);
 
-        backend_vs->stage_ci = (VkPipelineShaderStageCreateInfo) {
+        backend_vs->stage_ci = (VkPipelineShaderStageCreateInfo){
             .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage  = VK_SHADER_STAGE_VERTEX_BIT,
             .pName  = "main",
@@ -1307,7 +1307,7 @@ gfx_shader vulkan_device_create_vs_ps_shader(const char* spv_file_path_vs, const
 
         backend_ps->modules.PS = vulkan_internal_create_shader_handle(spv_file_path_ps);
 
-        backend_ps->stage_ci = (VkPipelineShaderStageCreateInfo) {
+        backend_ps->stage_ci = (VkPipelineShaderStageCreateInfo){
             .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage  = VK_SHADER_STAGE_FRAGMENT_BIT,
             .pName  = "main",
@@ -1583,16 +1583,15 @@ gfx_root_signature vulkan_device_create_root_signature(const gfx_descriptor_set_
     root_signature_backend* backend = malloc(sizeof(root_signature_backend));
     root_sig.backend                = backend;
 
+    backend->vk_descriptor_set_layouts = malloc(sizeof(VkDescriptorSetLayout) * set_layout_count);
     for (uint32_t i = 0; i < set_layout_count; ++i) {
-        backend->vk_descriptor_set_layouts = malloc(sizeof(VkDescriptorSetLayout) * set_layout_count);
-
         const gfx_descriptor_set_layout* set_layout = &set_layouts[i];
 
         VkDescriptorSetLayoutBinding* vk_bindings = malloc(sizeof(VkDescriptorSetLayoutBinding) * set_layout->binding_count);
 
         for (uint32_t j = 0; j < set_layout->binding_count; ++j) {
             const gfx_descriptor_binding binding = set_layout->bindings[j];
-            vk_bindings[j]                       = (VkDescriptorSetLayoutBinding) {
+            vk_bindings[j]                       = (VkDescriptorSetLayoutBinding){
                                       .binding            = binding.binding,
                                       .descriptorType     = vulkan_util_descriptor_type_translate(binding.type),
                                       .descriptorCount    = binding.count,
@@ -1619,7 +1618,7 @@ gfx_root_signature vulkan_device_create_root_signature(const gfx_descriptor_set_
 
         for (uint32_t i = 0; i < push_constant_count; ++i) {
             const gfx_push_constant_range push_constant = push_constants[i];
-            vk_push_constants[i]                        = (VkPushConstantRange) {
+            vk_push_constants[i]                        = (VkPushConstantRange){
                                        .offset     = push_constant.offset,
                                        .size       = push_constant.size,
                                        .stageFlags = vulkan_util_shader_stage_bits(push_constant.stage),
@@ -1656,7 +1655,9 @@ void vulkan_device_destroy_root_signature(gfx_root_signature* root_sig)
     }
 
     vkDestroyPipelineLayout(VKDEVICE, ((root_signature_backend*) (root_sig->backend))->pipeline_layout, NULL);
-    free(((root_signature_backend*) (root_sig->backend))->vk_descriptor_set_layouts);
+    VkDescriptorSetLayout* layouts = ((root_signature_backend*) (root_sig->backend))->vk_descriptor_set_layouts;
+    if (layouts)
+        free(layouts);
     free(root_sig->backend);
     root_sig->backend = NULL;
 }
@@ -1733,7 +1734,7 @@ void vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_tabl
     for (uint32_t i = 0; i < num_resources; i++) {
         gfx_resource* res = &resources[i];
 
-        writes[i] = (VkWriteDescriptorSet) {
+        writes[i] = (VkWriteDescriptorSet){
             .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
             .dstSet          = sets[res->set],
             .dstBinding      = res->binding,
@@ -1838,7 +1839,8 @@ void vulkan_device_destroy_texure_resource(gfx_resource* resource)
     resource->texture.backend = NULL;
 }
 
-typedef struct tex_resource_view_backend{
+typedef struct tex_resource_view_backend
+{
     VkImageView view;
 } tex_resource_view_backend;
 
@@ -1848,24 +1850,22 @@ gfx_resource_view vulkan_device_create_texture_res_view(gfx_resource_view_desc d
     uuid_generate(&view.uuid);
 
     tex_resource_view_backend* backend = malloc(sizeof(tex_resource_view_backend));
-    view.backend = backend;
+    view.backend                       = backend;
 
     VkImageViewCreateInfo view_ci = {
-        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-        .pNext = NULL,
-        .flags = 0,
-        .image = VK_NULL_HANDLE,
-        .format = vulkan_util_format_translate(desc.texture.format),
-        .viewType = vulkan_util_texture_view_type_translate(desc.texture.texture_type),
-        .components = (VkComponentMapping){VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A},
+        .sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .pNext            = NULL,
+        .flags            = 0,
+        .image            = VK_NULL_HANDLE,
+        .format           = vulkan_util_format_translate(desc.texture.format),
+        .viewType         = vulkan_util_texture_view_type_translate(desc.texture.texture_type),
+        .components       = (VkComponentMapping){VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A},
         .subresourceRange = {
-            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, // FIXME: hardcoded shit since depth tex will neeed a VK_IMAGE_ASPECT_DEPTH_BIT
+            .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,    // FIXME: hardcoded shit since depth tex will neeed a VK_IMAGE_ASPECT_DEPTH_BIT
             .baseArrayLayer = desc.texture.base_layer,
-            .baseMipLevel = desc.texture.base_mip,
-            .layerCount = desc.texture.layer_count,
-            .levelCount = VK_REMAINING_MIP_LEVELS
-        }
-    };
+            .baseMipLevel   = desc.texture.base_mip,
+            .layerCount     = desc.texture.layer_count,
+            .levelCount     = VK_REMAINING_MIP_LEVELS}};
 
     VK_CHECK_RESULT(vkCreateImageView(VKDEVICE, &view_ci, NULL, &backend->view), "[Vulkan] Cannot create vulkan image view");
 
@@ -1876,7 +1876,7 @@ void vulkan_device_destroy_texture_res_view(gfx_resource_view* view)
 {
     uuid_destroy(&view->uuid);
 
-    vkDestroyImageView(VKDEVICE, ((tex_resource_view_backend*)(view->backend))->view, NULL);
+    vkDestroyImageView(VKDEVICE, ((tex_resource_view_backend*) (view->backend))->view, NULL);
     free(view->backend);
     view->backend = NULL;
 }
