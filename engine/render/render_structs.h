@@ -487,11 +487,12 @@ typedef struct gfx_resource_view_desc
         struct
         {
             gfx_format format;
+            gfx_texture_type texture_type;
             uint32_t   base_mip;
             uint32_t   mip_levels;
             uint32_t   base_layer;
             uint32_t   layer_count;
-        } image;
+        } texture;
 
         struct
         {

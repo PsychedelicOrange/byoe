@@ -65,6 +65,9 @@ void (*gfx_update_descriptor_table)(gfx_descriptor_table* descriptor_table, gfx_
 gfx_resource (*gfx_create_texure_resource)(gfx_texture_create_desc desc);
 void (*gfx_destroy_texure_resource)(gfx_resource* resource);
 
+gfx_resource_view (*gfx_create_texture_res_view)(gfx_resource_view_desc desc);
+void (*gfx_destroy_texture_res_view)(gfx_resource_view* view);
+
 //------------------------------------------
 // RHI function pointers
 //------------------------------------------

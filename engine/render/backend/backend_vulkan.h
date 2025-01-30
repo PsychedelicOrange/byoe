@@ -55,6 +55,9 @@ void                 vulkan_device_update_descriptor_table(gfx_descriptor_table*
 gfx_resource vulkan_device_create_texure_resource(gfx_texture_create_desc desc);
 void         vulkan_device_destroy_texure_resource(gfx_resource* resource);
 
+gfx_resource_view vulkan_device_create_texture_res_view(gfx_resource_view_desc desc);
+void vulkan_device_destroy_texture_res_view(gfx_resource_view* view);
+
 //------------------------------------------
 // RHI
 //------------------------------------------

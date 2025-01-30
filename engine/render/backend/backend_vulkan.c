@@ -1830,12 +1830,55 @@ gfx_resource vulkan_device_create_texure_resource(gfx_texture_create_desc desc)
 
 void vulkan_device_destroy_texure_resource(gfx_resource* resource)
 {
-    (void) resource;
+    uuid_destroy(&resource->texture.uuid);
 
     VkImage vk_image = ((texture_backend*) resource->texture.backend)->image;
     vkDestroyImage(VKDEVICE, vk_image, NULL);
     free(resource->texture.backend);
     resource->texture.backend = NULL;
+}
+
+typedef struct tex_resource_view_backend{
+    VkImageView view;
+} tex_resource_view_backend;
+
+gfx_resource_view vulkan_device_create_texture_res_view(gfx_resource_view_desc desc)
+{
+    gfx_resource_view view = {0};
+    uuid_generate(&view.uuid);
+
+    tex_resource_view_backend* backend = malloc(sizeof(tex_resource_view_backend));
+    view.backend = backend;
+
+    VkImageViewCreateInfo view_ci = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .pNext = NULL,
+        .flags = 0,
+        .image = VK_NULL_HANDLE,
+        .format = vulkan_util_format_translate(desc.texture.format),
+        .viewType = vulkan_util_texture_view_type_translate(desc.texture.texture_type),
+        .components = (VkComponentMapping){VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A},
+        .subresourceRange = {
+            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, // FIXME: hardcoded shit since depth tex will neeed a VK_IMAGE_ASPECT_DEPTH_BIT
+            .baseArrayLayer = desc.texture.base_layer,
+            .baseMipLevel = desc.texture.base_mip,
+            .layerCount = desc.texture.layer_count,
+            .levelCount = VK_REMAINING_MIP_LEVELS
+        }
+    };
+
+    VK_CHECK_RESULT(vkCreateImageView(VKDEVICE, &view_ci, NULL, &backend->view), "[Vulkan] Cannot create vulkan image view");
+
+    return view;
+}
+
+void vulkan_device_destroy_texture_res_view(gfx_resource_view* view)
+{
+    uuid_destroy(&view->uuid);
+
+    vkDestroyImageView(VKDEVICE, ((tex_resource_view_backend*)(view->backend))->view, NULL);
+    free(view->backend);
+    view->backend = NULL;
 }
 
 //--------------------------------------------------------
