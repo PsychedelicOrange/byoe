@@ -46,12 +46,12 @@ DEFINE_CLAMP(int)
 //      - [x] draw API
 // - [x] Descriptors API + pipeline layout handling etc.
 // - [ ] Texture API for binding the r/w texture to composition pass
-//      - [ ] Texture resource API (good thing is that we don't care about image loading and mipmaps): create/destroy + resource views
-//      - [ ] basic API to create types of textures
-//      - [ ] resource view creation API
+//      - [x] basic API to create types of textures
+//      - [ ] resource view creation API --> VkImageView(s)
+//      - [ ] sampler API
 //      - [ ] create a 2D RW texure resource and attach it to a CS using descriptors API and check on renderdoc
 //      - [ ] fix any issues with the descriptor API
-//      - [ ] bind this to the screen_quad pass --> extend API for resource views here
+//      - [ ] bind this to the screen_quad pass
 // - [ ] Single time command buffers
 // - [ ] Barriers (image memory) and Transition layout API
 // - [ ] UBOs + Push constants API + setup descriptor sets for the resources x2

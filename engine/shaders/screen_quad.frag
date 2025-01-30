@@ -7,6 +7,6 @@ layout(location = 0) out vec4 outColorRenderTarget;
 //layout(binding = 0, set = 0) uniform sampler2D sceneTexture;
 
 void main() {
-    outColorRenderTarget = vec4(1.0f, 1.0f, 0.0f, 1.0f);
+    outColorRenderTarget = vec4(inUV, 0.0f, 1.0f);
 }
 	
