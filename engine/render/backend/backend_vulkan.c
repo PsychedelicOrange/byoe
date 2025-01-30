@@ -47,9 +47,9 @@ DEFINE_CLAMP(int)
 // - [x] Descriptors API + pipeline layout handling etc.
 // - [ ] Texture API for binding the r/w texture to composition pass
 //      - [x] basic API to create types of textures
-//      - [ ] resource view creation API --> VkImageView(s)
+//      - [x] resource view creation API --> VkImageView(s)
 //      - [ ] sampler API
-//      - [ ] create a 2D RW texure resource and attach it to a CS using descriptors API and check on renderdoc
+//      - [ ] create a 2D RW texture resource/view/sampler and attach it to a CS using descriptors API and check on renderdoc
 //      - [ ] fix any issues with the descriptor API
 //      - [ ] bind this to the screen_quad pass
 // - [ ] Single time command buffers
@@ -114,7 +114,7 @@ typedef struct device_create_info_ex
 } device_create_info_ex;
 
 //---------------------------------
-typedef struct vulkan_context
+typedef struct context_backend
 {
     GLFWwindow*                      window;
     VkInstance                       instance;
@@ -127,13 +127,13 @@ typedef struct vulkan_context
     VkExtensionProperties*           supported_extensions;
     queue_indices                    queue_idxs;
     queue_backend                    queues;
-} vulkan_context;
+} context_backend;
 
-static vulkan_context s_VkCtx;
+static context_backend s_VkCtx;
 
-#define VKINSTANCE s_VkCtx.instance
 #define VKDEVICE   s_VkCtx.logical_device
 #define VKGPU      s_VkCtx.gpu
+#define VKINSTANCE s_VkCtx.instance
 #define VKSURFACE  s_VkCtx.surface
 
 //--------------------------------------------------------
@@ -299,6 +299,26 @@ VkImageViewType vulkan_util_texture_view_type_translate(gfx_texture_type type)
         case GFX_TEXTURE_TYPE_CUBEMAP: return VK_IMAGE_VIEW_TYPE_CUBE;
         case GFX_TEXTURE_TYPE_2D_ARRAY: return VK_IMAGE_VIEW_TYPE_2D_ARRAY;
         default: return VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+    }
+}
+
+VkFilter vulkan_util_filter_translate(gfx_filter_mode filter)
+{
+    switch (filter) {
+        case GFX_FILTER_MODE_NEAREST: return VK_FILTER_NEAREST;
+        case GFX_FILTER_MODE_LINEAR: return VK_FILTER_LINEAR;
+        default: return VK_FILTER_LINEAR;
+    }
+}
+
+VkSamplerAddressMode vulkan_util_sampler_address_mode_translate(gfx_wrap_mode mode)
+{
+    switch (mode) {
+        case GFX_WRAP_MODE_REPEAT: return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        case GFX_WRAP_MODE_MIRRORED_REPEAT: return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+        case GFX_WRAP_MODE_CLAMP_TO_EDGE: return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        case GFX_WRAP_MODE_CLAMP_TO_BORDER: return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+        default: return VK_SAMPLER_ADDRESS_MODE_REPEAT;
     }
 }
 
@@ -515,7 +535,7 @@ static VkPhysicalDevice vulkan_internal_select_best_gpu(VkInstance instance)
     return candidate_gpu;
 }
 
-static void vulkan_internal_query_device_props(VkPhysicalDevice gpu, vulkan_context* ctx)
+static void vulkan_internal_query_device_props(VkPhysicalDevice gpu, context_backend* ctx)
 {
     vkGetPhysicalDeviceMemoryProperties(gpu, &ctx->mem_props);
     vkGetPhysicalDeviceProperties(gpu, &ctx->props);
@@ -708,7 +728,7 @@ gfx_context vulkan_ctx_init(GLFWwindow* window, uint32_t width, uint32_t height)
 
     gfx_context ctx = {0};
 
-    memset(&s_VkCtx, 0, sizeof(vulkan_context));
+    memset(&s_VkCtx, 0, sizeof(context_backend));
     s_VkCtx.window = window;
 
     if (volkInitialize() != VK_SUCCESS) {
@@ -1209,7 +1229,6 @@ static SPVBuffer loadSPVFile(const char* filename)
         return buffer;
     }
 
-    // Get the file size
     fseek(file, 0, SEEK_END);
     unsigned long fileSize = ftell(file);
     fseek(file, 0, SEEK_SET);
@@ -1220,7 +1239,6 @@ static SPVBuffer loadSPVFile(const char* filename)
         return buffer;
     }
 
-    // Allocate memory for the buffer
     buffer.size = fileSize;
     buffer.data = (uint32_t*) malloc(fileSize);
     if (!buffer.data) {
@@ -1229,7 +1247,6 @@ static SPVBuffer loadSPVFile(const char* filename)
         return buffer;
     }
 
-    // Read the file contents into the buffer
     if (fread(buffer.data, 1, fileSize, file) != fileSize) {
         fprintf(stderr, "Failed to read the file.\n");
         free(buffer.data);
@@ -1546,7 +1563,7 @@ static gfx_pipeline vulkan_internal_create_gfx_pipeline(gfx_pipeline_create_info
         .stageCount          = stage_count,
         .renderPass          = VK_NULL_HANDLE};    // renderPass is NULL since we are using VK_KHR_dynamic_rendering extension
 
-    VK_CHECK_RESULT(vkCreateGraphicsPipelines(VKDEVICE, VK_NULL_HANDLE, 1, &graphics_pipeline_ci, NULL, &backend->pipeline), "[Vulkan] could not create grapihcs pipeline");
+    VK_CHECK_RESULT(vkCreateGraphicsPipelines(VKDEVICE, VK_NULL_HANDLE, 1, &graphics_pipeline_ci, NULL, &backend->pipeline), "[Vulkan] could not create graphics pipeline");
 
     free(stages);
 
@@ -1861,7 +1878,7 @@ gfx_resource_view vulkan_device_create_texture_res_view(gfx_resource_view_desc d
         .viewType         = vulkan_util_texture_view_type_translate(desc.texture.texture_type),
         .components       = (VkComponentMapping){VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A},
         .subresourceRange = {
-            .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,    // FIXME: hardcoded shit since depth tex will neeed a VK_IMAGE_ASPECT_DEPTH_BIT
+            .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,    // FIXME: hard coded shit since depth texture should have VK_IMAGE_ASPECT_DEPTH_BIT aspect mask
             .baseArrayLayer = desc.texture.base_layer,
             .baseMipLevel   = desc.texture.base_mip,
             .layerCount     = desc.texture.layer_count,
@@ -1879,6 +1896,52 @@ void vulkan_device_destroy_texture_res_view(gfx_resource_view* view)
     vkDestroyImageView(VKDEVICE, ((tex_resource_view_backend*) (view->backend))->view, NULL);
     free(view->backend);
     view->backend = NULL;
+}
+
+typedef struct sampler_backend
+{
+    VkSampler sampler;
+} sampler_backend;
+
+gfx_sampler vulkan_device_create_sampler(gfx_sampler_create_desc desc)
+{
+    gfx_sampler sampler = {0};
+    uuid_generate(&sampler.uuid);
+
+    sampler_backend* backend = malloc(sizeof(sampler_backend));
+    sampler.backend          = backend;
+
+    VkSamplerCreateInfo samplerInfo = {
+        .sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+        .magFilter               = vulkan_util_filter_translate(desc.mag_filter),
+        .minFilter               = vulkan_util_filter_translate(desc.min_filter),
+        .mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+        .addressModeU            = vulkan_util_sampler_address_mode_translate(desc.wrap_mode),
+        .addressModeV            = vulkan_util_sampler_address_mode_translate(desc.wrap_mode),
+        .addressModeW            = vulkan_util_sampler_address_mode_translate(desc.wrap_mode),
+        .maxAnisotropy           = desc.max_anisotropy,
+        .anisotropyEnable        = VK_TRUE,
+        .unnormalizedCoordinates = VK_FALSE,
+        .compareEnable           = VK_TRUE,
+        .borderColor             = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE,
+        .mipLodBias              = 0.0f,
+        .compareOp               = VK_COMPARE_OP_LESS,
+        .minLod                  = desc.min_lod,
+        .maxLod                  = desc.max_lod};
+
+    VK_CHECK_RESULT(vkCreateSampler(VKDEVICE, &samplerInfo, NULL, &backend->sampler), "[Vulkan] cannot create vulkan sampler");
+
+    return sampler;
+}
+
+void vulkan_device_destroy_sampler(gfx_sampler* sampler)
+{
+    uuid_destroy(&sampler->uuid);
+
+    sampler_backend* backend = (sampler_backend*) (sampler->backend);
+    vkDestroySampler(VKDEVICE, backend->sampler, NULL);
+    free(backend);
+    backend = NULL;
 }
 
 //--------------------------------------------------------

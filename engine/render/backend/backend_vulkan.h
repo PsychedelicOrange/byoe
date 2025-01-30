@@ -58,6 +58,9 @@ void         vulkan_device_destroy_texure_resource(gfx_resource* resource);
 gfx_resource_view vulkan_device_create_texture_res_view(gfx_resource_view_desc desc);
 void vulkan_device_destroy_texture_res_view(gfx_resource_view* view);
 
+gfx_sampler vulkan_device_create_sampler(gfx_sampler_create_desc desc);
+void        vulkan_device_destroy_sampler(gfx_sampler* sampler);
+
 //------------------------------------------
 // RHI
 //------------------------------------------

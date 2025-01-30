@@ -24,9 +24,12 @@
 
 // Docs: https://github.com/PsychedelicOrange/byoe/pull/10
 
-typedef struct color_rgba {
-    union {
-        struct {
+typedef struct color_rgba
+{
+    union
+    {
+        struct
+        {
             float r;
             float g;
             float b;
@@ -36,9 +39,12 @@ typedef struct color_rgba {
     };
 } color_rgba;
 
-typedef struct color_rgb {
-    union {
-        struct {
+typedef struct color_rgb
+{
+    union
+    {
+        struct
+        {
             float r;
             float g;
             float b;
@@ -47,7 +53,8 @@ typedef struct color_rgb {
     };
 } color_rgb;
 
-typedef struct bounding_sphere {
+typedef struct bounding_sphere
+{
     vec3  pos;
     float radius;
 } bounding_sphere;
@@ -56,7 +63,8 @@ typedef struct bounding_sphere {
 // SDF Renderer Structs
 //------------------------
 
-typedef enum SDF_PrimitiveType {
+typedef enum SDF_PrimitiveType
+{
     SDF_PRIM_Sphere,
     SDF_PRIM_Box,
     SDF_PRIM_RoundedBox,
@@ -75,7 +83,8 @@ typedef enum SDF_PrimitiveType {
     SDF_PRIM_Plane
 } SDF_PrimitiveType;
 
-typedef enum SDF_BlendType {
+typedef enum SDF_BlendType
+{
     SDF_BLEND_UNION,
     SDF_BLEND_INTERSECTION,
     SDF_BLEND_SUBTRACTION,
@@ -85,12 +94,14 @@ typedef enum SDF_BlendType {
     SDF_BLEND_SMOOTH_SUBTRACTION
 } SDF_BlendType;
 
-typedef enum SDF_Operation {
+typedef enum SDF_Operation
+{
     SDF_OP_DISTORTION,
     SDF_OP_ELONGATION
 } SDF_Operation;
 
-typedef enum SDF_NodeType {
+typedef enum SDF_NodeType
+{
     SDF_NODE_PRIMITIVE,
     SDF_NODE_OBJECT
 } SDF_NodeType;
@@ -98,88 +109,105 @@ typedef enum SDF_NodeType {
 //-----------------------------
 
 // TODO: If data memory gets too much, push the material to a separate buffer and use a bindless model
-typedef struct SDF_Material {
+typedef struct SDF_Material
+{
     vec4 diffuse;
 } SDF_Material;
 
 //-----------------------------
 
-typedef struct sphere_props {
+typedef struct sphere_props
+{
     float radius;
 } sphere_props;
 
-typedef struct box_props {
+typedef struct box_props
+{
     vec3s dimensions;
 } box_props;
 
-typedef struct round_box_props {
+typedef struct round_box_props
+{
     vec3s dimensions;
     float roundness;
 } round_box_props;
 
-typedef struct box_frame_props {
+typedef struct box_frame_props
+{
     vec3s dimensions;
     float thickness;
 } box_frame_props;
 
-typedef struct torus_props {
+typedef struct torus_props
+{
     vec2 thickness;
 } torus_props;
 
-typedef struct torus_capped_props {
+typedef struct torus_capped_props
+{
     vec2  thickness;
     float radiusA;
     float radiusB;
 } torus_capped_props;
 
-typedef struct capsule_props {
+typedef struct capsule_props
+{
     vec3  start;
     vec3  end;
     float radius;
 } capsule_props;
 
-typedef struct vertical_capsule_props {
+typedef struct vertical_capsule_props
+{
     float radius;
     float height;
 } vertical_capsule_props;
 
-typedef struct cylinder_props {
+typedef struct cylinder_props
+{
     float radius;
     float height;
 } cylinder_props;
 
-typedef struct rounded_cylinder_props {
+typedef struct rounded_cylinder_props
+{
     float radiusA;
     float radiusB;
     float height;
 } rounded_cylinder_props;
 
-typedef struct ellipsoid_props {
+typedef struct ellipsoid_props
+{
     vec3s radii;
 } ellipsoid_props;
 
-typedef struct hexagonal_prism_props {
+typedef struct hexagonal_prism_props
+{
     float radius;
     float height;
 } hexagonal_prism_props;
 
-typedef struct triangular_prism_props {
+typedef struct triangular_prism_props
+{
     float radius;
     float height;
 } triangular_prism_props;
 
-typedef struct cone_props {
+typedef struct cone_props
+{
     float angle;
     float height;
 } cone_props;
 
-typedef struct capped_cone_props {
+typedef struct capped_cone_props
+{
     float radiusTop;
     float radiusBottom;
     float height;
 } capped_cone_props;
 
-typedef struct plane_props {
+typedef struct plane_props
+{
     vec3s normal;
     float distance;
 } plane_props;
@@ -188,12 +216,14 @@ typedef struct plane_props {
 
 // TODO: perf-sweep with and without _pad_to_128_bytes_boundary
 
-typedef struct SDF_Primitive {
+typedef struct SDF_Primitive
+{
     SDF_PrimitiveType type;
     int               _pad0[3];
     Transform         transform;    // Position, Rotation, Scale
     SDF_Material      material;
-    union {
+    union
+    {
         sphere_props           sphere;
         box_props              box;
         round_box_props        round_box;
@@ -219,7 +249,8 @@ typedef struct SDF_Primitive {
 
 // Blending -> these are blending method b/w two primitives (eg. smooth union, XOR, etc. ) (again refer iq)
 // Since it's shared as union it's the same size as of SDF_Primitive
-typedef struct SDF_Object {
+typedef struct SDF_Object
+{
     SDF_BlendType type;
     uint32_t      _pad0[3];
     Transform     transform;
@@ -227,7 +258,6 @@ typedef struct SDF_Object {
     uint32_t      prim_b;
     uint32_t      _pad_to_128_bytes_boundary[14];
 } SDF_Object;
-
 
 // This struct cannot be directly translated to the GPU, we need another helper struct to flatten it (defined in sdf_scene.h)
 typedef struct SDF_Node
@@ -391,6 +421,20 @@ typedef enum gfx_texture_type
     GFX_TEXTURE_TYPE_2D_ARRAY
 } gfx_texture_type;
 
+typedef enum gfx_filter_mode
+{
+    GFX_FILTER_MODE_NEAREST,
+    GFX_FILTER_MODE_LINEAR
+} gfx_filter_mode;
+
+typedef enum gfx_wrap_mode
+{
+    GFX_WRAP_MODE_REPEAT,
+    GFX_WRAP_MODE_MIRRORED_REPEAT,
+    GFX_WRAP_MODE_CLAMP_TO_EDGE,
+    GFX_WRAP_MODE_CLAMP_TO_BORDER
+} gfx_wrap_mode;
+
 typedef struct gfx_config
 {
     bool use_timeline_semaphores;
@@ -400,11 +444,11 @@ static gfx_config g_gfxConfig = {
     .use_timeline_semaphores = false,
 };
 
-// current Draft-1 gfx_XXX memory alloc design
-// void* backend will be allocated by their own backend_resource_pool_(Type) (hightly fragmented and not data-oriented)
+// Draft-1 gfx_XXX memory alloc design
+// void* backend will be allocated by malloc and manual free (hightly fragmented and not data-oriented)
 
-// [Draft-2] 
-// TODO: void* backend will be refactored to use a uint32_t index for backend resource pools, frontend will have similar pools 
+// [Draft-2]
+// TODO: void* backend will be refactored to use a uint32_t index for backend resource pools, frontend will have similar pools
 // TODO: frontend_resource_pool_(Type) will have it's own allocators with a index to another backend pool elements
 
 typedef struct gfx_swapchain
@@ -421,7 +465,7 @@ typedef struct gfx_fence
 {
     random_uuid_t  uuid;
     void*          backend;
-    uint64_t       value;    // track backend value
+    uint64_t       value;    // TODO: track backend value
     gfx_fence_type visibility;
     uint32_t       _pad0[3];
 } gfx_fence;
@@ -451,12 +495,6 @@ typedef struct gfx_uniform_buffer
     void*         backend;
 } gfx_uniform_buffer;
 
-typedef struct gfx_texture
-{
-    random_uuid_t uuid;
-    void*         backend;
-} gfx_texture;
-
 typedef struct gfx_texture_create_desc
 {
     uint32_t         width;
@@ -465,6 +503,28 @@ typedef struct gfx_texture_create_desc
     gfx_format       format;
     gfx_texture_type type;
 } gfx_texture_create_desc;
+
+typedef struct gfx_texture
+{
+    random_uuid_t uuid;
+    void*         backend;
+} gfx_texture;
+
+typedef struct gfx_sampler_create_desc
+{
+    gfx_filter_mode min_filter;
+    gfx_filter_mode mag_filter;
+    gfx_wrap_mode   wrap_mode;
+    float           min_lod;
+    float           max_lod;
+    float           max_anisotropy;
+} gfx_sampler_create_desc;
+
+typedef struct gfx_sampler
+{
+    random_uuid_t uuid;
+    void*         backend;
+} gfx_sampler;
 
 typedef struct gfx_resource
 {
@@ -486,12 +546,12 @@ typedef struct gfx_resource_view_desc
     {
         struct
         {
-            gfx_format format;
+            gfx_format       format;
             gfx_texture_type texture_type;
-            uint32_t   base_mip;
-            uint32_t   mip_levels;
-            uint32_t   base_layer;
-            uint32_t   layer_count;
+            uint32_t         base_mip;
+            uint32_t         mip_levels;
+            uint32_t         base_layer;
+            uint32_t         layer_count;
         } texture;
 
         struct
