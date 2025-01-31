@@ -89,6 +89,12 @@ void setUniformVec2Int(unsigned int shaderProgram, int vector[2], char* location
     int loc = glGetUniformLocation(shaderProgram, location);
     glUniform2iv(loc, 1, vector);
 }
+void setUniformFloat(unsigned int shaderProgram, float value, char* location)
+{
+    glUseProgram(shaderProgram);
+    int loc = glGetUniformLocation(shaderProgram, location);
+    glUniform1f(loc, value);
+}
 void setUniformMat4(unsigned int shaderProgram, mat4s matrix, char* location)
 {
     glUseProgram(shaderProgram);

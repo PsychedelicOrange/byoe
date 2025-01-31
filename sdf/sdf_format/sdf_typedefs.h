@@ -1,11 +1,10 @@
 #ifndef SDF_FORMAT_TYPES_H
 #define SDF_FORMAT_TYPES_H
 
-#ifdef USE_CGLM_TYPES
-    #include "cglm/cglm.h"
+#ifndef DONT_USE_CGLM_TYPES
     #include "cglm/types-struct.h"
 #endif
-#ifndef USE_CGLM_TYPES
+#ifdef DONT_USE_CGLM_TYPES
 typedef float vec2[2];
 typedef float vec3[3];
 typedef float vec4[4];

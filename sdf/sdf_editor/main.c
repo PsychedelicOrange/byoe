@@ -7,6 +7,7 @@
 #include <string.h>
 #include <time.h>
 
+#include "cglm/struct/vec3.h"
 #include "glad/glad.h"
 #include <GLFW/glfw3.h>
 
@@ -19,6 +20,8 @@
 #include "render/render_utils.h"
 #include "sidebar.h"
 #include "viewport.h"
+
+#include "sdf/sdf_format/sdf_file_types.h"
 
 #include "icon.h"
 #include "logging/log.h"
@@ -33,14 +36,39 @@ struct file_browser        browser;
 struct add_primitive_state add_prim;
 struct media               media;
 struct viewport_state      viewport;
+struct format_sdf_file     file;
+
+struct format_sdf_file file_default()
+{
+    struct format_sdf_file def =
+        {
+            .version          = SDF_VERSION,
+            .primitives       = malloc(sizeof(struct format_sdf_primitive)),
+            .primitives_count = 1,
+            .blends_count     = 0,
+            .blends           = NULL};
+    def.primitives[0].index                       = 0;
+    def.primitives[0].label                       = "one ballz";
+    def.primitives[0].type                        = SDF_PRIM_Sphere;
+    def.primitives[0].props.sphere.radius         = 1;
+    def.primitives[0].operations_count            = 1;
+    def.primitives[0].operations                  = malloc(sizeof(format_sdf_operation));
+    def.primitives[0].operations[0].type          = SDF_OP_TRANSLATION;
+    def.primitives[0].operations[0].parameters[0] = 0;
+    def.primitives[0].operations[0].parameters[1] = 0;
+    def.primitives[0].operations[0].parameters[3] = 0;
+    return def;
+}
+
 /* Mouse update */
 struct mouse
 {
     float lastX, lastY;
     float isRightMouseDown;
     float isLeftMouseDown;
+    float isMiddleMouseDown;
     float scroll;
-} mouse;
+} mouse = {.lastX = WINDOW_WIDTH / 2., .lastY = WINDOW_HEIGHT / 2.};
 
 static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
 {
@@ -101,6 +129,10 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
             add_prim.show = 1;
         }
     }
+    // viewport controls
+    if (key == GLFW_KEY_UP) {
+        viewport.camera.position = glms_vec3_add(glms_vec3_scale_as(viewport.camera.front, 0.01), viewport.camera.position);
+    }
 }
 
 void drop_callback(GLFWwindow* window, int count, const char** paths)
@@ -115,12 +147,32 @@ static void error_callback(int e, const char* d)
     fprintf(stderr, "Error %d: %s\n", e, d);
 }
 
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+{
+    printf("called back recieved");
+    if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
+        printf("RIGHT CLICK PRESED");
+    }
+}
+
 void init_glad()
 {
     if (!gladLoadGLLoader((GLADloadproc) glfwGetProcAddress)) {
         LOG_ERROR("Failed to initialize glad");
     }
 }
+
+/*void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)*/
+/*{*/
+/*    LOG_INFO("CALLBACK CALLED LMAO");*/
+/*    if (button == GLFW_MOUSE_BUTTON_MIDDLE && action == GLFW_PRESS) {*/
+/*        LOG_INFO("PRESSED MIDDLE MOUSE BUTTON");*/
+/*        viewport.pan_mode = 1;*/
+/*    } else if (button == GLFW_MOUSE_BUTTON_MIDDLE && action == GLFW_RELEASE) {*/
+/*        LOG_INFO("RELEASED MIDDLE MOUSE BUTTON");*/
+/*        viewport.pan_mode = 0;*/
+/*    }*/
+/*}*/
 
 void window_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -141,6 +193,7 @@ GLFWwindow* create_glfw_window()
     glfwSetCursorPosCallback(win, cursor_position_callback);
     if (glfwRawMouseMotionSupported())
         glfwSetInputMode(win, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+    glfwSetMouseButtonCallback(win, mouse_button_callback);
     glfwSetInputMode(win, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     glfwMakeContextCurrent(win);
     return win;
@@ -192,8 +245,8 @@ int main(void)
     load_icons();
 
     int window[2];
-    window[0] = 1920;
-    window[1] = 1080;
+    window[0] = WINDOW_WIDTH;
+    window[1] = WINDOW_HEIGHT;
     glfwGetWindowSize(win, &window[0], &window[1]);
     struct nk_colorf bg;
     bg.r = 0;
@@ -206,6 +259,7 @@ int main(void)
     sidebar  = sidebar_default(window);
     add_prim = add_primitive_default(window);
     viewport = viewport_default(window);
+    file     = file_default();
 
     while (!glfwWindowShouldClose(win)) {
         /* Input */
@@ -240,10 +294,12 @@ int main(void)
         switch (browser.action) {
             case browser_open:
                 printf("Selected in open: %s", browser.file);
+                // deserialize file and open
                 browser.action = 0;
                 break;
             case browser_save:
                 printf("Selected in save as: %s", browser.file);
+                // serialize file and save
                 browser.action = 0;
                 break;
             default:
@@ -273,7 +329,7 @@ int main(void)
         }
 
         /* Draw viewport */
-        viewport_draw(&viewport);
+        viewport_draw(&viewport, file);
 
         /* Draw GUI */
         nk_glfw3_new_frame(&glfw);

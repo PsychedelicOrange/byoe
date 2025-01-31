@@ -7,6 +7,8 @@ uniform ivec2 resolution;
 in vec4 nearp;
 in vec4 farp;
 
+uniform vec3 transform;
+uniform float radius;
 float sphere(vec3 p, vec4 circle){
 	return length(p-circle.xyz) - circle.w;
 }
