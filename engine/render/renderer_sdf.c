@@ -167,7 +167,7 @@ static void renderer_internal_create_sdf_pass_resources(void)
         .binding     = 1,
         .set         = 0,
         .count       = 1,
-        .type        = GFX_RESORUCE_TYPE_SAMPLER,
+        .type        = GFX_RESOURCE_TYPE_SAMPLER,
         .stage_flags = GFX_SHADER_STAGE_CS};
 
     gfx_descriptor_binding sdf_bindings[] = {sdf_scene_tex_binding, sdf_scene_sampler_binding};

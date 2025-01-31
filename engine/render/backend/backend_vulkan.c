@@ -301,7 +301,7 @@ static VkFormat vulkan_util_format_translate(gfx_format format)
 static VkDescriptorType vulkan_util_descriptor_type_translate(gfx_resource_type descriptor_type)
 {
     switch (descriptor_type) {
-        case GFX_RESORUCE_TYPE_SAMPLER: return VK_DESCRIPTOR_TYPE_SAMPLER;
+        case GFX_RESOURCE_TYPE_SAMPLER: return VK_DESCRIPTOR_TYPE_SAMPLER;
         case GFX_RESOURCE_TYPE_COMBINED_IMAGE_SAMPLER: return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         case GFX_RESOURCE_TYPE_SAMPLED_IMAGE: return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
         case GFX_RESOURCE_TYPE_STORAGE_IMAGE: return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
@@ -1782,6 +1782,13 @@ void vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_tabl
                     .range  = VK_WHOLE_SIZE};
                 writes[i].descriptorType = (VkDescriptorType) res->type;
                 writes[i].pBufferInfo    = &buffer_info;
+                break;
+            }
+            case GFX_RESOURCE_TYPE_SAMPLER:{
+                VkDescriptorImageInfo sampler_info = {
+                    .sampler   = (VkSampler)((sampler_backend*)(res_view->backend))->sampler};
+                writes[i].descriptorType = (VkDescriptorType) res->type;
+                writes[i].pImageInfo     = &sampler_info;
                 break;
             }
             case GFX_RESOURCE_TYPE_SAMPLED_IMAGE:

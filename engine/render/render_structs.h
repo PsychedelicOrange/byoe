@@ -401,7 +401,7 @@ typedef enum gfx_compare_op
 // TODO: Rename this as gfx_resource_type
 typedef enum gfx_resource_type
 {
-    GFX_RESORUCE_TYPE_SAMPLER,
+    GFX_RESOURCE_TYPE_SAMPLER,
     GFX_RESOURCE_TYPE_COMBINED_IMAGE_SAMPLER,
     GFX_RESOURCE_TYPE_SAMPLED_IMAGE,
     GFX_RESOURCE_TYPE_STORAGE_IMAGE,
