@@ -5,6 +5,8 @@ project(byoe_ghost_asteroids C)
 ## OPTIONS
 # Options to build the engine as DLL or static library
 option(BUILD_SHARED_ENGINE "Build engine as shared library (DLL)" OFF)
+# generate compile_commands.json for clangd
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 ####################################################################
 ## GLOBAL COMPILATION SETTINGS
 set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
@@ -19,6 +21,7 @@ endif()
 ## SOURCES
 # Add subdirectories for engine and game
 add_subdirectory(engine)
+add_subdirectory(sdf/sdf_editor)
 add_subdirectory(game)
 add_subdirectory(tests)
 add_subdirectory(benchmarks)
@@ -48,6 +51,15 @@ FetchContent_Declare(
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(glfw)
+
+# Fetch Nuklear
+FetchContent_Declare(
+    Nuklear
+    GIT_REPOSITORY https://github.com/Immediate-Mode-UI/Nuklear
+    GIT_TAG f09fe4945d5061da345bf7339b6c788e5bb26ebc # v4.09.1
+)
+
+
 ####################################################################
 # Custom target to run the executable
 add_custom_target(run

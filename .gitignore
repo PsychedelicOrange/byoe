@@ -130,7 +130,6 @@ ipch/
 *.ncb
 *.opendb
 *.opensdf
-*.sdf
 *.cachefile
 *.VC.db
 *.VC.VC.opendb
@@ -424,6 +423,7 @@ FodyWeavers.xsd
 engine/external/cglm
 # exe
 byoe_ghost_asteroids
+sdf-editor
 # cmake
 CMakeLists.txt.user
 CMakeCache.txt

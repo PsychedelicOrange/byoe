@@ -161,7 +161,7 @@ void Camera_Update(random_uuid_t* uuid, float dt)
     } else {
         vec3s playerPosition = {0};
         gameobject_get_position(s_cameraState.playerUUID, &playerPosition.raw);
-        LOG_WARN("Camera Target (Player): (%.2f, %.2f, %.2f)\n", playerPosition.x, playerPosition.y, playerPosition.z);
+        //LOG_WARN("Camera Target (Player): (%.2f, %.2f, %.2f)\n", playerPosition.x, playerPosition.y, playerPosition.z);
 
         camera->position.y = (playerPosition.y * CAMERA_TO_WORLD_TRX_SCALE_FACTOR) + CAMERA_OFFSET_Y;
         camera->position.z = (playerPosition.z * CAMERA_TO_WORLD_TRX_SCALE_FACTOR) + CAMERA_OFFSET_Z;

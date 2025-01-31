@@ -1,5 +1,7 @@
 #ifndef CAMERA_H
 #define CAMERA_H
+#include "cglm/cglm.h"
+#include "cglm/struct.h"
 
 typedef struct Camera
 {
@@ -11,8 +13,8 @@ typedef struct Camera
     vec3s front;
     float fov;
     vec3s up;
-    float yaw;
     float pitch;
+    float yaw;
     float _pad0[3];
 } Camera;
 

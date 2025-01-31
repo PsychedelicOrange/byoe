@@ -1,6 +1,7 @@
 #ifndef LOG_H
 #define LOG_H
 
+#include "common.h"
 #include <stdio.h>
 
 #include "common.h"
@@ -24,20 +25,18 @@
         printf("\n");                         \
     } while (0)
 
-#define LOG_WARN(...)                              \
-    do {                                           \
-        printf(COLOR_YELLOW "[BYOE] - WARNING: "); \
-        printf(__VA_ARGS__);                       \
-        printf("\033[0m");                         \
-        printf("\n");                              \
+#define LOG_WARN(...)                                       \
+    do {                                                    \
+        fprintf(stderr, COLOR_YELLOW "[BYOE] - WARNING: "); \
+        printf(__VA_ARGS__);                                \
+        printf(COLOR_RESET);                                \
     } while (0)
 
-#define LOG_ERROR(...)                        \
-    do {                                      \
-        printf(COLOR_RED "[BYOE] - ERROR: "); \
-        printf(__VA_ARGS__);                  \
-        printf(COLOR_RESET);                  \
-        printf("\n");                         \
+#define LOG_ERROR(...)                                 \
+    do {                                               \
+        fprintf(stderr, COLOR_RED "[BYOE] - ERROR: "); \
+        printf(__VA_ARGS__);                           \
+        printf(COLOR_RESET);                           \
     } while (0)
 
 #endif
