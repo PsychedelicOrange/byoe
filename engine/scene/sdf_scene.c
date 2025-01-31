@@ -17,13 +17,6 @@ void sdf_scene_init(SDF_Scene* scene)
     scene->culled_nodes_count = 0;
     scene->current_node_head  = 0;
     scene->nodes              = calloc(MAX_SDF_NODES, sizeof(SDF_Node));
-
-    // create the UBO to upload scene nodes data
-    glGenBuffers(1, &s_GPUSceneNodesUBO);
-    glBindBuffer(GL_UNIFORM_BUFFER, s_GPUSceneNodesUBO);
-    // Initialize with NULL data
-    glBufferData(GL_UNIFORM_BUFFER, sizeof(SDF_NodeGPUData) * MAX_SDF_NODES, NULL, GL_DYNAMIC_DRAW);
-    glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
 void sdf_scene_destroy(SDF_Scene* scene)
@@ -99,7 +92,7 @@ void sdf_scene_upload_scene_nodes_to_gpu(const SDF_Scene* scene)
         if (node.type == SDF_NODE_PRIMITIVE) {
             data.primType = node.primitive.type;
 
-            mat4s transform = create_transform_matrix(node.primitive.transform.position.raw, node.primitive.transform.rotation, (vec3){1.0f, 1.0f, 1.0f});
+            mat4s transform = create_transform_matrix(node.primitive.transform.position.raw, node.primitive.transform.rotation, (vec3) {1.0f, 1.0f, 1.0f});
             data.transform  = transform;
             data.scale      = node.primitive.transform.scale;
 
@@ -112,19 +105,11 @@ void sdf_scene_upload_scene_nodes_to_gpu(const SDF_Scene* scene)
             data.prim_a = node.object.prim_a;
             data.prim_b = node.object.prim_b;
 
-            mat4s transform = create_transform_matrix(node.object.transform.position.raw, node.object.transform.rotation, (vec3){1.0f, 1.0f, 1.0f});
+            mat4s transform = create_transform_matrix(node.object.transform.position.raw, node.object.transform.rotation, (vec3) {1.0f, 1.0f, 1.0f});
             data.transform  = transform;
             data.scale      = node.object.transform.scale;
         }
 
         glBufferSubData(GL_UNIFORM_BUFFER, i * sizeof(SDF_NodeGPUData), sizeof(SDF_NodeGPUData), &data);
     }
-}
-
-void sdf_scene_bind_scene_nodes(uint32_t shaderProgramID)
-{
-    unsigned int bindingPoint = glGetUniformBlockIndex(shaderProgramID, "SDFScene");
-    glUniformBlockBinding(shaderProgramID, 0, bindingPoint);
-    glBindBufferBase(GL_UNIFORM_BUFFER, bindingPoint, s_GPUSceneNodesUBO);
-    glBindBuffer(GL_UNIFORM_BUFFER, s_GPUSceneNodesUBO);
 }

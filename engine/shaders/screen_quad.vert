@@ -1,17 +1,20 @@
-#version 410 core
-layout (location = 0) in vec2 aPos;
+#version 450
 
-uniform mat4 viewproj;
-out vec4 nearp;
-out vec4 farp;
+layout(location = 0) out vec2 outUV;
 
+out gl_PerVertex
+{
+    vec4 gl_Position;
+};
+//------------------------------------------------------------------------------
 void main()
 {
-	vec4 position = vec4(aPos,0,1);
-	gl_Position = position;
-	vec2 pos = gl_Position.xy/gl_Position.w;
-
-	nearp = inverse(viewproj) * vec4(pos,-1,1);
-	farp = inverse(viewproj) * vec4(pos,1,1);
+    // Calculate UV coordinates based on gl_VertexID
+    float x = float((gl_VertexIndex << 1) & 2);
+    float y = float(gl_VertexIndex & 2);
+    vec2 uv = vec2(x, y);
+    outUV = uv;
+    
+    // Set the final vertex position
+    gl_Position = vec4(uv * 2.0f - 1.0f, 0.0f, 1.0f);
 }
-	

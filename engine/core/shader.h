@@ -15,6 +15,6 @@ void setUniformInt(unsigned int shaderProgram, int value, char* location);
 void setUniformVec2Int(unsigned int shaderProgram, int vector[2], char* location);
 void setUniformMat4(unsigned int shaderProgram, mat4s matrix, char* location);
 
-char* readFileToString(const char* filename);
+char* readFileToString(const char* filename, uint32_t* file_size);
 
 #endif

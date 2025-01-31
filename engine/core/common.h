@@ -16,6 +16,8 @@
     #endif
 #endif
 
+#define MAYBE_UNUSED __attribute__((unused))
+
 // Maximum number of game Object Instances in the game world at any moment
 #define MAX_OBJECTS 1024
 
@@ -47,3 +49,19 @@
             __VA_ARGS__       \
         } name;
 #endif
+
+#define DEFINE_CLAMP(type)               \
+    static type clamp_##type(type value, \
+        type                      min,   \
+        type                      max)   \
+    {                                    \
+        if (value < min) {               \
+            return min;                  \
+        } else if (value > max) {        \
+            return max;                  \
+        } else {                         \
+            return value;                \
+        }                                \
+    }
+
+// DEFINE_CLAMP(float)

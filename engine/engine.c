@@ -2,6 +2,8 @@
 
 #include <GLFW/glfw3.h>
 
+#include "../render/frontend/gfx_frontend.h"
+
 static float       deltaTime;
 static float       lastFrame       = 0.0f;
 static float       elapsedTime     = 0;
@@ -16,13 +18,18 @@ void engine_init(struct GLFWwindow** gameWindow, uint32_t width, uint32_t height
     LOG_SUCCESS("Welcome to Build your own engine! BYOE!!");
     LOG_SUCCESS("\tversion: %s", engine_get_version_string());
 
-    // cpu_caps_print_info();
-    // os_caps_print_info();
+    cpu_caps_print_info();
+    os_caps_print_info();
 
     // Follow this order strictly to avoid load crashing
     render_utils_init_glfw();
     *gameWindow = render_utils_create_glfw_window("BYOE Game: Spooky Asteroids!", width, height);
-    render_utils_init_glad();
+
+    if (gfx_init(Vulkan) != Success) {
+        LOG_ERROR("Error initializing gfx");
+        gfx_destroy();
+        exit(-1);
+    }
 
     renderer_desc desc = {0};
     desc.width         = width;
@@ -31,6 +38,8 @@ void engine_init(struct GLFWwindow** gameWindow, uint32_t width, uint32_t height
     bool success       = renderer_sdf_init(desc);
     if (!success) {
         LOG_ERROR("Error initializing SDF renderer");
+        renderer_sdf_destroy();
+        gfx_destroy();
         exit(-1);
     }
 
@@ -50,6 +59,7 @@ void engine_init(struct GLFWwindow** gameWindow, uint32_t width, uint32_t height
 void engine_destroy(void)
 {
     renderer_sdf_destroy();
+    gfx_destroy();
     game_registry_destroy();
     LOG_SUCCESS("Exiting BYOE...Byee!");
 }

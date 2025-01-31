@@ -35,6 +35,7 @@ build/
 *.userprefs
 
 .DS_Store
+**.DS_Store
 
 # Mono auto generated files
 mono_crash.*

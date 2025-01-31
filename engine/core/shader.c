@@ -18,7 +18,9 @@ unsigned int create_shader(char* vertexPath, char* fragmentPath)
 }
 unsigned int compile_shader(char* filePath, int shaderType)
 {
-    char*        shaderCode = readFileToString(filePath);
+    uint32_t file_size = 0;
+    (void) file_size;
+    char*        shaderCode = readFileToString(filePath, &file_size);
     unsigned int shader     = glCreateShader(shaderType);
     glShaderSource(shader, 1, (const GLchar**) &shaderCode, NULL);
     glCompileShader(shader);
@@ -96,7 +98,7 @@ void setUniformMat4(unsigned int shaderProgram, mat4s matrix, char* location)
     glUniformMatrix4fv(loc, 1, GL_FALSE, &matrix.col[0].raw[0]);
 }
 
-char* readFileToString(const char* filename)
+char* readFileToString(const char* filename, uint32_t* file_size)
 {
     // Open the file in read mode ("r")
     FILE* file = fopen(filename, "r");
@@ -106,25 +108,21 @@ char* readFileToString(const char* filename)
         return NULL;
     }
 
-    // Move the file pointer to the end of the file to determine file size
     fseek(file, 0, SEEK_END);
-    size_t fileSize = ftell(file);
-    rewind(file);    // Move file pointer back to the beginning
+    *file_size = ftell(file);
+    rewind(file);
 
-    // Allocate memory for the file content (+1 for the null terminator)
-    char* content = (char*) malloc((fileSize + 1) * sizeof(char));
+    char* content = (char*) malloc((*file_size) * sizeof(char));
     if (!content) {
         printf("\nMemory allocation failed\n");
         fclose(file);
         return NULL;
     }
-    for (size_t i = 0; i < fileSize + 1; i++) {
-        content[i] = '\0';
-    }
-    // Read file contents into the string
-    fread(content, sizeof(char), fileSize, file);
+    //for (size_t i = 0; i < *file_size + 1; i++) {
+    //    content[i] = '\0';
+    //}
+    fread(content, sizeof(char), *file_size, file);
 
-    // Close the file and return the content
     fclose(file);
     return content;
 }
