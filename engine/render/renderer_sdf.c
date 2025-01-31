@@ -120,27 +120,28 @@ static void renderer_internal_create_sdf_pass_resources(void)
 
     // create the root signature and table to hold the resources/
     // in this pass it's an RW texture2d and it's view
-    gfx_resource sdf_scene_texture = gfx_create_texture_resource((gfx_texture_create_desc) {
+    gfx_resource sdf_scene_texture = gfx_create_texture_resource((gfx_texture_create_desc){
         .width  = 800,
         .height = 600,
         .format = GFX_FORMAT_RGBA32F,
         .type   = GFX_TEXTURE_TYPE_2D,
         .depth  = 1});
+    (void) sdf_scene_texture;
 
-    gfx_resource sdf_scene_tex_sampler = gfx_create_sampler((gfx_sampler_create_desc) {
+    gfx_resource sdf_scene_tex_sampler = gfx_create_sampler((gfx_sampler_create_desc){
         .min_filter     = GFX_FILTER_MODE_NEAREST,
         .mag_filter     = GFX_FILTER_MODE_NEAREST,
         .min_lod        = 0.0f,
         .max_lod        = 1.0f,
         .max_anisotropy = 1.0f,
         .wrap_mode      = GFX_WRAP_MODE_CLAMP_TO_EDGE});
+    (void) sdf_scene_tex_sampler;
 
-    return;
     LOG_ERROR("========================================");
     LOG_ERROR("             Hi I'm Here                ");
     LOG_ERROR("========================================");
 
-    gfx_resource_view sdf_write_view = gfx_create_resource_view((gfx_resource_view_desc) {
+    gfx_resource_view sdf_write_view = gfx_create_texture_res_view((gfx_resource_view_desc){
         .type     = GFX_RESOURCE_TYPE_SAMPLED_IMAGE,
         .resource = &sdf_scene_texture,
         .texture  = {
@@ -152,6 +153,7 @@ static void renderer_internal_create_sdf_pass_resources(void)
              .texture_type = GFX_TEXTURE_TYPE_2D,
         },
     });
+    (void) sdf_write_view;
 
     gfx_descriptor_binding sdf_scene_tex_binding = {
         .binding     = 0,
@@ -177,10 +179,14 @@ static void renderer_internal_create_sdf_pass_resources(void)
     };
 
     gfx_root_signature sdf_root_sig = gfx_create_root_signature(&set_layout_0, 1, NULL, 0);
+    (void) sdf_root_sig;
 
     gfx_descriptor_table sdf_binding_table = gfx_create_descriptor_table(&sdf_root_sig);
-    gfx_resource         resources[2]      = {sdf_scene_texture, sdf_scene_tex_sampler};
+    (void) sdf_binding_table;
+#if DISABLE_THIS_CODE_COZ_IM_TESTING
+    gfx_resource resources[2] = {sdf_scene_texture, sdf_scene_tex_sampler};
     gfx_update_descriptor_table(&sdf_binding_table, resources, 2);
+#endif
 }
 
 //----------------------------------------------------------------
@@ -261,8 +267,8 @@ void renderer_sdf_render(void)
 
         rhi_bind_gfx_pipeline(cmd_buff, s_RendererSDFInternalState.screenQuadPipeline);
 
-        rhi_set_viewport(cmd_buff, (gfx_viewport) {.x = 0, .y = 0, .width = s_RendererSDFInternalState.width, .height = s_RendererSDFInternalState.height, .min_depth = 0, .max_depth = 1});
-        rhi_set_scissor(cmd_buff, (gfx_scissor) {.x = 0, .y = 0, .width = s_RendererSDFInternalState.width, .height = s_RendererSDFInternalState.height});
+        rhi_set_viewport(cmd_buff, (gfx_viewport){.x = 0, .y = 0, .width = s_RendererSDFInternalState.width, .height = s_RendererSDFInternalState.height, .min_depth = 0, .max_depth = 1});
+        rhi_set_scissor(cmd_buff, (gfx_scissor){.x = 0, .y = 0, .width = s_RendererSDFInternalState.width, .height = s_RendererSDFInternalState.height});
 
         ////
         ////renderer_internal_sdf_set_pipeline_settings();
