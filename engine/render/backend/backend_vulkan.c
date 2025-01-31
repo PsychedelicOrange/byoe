@@ -1805,7 +1805,7 @@ typedef struct texture_backend
     VkDeviceMemory memory;
 } texture_backend;
 
-gfx_resource vulkan_device_create_texure_resource(gfx_texture_create_desc desc)
+gfx_resource vulkan_device_create_texture_resource(gfx_texture_create_desc desc)
 {
     gfx_resource resource = {0};
     uuid_generate(&resource.texture.uuid);
@@ -1846,7 +1846,7 @@ gfx_resource vulkan_device_create_texure_resource(gfx_texture_create_desc desc)
     return resource;
 }
 
-void vulkan_device_destroy_texure_resource(gfx_resource* resource)
+void vulkan_device_destroy_texture_resource(gfx_resource* resource)
 {
     uuid_destroy(&resource->texture.uuid);
 
@@ -1861,7 +1861,7 @@ typedef struct tex_resource_view_backend
     VkImageView view;
 } tex_resource_view_backend;
 
-gfx_resource_view vulkan_device_create_texture_res_view(gfx_resource_view_desc desc)
+gfx_resource_view vulkan_device_create_texture_res_view(const gfx_resource_view_desc desc)
 {
     gfx_resource_view view = {0};
     uuid_generate(&view.uuid);

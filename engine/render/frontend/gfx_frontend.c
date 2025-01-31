@@ -44,6 +44,15 @@ int gfx_init(rhi_api api)
         gfx_destroy_descriptor_table = vulkan_device_destroy_descriptor_table;
         gfx_update_descriptor_table  = vulkan_device_update_descriptor_table;
 
+        gfx_create_texture_resource = vulkan_device_create_texture_resource;
+        gfx_destroy_texture_resource = vulkan_device_destroy_texture_resource;
+
+        gfx_create_texture_res_view = vulkan_device_create_texture_res_view;
+        gfx_destroy_texture_res_view = vulkan_device_destroy_texture_res_view;
+
+        gfx_create_sampler = vulkan_device_create_sampler;
+        gfx_destroy_sampler = vulkan_device_destroy_sampler;
+
         // RHI
         rhi_frame_begin = vulkan_frame_begin;
         rhi_frame_end   = vulkan_frame_end;

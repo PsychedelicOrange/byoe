@@ -113,11 +113,3 @@ void sdf_scene_upload_scene_nodes_to_gpu(const SDF_Scene* scene)
         glBufferSubData(GL_UNIFORM_BUFFER, i * sizeof(SDF_NodeGPUData), sizeof(SDF_NodeGPUData), &data);
     }
 }
-
-void sdf_scene_bind_scene_nodes(uint32_t shaderProgramID)
-{
-    unsigned int bindingPoint = glGetUniformBlockIndex(shaderProgramID, "SDFScene");
-    glUniformBlockBinding(shaderProgramID, 0, bindingPoint);
-    glBindBufferBase(GL_UNIFORM_BUFFER, bindingPoint, s_GPUSceneNodesUBO);
-    glBindBuffer(GL_UNIFORM_BUFFER, s_GPUSceneNodesUBO);
-}

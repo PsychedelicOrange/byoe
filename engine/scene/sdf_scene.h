@@ -62,7 +62,4 @@ int sdf_scene_add_object(SDF_Scene* scene, SDF_Object object);
 // Uploads the scene nodes to GPU by flattening them using SDF_NodeGPUData struct
 void sdf_scene_upload_scene_nodes_to_gpu(const SDF_Scene* scene);
 
-// Binds the buffer that contains the flattened nodes to the given shader
-void sdf_scene_bind_scene_nodes(uint32_t shaderProgramID);
-
 #endif

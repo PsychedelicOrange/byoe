@@ -52,10 +52,10 @@ gfx_descriptor_table vulkan_device_create_descriptor_table(const gfx_root_signat
 void                 vulkan_device_destroy_descriptor_table(gfx_descriptor_table* descriptor_table);
 void                 vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_table, gfx_resource* resources, uint32_t num_resources);
 
-gfx_resource vulkan_device_create_texure_resource(gfx_texture_create_desc desc);
-void         vulkan_device_destroy_texure_resource(gfx_resource* resource);
+gfx_resource vulkan_device_create_texture_resource(gfx_texture_create_desc desc);
+void         vulkan_device_destroy_texture_resource(gfx_resource* resource);
 
-gfx_resource_view vulkan_device_create_texture_res_view(gfx_resource_view_desc desc);
+gfx_resource_view vulkan_device_create_texture_res_view(const gfx_resource_view_desc desc);
 void              vulkan_device_destroy_texture_res_view(gfx_resource_view* view);
 
 gfx_sampler vulkan_device_create_sampler(gfx_sampler_create_desc desc);

@@ -626,7 +626,6 @@ typedef struct gfx_descriptor_binding
 
 typedef struct gfx_descriptor_set_layout
 {
-    random_uuid_t           uuid;
     gfx_descriptor_binding* bindings;
     uint32_t                binding_count;
 } gfx_descriptor_set_layout;

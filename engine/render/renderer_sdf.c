@@ -1,6 +1,7 @@
 #include "renderer_sdf.h"
 
-#include "../scene/sdf_scene.h"
+#include <GLFW/glfw3.h>
+
 #include "frustum.h"
 #include "game_state.h"
 #include "logging/log.h"
@@ -8,15 +9,9 @@
 #include "rng/rng.h"
 #include "shader.h"
 
-#include "frontend/gfx_frontend.h"
+#include "../scene/sdf_scene.h"
 
-// Put them at last: causing some weird errors while compiling on MSVC with APIENTRY define
-// Also follow this order as it will cause openlg include error
-// clang-format off
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
-// clang-format on
-// All rendering API and GLFW code goes in here
+#include "frontend/gfx_frontend.h"
 
 typedef struct renderer_internal_state
 {
@@ -125,6 +120,51 @@ static void renderer_internal_create_sdf_pass_resources(void)
 
     // create the root signature and table to hold the resources/
     // in this pass it's an RW texture2d and it's view
+    gfx_resource sdf_scene_texture = gfx_create_texture_resource((gfx_texture_create_desc) {
+        .width  = 800,
+        .height = 600,
+        .format = GFX_FORMAT_RGBA32F,
+        .type   = GFX_TEXTURE_TYPE_2D,
+        .depth  = 1});
+
+    gfx_resource_view sdf_write_view = gfx_create_resource_view((gfx_resource_view_desc) {
+        .type     = GFX_RESOURCE_TYPE_SAMPLED_IMAGE,
+        .resource = &sdf_scene_texture,
+        .texture  = {
+             .layer_count  = 1,
+             .base_layer   = 0,
+             .mip_levels   = 1,
+             .base_mip     = 0,
+             .format       = GFX_FORMAT_RGBA32F,
+             .texture_type = GFX_TEXTURE_TYPE_2D,
+        },
+    });
+
+    gfx_descriptor_binding sdf_scene_tex_binding = {
+        .binding     = 0,
+        .set         = 0,
+        .count       = 1,
+        .type        = GFX_RESOURCE_TYPE_SAMPLED_IMAGE,
+        .stage_flags = GFX_SHADER_STAGE_CS,
+        .res_view    = sdf_write_view,
+    };
+
+    gfx_descriptor_binding sdf_scene_sampler_binding = {
+        .binding     = 1,
+        .set         = 0,
+        .count       = 1,
+        .type        = GFX_RESORUCE_TYPE_SAMPLER,
+        .stage_flags = GFX_SHADER_STAGE_CS};
+
+    gfx_descriptor_binding sdf_bindings[] = {sdf_scene_tex_binding, sdf_scene_sampler_binding};
+
+    gfx_descriptor_set_layout set_layout_0 = {
+        .bindings      = sdf_bindings,
+        .binding_count = 2,
+    };
+
+    gfx_root_signature sdf_root_sig = gfx_create_root_signature(&set_layout_0, 1, NULL, 0);
+    (void) sdf_root_sig;
 }
 
 //----------------------------------------------------------------
@@ -250,23 +290,9 @@ void renderer_sdf_draw_scene(const SDF_Scene* scene)
     if (!scene)
         return;
 
-    glUseProgram(s_RendererSDFInternalState.raymarchShaderID);
-
     sdf_scene_upload_scene_nodes_to_gpu(s_RendererSDFInternalState.scene);
 
-    sdf_scene_bind_scene_nodes(s_RendererSDFInternalState.raymarchShaderID);
-
-    // TEST! TEST! TEST! TEST! TEST! TEST!
-    // Test rendering code, move this to a internal function and hide it
-    for (uint32_t i = 0; i < scene->current_node_head; ++i) {
-        // q: don't draw ref nodes? a: let the shader do that
-        if (scene->nodes[i].is_ref_node) continue;
-
-        setUniformInt(s_RendererSDFInternalState.raymarchShaderID, i, "curr_draw_node_idx");
-        // Draw the screen quad
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-    }
-    // TEST! TEST! TEST! TEST! TEST! TEST!
+    // rhi_draw here
 }
 
 void renderer_sdf_set_capture_swapchain_ready(void)
@@ -277,31 +303,6 @@ void renderer_sdf_set_capture_swapchain_ready(void)
 texture_readback renderer_sdf_read_swapchain(void)
 {
     texture_readback result = {0};
-
-#ifdef BYOE_OPENGL
-
-    glFinish();
-
-    glfwMakeContextCurrent(s_RendererSDFInternalState.window);
-
-    GLint viewport[4];
-    glGetIntegerv(GL_VIEWPORT, viewport);
-    result.width          = viewport[2];
-    result.height         = viewport[3];
-    result.bits_per_pixel = 3;
-
-    size_t pixel_data_size = result.width * result.height * result.bits_per_pixel;
-    result.pixels          = (char*) malloc(pixel_data_size);
-    if (!result.pixels) {
-        LOG_ERROR("Failed to allocate memory for pixel readback");
-        return result;
-    }
-
-    glReadBuffer(GL_COLOR_ATTACHMENT0);
-
-    glReadPixels(0, 0, result.width, result.height, GL_RGB, GL_UNSIGNED_BYTE, result.pixels);
-#endif
-
     return result;
 }
 
