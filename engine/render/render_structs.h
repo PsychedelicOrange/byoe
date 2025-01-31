@@ -622,7 +622,6 @@ typedef struct gfx_descriptor_binding
     gfx_resource_type type;
     uint32_t          count;
     gfx_shader_stage  stage_flags;
-    gfx_resource_view res_view;
 } gfx_descriptor_binding;
 
 typedef struct gfx_descriptor_set_layout
@@ -656,6 +655,11 @@ typedef struct gfx_descriptor_table
     uint32_t      set_count;
     uint32_t      _pad0;
 } gfx_descriptor_table;
+
+typedef struct gfx_descriptor_table_entry {
+    const gfx_resource*    resource;
+    const gfx_resource_view* resource_view;
+}gfx_descriptor_table_entry;
 
 typedef struct gfx_root_signature
 {

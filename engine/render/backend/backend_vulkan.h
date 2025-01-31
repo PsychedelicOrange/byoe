@@ -50,7 +50,7 @@ void               vulkan_device_destroy_root_signature(gfx_root_signature* root
 
 gfx_descriptor_table vulkan_device_create_descriptor_table(const gfx_root_signature* root_signature);
 void                 vulkan_device_destroy_descriptor_table(gfx_descriptor_table* descriptor_table);
-void                 vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_table, gfx_resource* resources, uint32_t num_resources);
+void                 vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_table, gfx_descriptor_table_entry* entried, uint32_t num_entries);
 
 gfx_resource vulkan_device_create_texture_resource(gfx_texture_create_desc desc);
 void         vulkan_device_destroy_texture_resource(gfx_resource* resource);

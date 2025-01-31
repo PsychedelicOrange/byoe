@@ -161,7 +161,6 @@ static void renderer_internal_create_sdf_pass_resources(void)
         .count       = 1,
         .type        = GFX_RESOURCE_TYPE_SAMPLED_IMAGE,
         .stage_flags = GFX_SHADER_STAGE_CS,
-        .res_view    = sdf_write_view,
     };
 
     gfx_descriptor_binding sdf_scene_sampler_binding = {
@@ -184,8 +183,8 @@ static void renderer_internal_create_sdf_pass_resources(void)
     gfx_descriptor_table sdf_binding_table = gfx_create_descriptor_table(&sdf_root_sig);
     (void) sdf_binding_table;
 #if DISABLE_THIS_CODE_COZ_IM_TESTING
-    gfx_resource resources[2] = {sdf_scene_texture, sdf_scene_tex_sampler};
-    gfx_update_descriptor_table(&sdf_binding_table, resources, 2);
+    gfx_descriptor_table_entry table_entries[2] = {(gfx_descriptor_table_entry){&sdf_scene_texture, &sdf_write_view}, (gfx_descriptor_table_entry){&sdf_scene_tex_sampler, NULL}};
+    gfx_update_descriptor_table(&sdf_binding_table, table_entries, 2);
 #endif
 }
 

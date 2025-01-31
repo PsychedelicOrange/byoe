@@ -82,7 +82,61 @@ typedef struct cmd_pool_backend
 } cmd_pool_backend;
 
 //---------------------------------
-// Utils structs
+typedef struct tex_resource_view_backend
+{
+    VkImageView view;
+} tex_resource_view_backend;
+
+typedef struct shader_backend
+{
+    VkPipelineShaderStageCreateInfo stage_ci;
+    gfx_shader_stage                stage;
+    union
+    {
+        VkShaderModule CS;
+        struct
+        {
+            VkShaderModule VS;
+            VkShaderModule PS;
+        };
+    } modules;
+} shader_backend;
+
+typedef struct
+{
+    uint32_t* data;
+    size_t    size;
+} SPVBuffer;
+
+typedef struct pipeline_backend
+{
+    VkPipeline pipeline;
+} pipeline_backend;
+
+typedef struct descriptor_table_backend
+{
+    VkPipelineLayout pipeline_layout_ref_handle;
+    VkDescriptorPool pool;
+    VkDescriptorSet* sets;
+    uint32_t         num_sets;
+} descriptor_table_backend;
+
+typedef struct texture_backend
+{
+    VkImage        image;
+    VkDeviceMemory memory;
+} texture_backend;
+
+typedef struct root_signature_backend
+{
+    VkPipelineLayout       pipeline_layout;
+    VkDescriptorSetLayout* vk_descriptor_set_layouts;
+} root_signature_backend;
+
+typedef struct sampler_backend
+{
+    VkSampler sampler;
+} sampler_backend;
 
 //-------------------------
 // TODO: Combing these 2 structs
@@ -1199,27 +1253,6 @@ void vulkan_device_destroy_frame_sync(gfx_frame_sync* frame_sync)
     free(frame_sync->in_flight.backend);
 }
 
-typedef struct shader_backend
-{
-    VkPipelineShaderStageCreateInfo stage_ci;
-    gfx_shader_stage                stage;
-    union
-    {
-        VkShaderModule CS;
-        struct
-        {
-            VkShaderModule VS;
-            VkShaderModule PS;
-        };
-    } modules;
-} shader_backend;
-
-typedef struct
-{
-    uint32_t* data;
-    size_t    size;
-} SPVBuffer;
-
 static SPVBuffer loadSPVFile(const char* filename)
 {
     SPVBuffer buffer = {NULL, 0};
@@ -1368,11 +1401,6 @@ static gfx_pipeline vulkan_internal_create_compute_pipeline(gfx_pipeline_create_
 
     return pipeline;
 }
-
-typedef struct pipeline_backend
-{
-    VkPipeline pipeline;
-} pipeline_backend;
 
 #define NUM_DYNAMIC_STATES 2
 
@@ -1587,12 +1615,6 @@ void vulkan_device_destroy_pipeline(gfx_pipeline* pipeline)
     pipeline->backend = NULL;
 }
 
-typedef struct root_signature_backend
-{
-    VkPipelineLayout       pipeline_layout;
-    VkDescriptorSetLayout* vk_descriptor_set_layouts;
-} root_signature_backend;
-
 gfx_root_signature vulkan_device_create_root_signature(const gfx_descriptor_set_layout* set_layouts, uint32_t set_layout_count, const gfx_push_constant_range* push_constants, uint32_t push_constant_count)
 {
     gfx_root_signature root_sig = {0};
@@ -1679,14 +1701,6 @@ void vulkan_device_destroy_root_signature(gfx_root_signature* root_sig)
     root_sig->backend = NULL;
 }
 
-typedef struct descriptor_table_backend
-{
-    VkPipelineLayout pipeline_layout_ref_handle;
-    VkDescriptorPool pool;
-    VkDescriptorSet* sets;
-    uint32_t         num_sets;
-} descriptor_table_backend;
-
 gfx_descriptor_table vulkan_device_create_descriptor_table(const gfx_root_signature* root_signature)
 {
     gfx_descriptor_table descriptor_table = {0};
@@ -1741,15 +1755,16 @@ void vulkan_device_destroy_descriptor_table(gfx_descriptor_table* descriptor_tab
     descriptor_table->backend = NULL;
 }
 
-void vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_table, gfx_resource* resources, uint32_t num_resources)
+void vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_table, gfx_descriptor_table_entry* entries, uint32_t num_entries)
 {
     descriptor_table_backend* backend = (descriptor_table_backend*) (descriptor_table->backend);
     VkDescriptorSet*          sets    = backend->sets;
 
-    VkWriteDescriptorSet* writes = malloc(sizeof(VkWriteDescriptorSet) * num_resources);
+    VkWriteDescriptorSet* writes = malloc(sizeof(VkWriteDescriptorSet) * num_entries);
 
-    for (uint32_t i = 0; i < num_resources; i++) {
-        gfx_resource* res = &resources[i];
+    for (uint32_t i = 0; i < num_entries; i++) {
+        const gfx_resource* res = entries[i].resource;
+        const gfx_resource_view* res_view = entries[i].resource_view;
 
         writes[i] = (VkWriteDescriptorSet){
             .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -1762,7 +1777,7 @@ void vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_tabl
             case GFX_RESOURCE_TYPE_UNIFORM_BUFFER:
             case GFX_RESOURCE_TYPE_STORAGE_BUFFER: {
                 VkDescriptorBufferInfo buffer_info = {
-                    .buffer = (VkBuffer) res->ubo.backend,
+                    .buffer = (VkBuffer) (res->ubo.backend),
                     .offset = 0,
                     .range  = VK_WHOLE_SIZE};
                 writes[i].descriptorType = (VkDescriptorType) res->type;
@@ -1773,7 +1788,7 @@ void vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_tabl
             case GFX_RESOURCE_TYPE_STORAGE_IMAGE:
             case GFX_RESOURCE_TYPE_COMBINED_IMAGE_SAMPLER: {
                 VkDescriptorImageInfo image_info = {
-                    .imageView   = (VkImageView) res->texture.backend,
+                    .imageView   = (VkImageView)((tex_resource_view_backend*)(res_view->backend))->view,
                     .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
                 writes[i].descriptorType = (VkDescriptorType) res->type;
                 writes[i].pImageInfo     = &image_info;
@@ -1783,7 +1798,7 @@ void vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_tabl
                 break;
         }
     }
-    vkUpdateDescriptorSets(VKDEVICE, num_resources, writes, 0, NULL);
+    vkUpdateDescriptorSets(VKDEVICE, num_entries, writes, 0, NULL);
 }
 
 uint32_t vulkan_internal_find_memory_type(VkPhysicalDevice physical_device, uint32_t type_filter, VkMemoryPropertyFlags properties)
@@ -1798,12 +1813,6 @@ uint32_t vulkan_internal_find_memory_type(VkPhysicalDevice physical_device, uint
     }
     return UINT32_MAX;
 }
-
-typedef struct texture_backend
-{
-    VkImage        image;
-    VkDeviceMemory memory;
-} texture_backend;
 
 gfx_resource vulkan_device_create_texture_resource(gfx_texture_create_desc desc)
 {
@@ -1857,10 +1866,6 @@ void vulkan_device_destroy_texture_resource(gfx_resource* resource)
     resource->texture.backend = NULL;
 }
 
-typedef struct tex_resource_view_backend
-{
-    VkImageView view;
-} tex_resource_view_backend;
 
 gfx_resource_view vulkan_device_create_texture_res_view(const gfx_resource_view_desc desc)
 {
@@ -1901,11 +1906,6 @@ void vulkan_device_destroy_texture_res_view(gfx_resource_view* view)
     free(view->backend);
     view->backend = NULL;
 }
-
-typedef struct sampler_backend
-{
-    VkSampler sampler;
-} sampler_backend;
 
 gfx_resource vulkan_device_create_sampler(gfx_sampler_create_desc desc)
 {
