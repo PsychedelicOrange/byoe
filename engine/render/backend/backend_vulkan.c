@@ -1903,13 +1903,14 @@ typedef struct sampler_backend
     VkSampler sampler;
 } sampler_backend;
 
-gfx_sampler vulkan_device_create_sampler(gfx_sampler_create_desc desc)
+gfx_resource vulkan_device_create_sampler(gfx_sampler_create_desc desc)
 {
-    gfx_sampler sampler = {0};
-    uuid_generate(&sampler.uuid);
+    gfx_resource resource;
+    uuid_generate(&resource.sampler.uuid);
+    gfx_sampler* sampler = &resource.sampler;
 
     sampler_backend* backend = malloc(sizeof(sampler_backend));
-    sampler.backend          = backend;
+    sampler->backend          = backend;
 
     VkSamplerCreateInfo samplerInfo = {
         .sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
@@ -1931,14 +1932,14 @@ gfx_sampler vulkan_device_create_sampler(gfx_sampler_create_desc desc)
 
     VK_CHECK_RESULT(vkCreateSampler(VKDEVICE, &samplerInfo, NULL, &backend->sampler), "[Vulkan] cannot create vulkan sampler");
 
-    return sampler;
+    return resource;
 }
 
-void vulkan_device_destroy_sampler(gfx_sampler* sampler)
+void vulkan_device_destroy_sampler(gfx_resource* resource)
 {
-    uuid_destroy(&sampler->uuid);
+    uuid_destroy(&resource->sampler.uuid);
 
-    sampler_backend* backend = (sampler_backend*) (sampler->backend);
+    sampler_backend* backend = (sampler_backend*) (resource->sampler.backend);
     vkDestroySampler(VKDEVICE, backend->sampler, NULL);
     free(backend);
     backend = NULL;

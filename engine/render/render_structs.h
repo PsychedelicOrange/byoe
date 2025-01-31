@@ -532,6 +532,7 @@ typedef struct gfx_resource
     {
         gfx_texture        texture;
         gfx_uniform_buffer ubo;
+        gfx_sampler        sampler;
     };
     gfx_resource_type type;
     uint32_t          set;

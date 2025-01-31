@@ -127,6 +127,18 @@ static void renderer_internal_create_sdf_pass_resources(void)
         .type   = GFX_TEXTURE_TYPE_2D,
         .depth  = 1});
 
+    gfx_resource sdf_scene_tex_sampler = gfx_create_sampler((gfx_sampler_create_desc) {
+        .min_filter     = GFX_FILTER_MODE_NEAREST,
+        .mag_filter     = GFX_FILTER_MODE_NEAREST,
+        .min_lod        = 0.0f,
+        .max_lod        = 1.0f,
+        .max_anisotropy = 1.0f,
+        .wrap_mode      = GFX_WRAP_MODE_CLAMP_TO_EDGE});
+
+    LOG_ERROR("========================================");
+    LOG_ERROR("                 Hi I'm Here            ");
+    LOG_ERROR("========================================");
+
     gfx_resource_view sdf_write_view = gfx_create_resource_view((gfx_resource_view_desc) {
         .type     = GFX_RESOURCE_TYPE_SAMPLED_IMAGE,
         .resource = &sdf_scene_texture,
@@ -164,7 +176,10 @@ static void renderer_internal_create_sdf_pass_resources(void)
     };
 
     gfx_root_signature sdf_root_sig = gfx_create_root_signature(&set_layout_0, 1, NULL, 0);
-    (void) sdf_root_sig;
+
+    gfx_descriptor_table sdf_binding_table = gfx_create_descriptor_table(&sdf_root_sig);
+    gfx_resource         resources[2]      = {sdf_scene_texture, sdf_scene_tex_sampler};
+    gfx_update_descriptor_table(&sdf_binding_table, resources, 2);
 }
 
 //----------------------------------------------------------------
