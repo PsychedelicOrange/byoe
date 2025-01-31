@@ -1762,7 +1762,7 @@ void vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_tabl
             case GFX_RESOURCE_TYPE_UNIFORM_BUFFER:
             case GFX_RESOURCE_TYPE_STORAGE_BUFFER: {
                 VkDescriptorBufferInfo buffer_info = {
-                    .buffer = (VkBuffer) res->ubo.backend,
+                    .buffer = (VkBuffer) res->ubo->backend,
                     .offset = 0,
                     .range  = VK_WHOLE_SIZE};
                 writes[i].descriptorType = (VkDescriptorType) res->type;
@@ -1773,7 +1773,7 @@ void vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_tabl
             case GFX_RESOURCE_TYPE_STORAGE_IMAGE:
             case GFX_RESOURCE_TYPE_COMBINED_IMAGE_SAMPLER: {
                 VkDescriptorImageInfo image_info = {
-                    .imageView   = (VkImageView) res->texture.backend,
+                    .imageView   = (VkImageView) res->texture->backend,
                     .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
                 writes[i].descriptorType = (VkDescriptorType) res->type;
                 writes[i].pImageInfo     = &image_info;
@@ -1808,9 +1808,9 @@ typedef struct texture_backend
 gfx_resource vulkan_device_create_texture_resource(gfx_texture_create_desc desc)
 {
     gfx_resource resource = {0};
-    uuid_generate(&resource.texture.uuid);
+    uuid_generate(&resource.texture->uuid);
 
-    gfx_texture*     texture = &resource.texture;
+    gfx_texture*     texture = resource.texture;
     texture_backend* backend = malloc(sizeof(texture_backend));
     texture->backend         = backend;
 
@@ -1848,12 +1848,12 @@ gfx_resource vulkan_device_create_texture_resource(gfx_texture_create_desc desc)
 
 void vulkan_device_destroy_texture_resource(gfx_resource* resource)
 {
-    uuid_destroy(&resource->texture.uuid);
+    uuid_destroy(&resource->texture->uuid);
 
-    VkImage vk_image = ((texture_backend*) resource->texture.backend)->image;
+    VkImage vk_image = ((texture_backend*) resource->texture->backend)->image;
     vkDestroyImage(VKDEVICE, vk_image, NULL);
-    free(resource->texture.backend);
-    resource->texture.backend = NULL;
+    free(resource->texture->backend);
+    resource->texture->backend = NULL;
 }
 
 typedef struct tex_resource_view_backend
@@ -1869,11 +1869,14 @@ gfx_resource_view vulkan_device_create_texture_res_view(const gfx_resource_view_
     tex_resource_view_backend* backend = malloc(sizeof(tex_resource_view_backend));
     view.backend                       = backend;
 
+    const gfx_texture* tex = desc.resource->texture;
+    const texture_backend* tex_backend = tex->backend;
+
     VkImageViewCreateInfo view_ci = {
         .sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
         .pNext            = NULL,
         .flags            = 0,
-        .image            = VK_NULL_HANDLE,
+        .image            = tex_backend->image,
         .format           = vulkan_util_format_translate(desc.texture.format),
         .viewType         = vulkan_util_texture_view_type_translate(desc.texture.texture_type),
         .components       = (VkComponentMapping) {VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A},
@@ -1906,8 +1909,8 @@ typedef struct sampler_backend
 gfx_resource vulkan_device_create_sampler(gfx_sampler_create_desc desc)
 {
     gfx_resource resource;
-    uuid_generate(&resource.sampler.uuid);
-    gfx_sampler* sampler = &resource.sampler;
+    uuid_generate(&resource.sampler->uuid);
+    gfx_sampler* sampler = resource.sampler;
 
     sampler_backend* backend = malloc(sizeof(sampler_backend));
     sampler->backend          = backend;
@@ -1937,9 +1940,9 @@ gfx_resource vulkan_device_create_sampler(gfx_sampler_create_desc desc)
 
 void vulkan_device_destroy_sampler(gfx_resource* resource)
 {
-    uuid_destroy(&resource->sampler.uuid);
+    uuid_destroy(&resource->sampler->uuid);
 
-    sampler_backend* backend = (sampler_backend*) (resource->sampler.backend);
+    sampler_backend* backend = (sampler_backend*) (resource->sampler->backend);
     vkDestroySampler(VKDEVICE, backend->sampler, NULL);
     free(backend);
     backend = NULL;

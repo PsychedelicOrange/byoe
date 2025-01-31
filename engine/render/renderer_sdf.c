@@ -135,8 +135,9 @@ static void renderer_internal_create_sdf_pass_resources(void)
         .max_anisotropy = 1.0f,
         .wrap_mode      = GFX_WRAP_MODE_CLAMP_TO_EDGE});
 
+    return;
     LOG_ERROR("========================================");
-    LOG_ERROR("                 Hi I'm Here            ");
+    LOG_ERROR("             Hi I'm Here                ");
     LOG_ERROR("========================================");
 
     gfx_resource_view sdf_write_view = gfx_create_resource_view((gfx_resource_view_desc) {
