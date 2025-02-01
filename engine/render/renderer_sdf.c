@@ -128,19 +128,6 @@ static void renderer_internal_create_sdf_pass_resources(void)
         .depth  = 1});
     (void) sdf_scene_texture;
 
-    gfx_resource sdf_scene_tex_sampler = gfx_create_sampler((gfx_sampler_create_desc){
-        .min_filter     = GFX_FILTER_MODE_NEAREST,
-        .mag_filter     = GFX_FILTER_MODE_NEAREST,
-        .min_lod        = 0.0f,
-        .max_lod        = 1.0f,
-        .max_anisotropy = 1.0f,
-        .wrap_mode      = GFX_WRAP_MODE_CLAMP_TO_EDGE});
-    (void) sdf_scene_tex_sampler;
-
-    LOG_ERROR("========================================");
-    LOG_ERROR("             Hi I'm Here                ");
-    LOG_ERROR("========================================");
-
     gfx_resource_view sdf_write_view = gfx_create_texture_res_view((gfx_resource_view_desc){
         .type     = GFX_RESOURCE_TYPE_SAMPLED_IMAGE,
         .resource = &sdf_scene_texture,
@@ -163,18 +150,9 @@ static void renderer_internal_create_sdf_pass_resources(void)
         .stage_flags = GFX_SHADER_STAGE_CS,
     };
 
-    gfx_descriptor_binding sdf_scene_sampler_binding = {
-        .binding     = 1,
-        .set         = 0,
-        .count       = 1,
-        .type        = GFX_RESOURCE_TYPE_SAMPLER,
-        .stage_flags = GFX_SHADER_STAGE_CS};
-
-    gfx_descriptor_binding sdf_bindings[] = {sdf_scene_tex_binding, sdf_scene_sampler_binding};
-
     gfx_descriptor_set_layout set_layout_0 = {
-        .bindings      = sdf_bindings,
-        .binding_count = 2,
+        .bindings      = &sdf_scene_tex_binding,
+        .binding_count = 1,
     };
 
     gfx_root_signature sdf_root_sig = gfx_create_root_signature(&set_layout_0, 1, NULL, 0);
@@ -183,8 +161,8 @@ static void renderer_internal_create_sdf_pass_resources(void)
     gfx_descriptor_table sdf_binding_table = gfx_create_descriptor_table(&sdf_root_sig);
     (void) sdf_binding_table;
 #if DISABLE_THIS_CODE_COZ_IM_TESTING
-    gfx_descriptor_table_entry table_entries[2] = {(gfx_descriptor_table_entry){&sdf_scene_texture, &sdf_write_view}, (gfx_descriptor_table_entry){&sdf_scene_tex_sampler, NULL}};
-    gfx_update_descriptor_table(&sdf_binding_table, table_entries, 2);
+    gfx_descriptor_table_entry table_entries = {(gfx_descriptor_table_entry){&sdf_scene_texture, &sdf_write_view}};
+    gfx_update_descriptor_table(&sdf_binding_table, table_entries, 1);
 #endif
 }
 

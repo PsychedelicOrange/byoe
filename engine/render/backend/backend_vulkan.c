@@ -411,7 +411,8 @@ static void vulkan_internal_destroy_debug_utils_messenger(VkInstance instance, V
 }
 
 // Debug callback
-static const char* vk_object_type_to_string(VkObjectType type) {
+static const char* vk_object_type_to_string(VkObjectType type)
+{
     switch (type) {
         case VK_OBJECT_TYPE_INSTANCE: return "Instance";
         case VK_OBJECT_TYPE_PHYSICAL_DEVICE: return "Physical Device";
@@ -450,15 +451,16 @@ static const char* vk_object_type_to_string(VkObjectType type) {
     }
 }
 
-static void format_message(const char* message) {
+static void format_message(const char* message)
+{
     // Find the part after "MessageID = ..." and extract only the relevant error message
     const char* msg_start = strstr(message, "| vkDestroyDevice():");
     if (msg_start) {
-        msg_start += 2; // Skip "| "
+        msg_start += 2;    // Skip "| "
     } else {
         msg_start = message;
     }
-              
+
     printf("  |-- Description :\n");
     printf("  |   %s\n", msg_start);
 
@@ -471,10 +473,10 @@ static void format_message(const char* message) {
 }
 
 static VkBool32 vulkan_backend_debug_callback(
-    VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-    VkDebugUtilsMessageTypeFlagsEXT messageTypes,
+    VkDebugUtilsMessageSeverityFlagBitsEXT      messageSeverity,
+    VkDebugUtilsMessageTypeFlagsEXT             messageTypes,
     const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-    void* pUserData)
+    void*                                       pUserData)
 {
     (void) pUserData;
     (void) messageSeverity;
@@ -482,26 +484,23 @@ static VkBool32 vulkan_backend_debug_callback(
     (void) pCallbackData;
 
     const char* severity_str = "INFO";
-    const char* type_str = "GENERAL";
-    const char* color = "\033[0m";
-    const char* reset = "\033[0m";
+    const char* type_str     = "GENERAL";
+    const char* color        = "\033[0m";
+    const char* reset        = "\033[0m";
 
     if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
         severity_str = "ERROR";
-        color = "\033[1;31m"; // Red for errors
-    }
-    else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
+        color        = "\033[1;31m";    // Red for errors
+    } else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
         severity_str = "WARNING";
-        color = "\033[1;33m"; // Yellow for warnings
+        color        = "\033[1;33m";    // Yellow for warnings
     }
 
     if (messageTypes & VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT) {
         type_str = "VALIDATION";
-    }
-    else if (messageTypes & VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT) {
+    } else if (messageTypes & VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT) {
         type_str = "PERFORMANCE";
-    }
-    else if (messageTypes & VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT) {
+    } else if (messageTypes & VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT) {
         type_str = "BINDING";
     }
 
@@ -513,8 +512,8 @@ static VkBool32 vulkan_backend_debug_callback(
         printf("  |-- Objects Involved:\n");
         for (uint32_t i = 0; i < pCallbackData->objectCount; i++) {
             printf("  |   |-- Handle: 0x%llu | Type: %s\n",
-                   pCallbackData->pObjects[i].objectHandle,
-                   vk_object_type_to_string(pCallbackData->pObjects[i].objectType));
+                pCallbackData->pObjects[i].objectHandle,
+                vk_object_type_to_string(pCallbackData->pObjects[i].objectType));
         }
     }
 
@@ -558,9 +557,9 @@ static VkInstance vulkan_internal_create_instance(void)
                            VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
         .messageType =
             // VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-            VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-            VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT |
-            VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT,
+        VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+        VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT |
+        VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT,
         .pfnUserCallback = vulkan_backend_debug_callback};
 
     VkApplicationInfo app_info = {
@@ -1807,6 +1806,8 @@ gfx_descriptor_table vulkan_device_create_descriptor_table(const gfx_root_signat
 
     descriptor_table_backend* backend = malloc(sizeof(descriptor_table_backend));
 
+    root_signature_backend* root_sig_backend = ((root_signature_backend*) (root_signature->backend));
+
     // cache pipeline layout from root_signature vulkan backend
     backend->pipeline_layout_ref_handle = ((root_signature_backend*) (root_signature->backend))->pipeline_layout;
     backend->num_sets                   = root_signature->descriptor_layout_count;
@@ -1834,9 +1835,10 @@ gfx_descriptor_table vulkan_device_create_descriptor_table(const gfx_root_signat
         .pNext              = NULL,
         .descriptorPool     = backend->pool,
         .descriptorSetCount = root_signature->descriptor_layout_count,
-        .pSetLayouts        = (const VkDescriptorSetLayout*) root_signature->descriptor_set_layouts,
+        .pSetLayouts        = (const VkDescriptorSetLayout*) root_sig_backend->vk_descriptor_set_layouts,
     };
 
+    backend->sets = (VkDescriptorSet*) malloc(sizeof(VkDescriptorSet) * root_signature->descriptor_layout_count);
     VK_CHECK_RESULT(vkAllocateDescriptorSets(VKDEVICE, &alloc_info, backend->sets), "[Vulkan] Failed to allocated descriptor sets");
 
     descriptor_table.backend   = backend;
@@ -1849,8 +1851,10 @@ void vulkan_device_destroy_descriptor_table(gfx_descriptor_table* descriptor_tab
 {
     (void) descriptor_table;
     uuid_destroy(&descriptor_table->uuid);
-    vkDestroyDescriptorPool(VKDEVICE, ((descriptor_table_backend*) (descriptor_table->backend))->pool, NULL);
-    free(descriptor_table->backend);
+    descriptor_table_backend* backend = ((descriptor_table_backend*) (descriptor_table->backend));
+    vkDestroyDescriptorPool(VKDEVICE, backend->pool, NULL);
+    free(backend->sets);
+    free(backend);
     descriptor_table->backend = NULL;
 }
 
@@ -1862,7 +1866,7 @@ void vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_tabl
     VkWriteDescriptorSet* writes = malloc(sizeof(VkWriteDescriptorSet) * num_entries);
 
     for (uint32_t i = 0; i < num_entries; i++) {
-        const gfx_resource* res = entries[i].resource;
+        const gfx_resource*      res      = entries[i].resource;
         const gfx_resource_view* res_view = entries[i].resource_view;
 
         writes[i] = (VkWriteDescriptorSet){
@@ -1883,9 +1887,9 @@ void vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_tabl
                 writes[i].pBufferInfo    = &buffer_info;
                 break;
             }
-            case GFX_RESOURCE_TYPE_SAMPLER:{
+            case GFX_RESOURCE_TYPE_SAMPLER: {
                 VkDescriptorImageInfo sampler_info = {
-                    .sampler   = (VkSampler)((sampler_backend*)(res_view->backend))->sampler};
+                    .sampler = (VkSampler) ((sampler_backend*) (res_view->backend))->sampler};
                 writes[i].descriptorType = (VkDescriptorType) res->type;
                 writes[i].pImageInfo     = &sampler_info;
                 break;
@@ -1894,7 +1898,7 @@ void vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_tabl
             case GFX_RESOURCE_TYPE_STORAGE_IMAGE:
             case GFX_RESOURCE_TYPE_COMBINED_IMAGE_SAMPLER: {
                 VkDescriptorImageInfo image_info = {
-                    .imageView   = (VkImageView)((tex_resource_view_backend*)(res_view->backend))->view,
+                    .imageView   = (VkImageView) ((tex_resource_view_backend*) (res_view->backend))->view,
                     .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
                 writes[i].descriptorType = (VkDescriptorType) res->type;
                 writes[i].pImageInfo     = &image_info;
@@ -1971,7 +1975,6 @@ void vulkan_device_destroy_texture_resource(gfx_resource* resource)
     free(resource->texture.backend);
     resource->texture.backend = NULL;
 }
-
 
 gfx_resource_view vulkan_device_create_texture_res_view(const gfx_resource_view_desc desc)
 {
