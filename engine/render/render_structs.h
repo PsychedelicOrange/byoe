@@ -435,6 +435,18 @@ typedef enum gfx_wrap_mode
     GFX_WRAP_MODE_CLAMP_TO_BORDER
 } gfx_wrap_mode;
 
+typedef enum gfx_image_layout
+{
+    GFX_IMAGE_LAYOUT_UNDEFINED,
+    GFX_IMAGE_LAYOUT_GENERAL,
+    GFX_IMAGE_LAYOUT_COLOR_ATTACHMENT,
+    GFX_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT,
+    GFX_IMAGE_LAYOUT_TRANSFER_DST,
+    GFX_IMAGE_LAYOUT_TRANSFER_SRC,
+    GFX_IMAGE_LAYOUT_SHADER_READ_ONLY,
+    GFX_IMAGE_LAYOUT_PRESENTATION,
+} gfx_image_layout;
+
 typedef struct gfx_config
 {
     bool use_timeline_semaphores;
@@ -497,11 +509,11 @@ typedef struct gfx_uniform_buffer
 
 typedef struct gfx_texture_create_desc
 {
-    uint32_t         width;
-    uint32_t         height;
-    uint32_t         depth;
-    gfx_format       format;
-    gfx_texture_type tex_type;
+    uint32_t          width;
+    uint32_t          height;
+    uint32_t          depth;
+    gfx_format        format;
+    gfx_texture_type  tex_type;
     gfx_resource_type res_type;
 } gfx_texture_create_desc;
 

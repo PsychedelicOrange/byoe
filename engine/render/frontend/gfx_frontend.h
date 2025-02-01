@@ -68,6 +68,9 @@ void              (*gfx_destroy_texture_resource_view)(gfx_resource_view* view);
 gfx_resource (*gfx_create_sampler)(gfx_sampler_create_desc desc);
 void         (*gfx_destroy_sampler)(gfx_resource* sampler);
 
+gfx_cmd_buf (*gfx_create_single_time_cmd_buffer)(void);
+void        (*gfx_destroy_single_time_cmd_buffer)(gfx_cmd_buf* cmd_buf);
+
 //------------------------------------------
 // RHI function pointers
 //------------------------------------------
@@ -77,7 +80,8 @@ typedef enum rhi_error_codes
     FailedUnknown,
     FailedMemoryAlloc,
     FailedSwapAcquire,
-    FailedHandleCreation
+    FailedHandleCreation,
+    FailedMemoryBarrier
 } rhi_error_codes;
 //---------------------------
 // High-level API
@@ -112,6 +116,8 @@ rhi_error_codes (*rhi_bind_push_constants)(const gfx_cmd_buf* cmd_buf, gfx_root_
 
 rhi_error_codes (*rhi_draw)(const gfx_cmd_buf* cmd_buf, uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance);
 rhi_error_codes (*rhi_dispatch)(const gfx_cmd_buf* cmd_buf, uint32_t dimX, uint32_t dimY, uint32_t dimZ);
+
+rhi_error_codes (*rhi_insert_image_layout_barrier)(const gfx_cmd_buf* cmd_buf, const gfx_resource* resource, gfx_image_layout old_layout, gfx_image_layout new_layout);
 
 uint32_t rhi_get_back_buffer_idx(const gfx_swapchain* swapchain);
 uint32_t rhi_get_current_frame_idx(const gfx_context* ctx);

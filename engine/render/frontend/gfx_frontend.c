@@ -53,6 +53,9 @@ int gfx_init(rhi_api api)
         gfx_create_sampler  = vulkan_device_create_sampler;
         gfx_destroy_sampler = vulkan_device_destroy_sampler;
 
+        gfx_create_single_time_cmd_buffer  = vulkan_device_create_single_time_command_buffer;
+        gfx_destroy_single_time_cmd_buffer = vulkan_device_destroy_single_time_command_buffer;
+
         // RHI
         rhi_frame_begin = vulkan_frame_begin;
         rhi_frame_end   = vulkan_frame_end;
@@ -82,6 +85,8 @@ int gfx_init(rhi_api api)
 
         rhi_draw     = vulkan_draw;
         rhi_dispatch = vulkan_dispatch;
+
+        rhi_insert_image_layout_barrier = vulkan_transition_image_layout;
     }
 
     return Success;
