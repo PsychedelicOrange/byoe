@@ -645,6 +645,18 @@ void main() {
     imageStore(outColorRenderTarget, ivec2(gl_GlobalInvocationID.xy), vec4(uv, 0.0f, 1.0f));
     return;
 
+    //vec4 position = vec4(aPos, 0.0, 1.0);
+    //vec4 clipPos = viewproj * position;  
+    //
+    //vec2 pos = clipPos.xy / clipPos.w;
+    //
+    //vec4 nearp = inverse(viewproj) * vec4(pos, -1.0, 1.0);
+    //vec4 farp = inverse(viewproj) * vec4(pos, 1.0, 1.0);  
+    //
+    //Ray ray;
+    //ray.ro = nearp.xyz / nearp.w; 
+    //ray.rd = normalize(farp.xyz / farp.w - ray.ro);
+
 
     //Ray ray;
     //ray.ro = nearp.xyz / nearp.w; // Ray origin in world space
