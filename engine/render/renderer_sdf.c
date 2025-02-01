@@ -23,25 +23,29 @@ typedef struct sdf_resources
     gfx_shader           shader;
 } sdf_resources;
 
-typedef struct renderer_internal_state
+typedef struct screen_quad_resoruces
 {
-    uint32_t           numPrimitives;
-    uint32_t           width;
-    uint32_t           height;
-    uint32_t           raymarchShaderID;
-    GLFWwindow*        window;
-    const SDF_Scene*   scene;
-    uint64_t           frameCount;
-    bool               captureSwapchain;
-    bool               _pad0[3];
-    mat4s              viewproj;
-    texture_readback   lastTextureReadback;
-    gfx_context        gfxcontext;
-    gfx_shader         raymarchCS;
     gfx_shader         screenQuadShader;
     gfx_pipeline       screenQuadPipeline;
     gfx_root_signature screenShaderRootSig;
-    sdf_resources      scene_resources;
+} screen_quad_resoruces;
+
+typedef struct renderer_internal_state
+{
+    uint32_t              numPrimitives;
+    uint32_t              width;
+    uint32_t              height;
+    uint32_t              raymarchShaderID;
+    GLFWwindow*           window;
+    const SDF_Scene*      scene;
+    uint64_t              frameCount;
+    bool                  captureSwapchain;
+    bool                  _pad0[3];
+    mat4s                 viewproj;
+    texture_readback      lastTextureReadback;
+    gfx_context           gfxcontext;
+    screen_quad_resoruces screen_quad_resources;
+    sdf_resources         scene_resources;
 } renderer_internal_state;
 
 //---------------------------------------------------------
@@ -65,22 +69,20 @@ static void renderer_internal_sdf_resize(GLFWwindow* window, int width, int heig
 
 static void renderer_internal_destroy_shaders(void)
 {
-    gfx_destroy_compute_shader(&s_RendererSDFInternalState.raymarchCS);
-    gfx_destroy_vs_ps_shader(&s_RendererSDFInternalState.screenQuadShader);
+    gfx_destroy_vs_ps_shader(&s_RendererSDFInternalState.screen_quad_resources.screenQuadShader);
     gfx_destroy_compute_shader(&s_RendererSDFInternalState.scene_resources.shader);
 }
 
 static void renderer_internal_create_shaders(void)
 {
-    s_RendererSDFInternalState.raymarchCS             = gfx_create_compute_shader("./game/shaders_built/raymarch_sdf_scene.comp.spv");
-    s_RendererSDFInternalState.screenQuadShader       = gfx_create_vs_ps_shader("./game/shaders_built/screen_quad.vert.spv", "./game/shaders_built/screen_quad.frag.spv");
-    s_RendererSDFInternalState.scene_resources.shader = gfx_create_compute_shader("./game/shaders_built/cs_test.comp.spv");
+    s_RendererSDFInternalState.screen_quad_resources.screenQuadShader = gfx_create_vs_ps_shader("./game/shaders_built/screen_quad.vert.spv", "./game/shaders_built/screen_quad.frag.spv");
+    s_RendererSDFInternalState.scene_resources.shader                 = gfx_create_compute_shader("./game/shaders_built/cs_test.comp.spv");
 }
 
 static void renderer_internal_destroy_pipelines(void)
 {
-    gfx_destroy_root_signature(&s_RendererSDFInternalState.screenShaderRootSig);
-    gfx_destroy_pipeline(&s_RendererSDFInternalState.screenQuadPipeline);
+    gfx_destroy_root_signature(&s_RendererSDFInternalState.screen_quad_resources.screenShaderRootSig);
+    gfx_destroy_pipeline(&s_RendererSDFInternalState.screen_quad_resources.screenQuadPipeline);
 
     gfx_destroy_root_signature(&s_RendererSDFInternalState.scene_resources.root_sig);
     gfx_destroy_pipeline(&s_RendererSDFInternalState.scene_resources.pipeline);
@@ -88,12 +90,12 @@ static void renderer_internal_destroy_pipelines(void)
 
 static void renderer_internal_create_pipelines(void)
 {
-    s_RendererSDFInternalState.screenShaderRootSig = gfx_create_root_signature(NULL, 0, NULL, 0);
+    s_RendererSDFInternalState.screen_quad_resources.screenShaderRootSig = gfx_create_root_signature(NULL, 0, NULL, 0);
 
     gfx_pipeline_create_info scrn_pipeline_ci = {
         .type                = GFX_PIPELINE_TYPE_GRAPHICS,
-        .root_sig            = s_RendererSDFInternalState.screenShaderRootSig,
-        .shader              = s_RendererSDFInternalState.screenQuadShader,
+        .root_sig            = s_RendererSDFInternalState.screen_quad_resources.screenShaderRootSig,
+        .shader              = s_RendererSDFInternalState.screen_quad_resources.screenQuadShader,
         .draw_type           = GFX_DRAW_TYPE_TRIANGLE,
         .polygon_mode        = GFX_POLYGON_MODE_FILL,
         .cull_mode           = GFX_CULL_MODE_NO_CULL,
@@ -104,7 +106,7 @@ static void renderer_internal_create_pipelines(void)
         .color_formats[0]    = GFX_FORMAT_SCREEN,
     };
 
-    s_RendererSDFInternalState.screenQuadPipeline = gfx_create_pipeline(scrn_pipeline_ci);
+    s_RendererSDFInternalState.screen_quad_resources.screenQuadPipeline = gfx_create_pipeline(scrn_pipeline_ci);
 
     //----------------
 
@@ -253,8 +255,8 @@ static void renderer_internal_sdf_clear_screen_pass(gfx_cmd_buf* cmd_buff)
                .clear_color = clear_color}};
     rhi_begin_render_pass(cmd_buff, clear_screen_pass, s_RendererSDFInternalState.gfxcontext.swapchain.current_backbuffer_idx);
     {
-        rhi_bind_root_signature(cmd_buff, &s_RendererSDFInternalState.screenShaderRootSig);
-        rhi_bind_gfx_pipeline(cmd_buff, s_RendererSDFInternalState.screenQuadPipeline);
+        rhi_bind_root_signature(cmd_buff, &s_RendererSDFInternalState.screen_quad_resources.screenShaderRootSig);
+        rhi_bind_gfx_pipeline(cmd_buff, s_RendererSDFInternalState.screen_quad_resources.screenQuadPipeline);
 
         rhi_set_viewport(cmd_buff, (gfx_viewport){.x = 0, .y = 0, .width = s_RendererSDFInternalState.width, .height = s_RendererSDFInternalState.height, .min_depth = 0, .max_depth = 1});
         rhi_set_scissor(cmd_buff, (gfx_scissor){.x = 0, .y = 0, .width = s_RendererSDFInternalState.width, .height = s_RendererSDFInternalState.height});
