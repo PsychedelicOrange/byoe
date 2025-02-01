@@ -19,6 +19,15 @@
 // - [ ] sdf_storage_image to transfer dst before sdf_scene pass
 // - [ ] sdf_storage_image to shader read after sdf_scene pass
 
+typedef struct SDFPushConstant
+{
+    mat4  view_proj;
+    ivec2 resolution;
+    ivec2 _pad0;
+    vec3  dir_light_pos;
+    int   curr_draw_node_idx;
+} SDFPushConstant;
+
 typedef struct sdf_resources
 {
     gfx_resource         scene_texture;
@@ -27,6 +36,7 @@ typedef struct sdf_resources
     gfx_root_signature   root_sig;
     gfx_pipeline         pipeline;
     gfx_shader           shader;
+    SDFPushConstant      pc_data;
 } sdf_resources;
 
 typedef struct screen_quad_resoruces
@@ -112,7 +122,12 @@ static void renderer_internal_create_pipelines(void)
         .binding_count = 1,
     };
 
-    s_RendererSDFInternalState.sdfscene_resources.root_sig = gfx_create_root_signature(&set_layout_0, 1, NULL, 0);
+    gfx_push_constant_range pc_range = {
+        .size   = sizeof(SDFPushConstant),
+        .offset = 0,
+        .stage  = GFX_SHADER_STAGE_CS};
+
+    s_RendererSDFInternalState.sdfscene_resources.root_sig = gfx_create_root_signature(&set_layout_0, 1, &pc_range, 1);
 
     gfx_pipeline_create_info scene_pipeline_ci = {
         .type     = GFX_PIPELINE_TYPE_COMPUTE,
@@ -305,6 +320,13 @@ static void renderer_internal_scene_draw_pass(gfx_cmd_buf* cmd_buff)
         rhi_bind_compute_pipeline(cmd_buff, s_RendererSDFInternalState.sdfscene_resources.pipeline);
 
         rhi_bind_descriptor_table(cmd_buff, &s_RendererSDFInternalState.sdfscene_resources.table, GFX_PIPELINE_TYPE_COMPUTE);
+
+        s_RendererSDFInternalState.sdfscene_resources.pc_data.curr_draw_node_idx = 0;
+        s_RendererSDFInternalState.sdfscene_resources.pc_data.resolution[0]      = s_RendererSDFInternalState.width;
+        s_RendererSDFInternalState.sdfscene_resources.pc_data.resolution[1]      = s_RendererSDFInternalState.height;
+
+        gfx_push_constant pc = {.stage = GFX_SHADER_STAGE_CS, .size = sizeof(SDFPushConstant), .offset = 0, .data = &s_RendererSDFInternalState.sdfscene_resources.pc_data};
+        rhi_bind_push_constant(cmd_buff, &s_RendererSDFInternalState.sdfscene_resources.root_sig, pc);
 
         rhi_dispatch(cmd_buff, s_RendererSDFInternalState.width / DISPATCH_LOCAL_DIM, s_RendererSDFInternalState.width / DISPATCH_LOCAL_DIM, 1);
     }

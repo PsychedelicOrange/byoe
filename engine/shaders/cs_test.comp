@@ -4,12 +4,12 @@
 //    SDF_Node nodes[100];
 //}; 
 
-//layout (push_constant) uniform PushConstant {
-//    ivec2 resolution;              
-//    int sdf_node_count;       
-//    int curr_draw_node_idx;
-//    vec3 dir_light_pos;  
-//}pc_data;
+layout (push_constant) uniform PushConstant {
+    mat4 view_proj;
+    ivec2 resolution;    
+    vec3 dir_light_pos;  
+    int curr_draw_node_idx;  
+}pc_data;
 ////////////////////////////////////////////////////////////////////////////////////////
 // RW Resources
 layout(binding = 0, set = 0, rgba32f) writeonly uniform image2D outColorRenderTarget;
@@ -20,7 +20,7 @@ layout(binding = 0, set = 0, rgba32f) writeonly uniform image2D outColorRenderTa
 layout(local_size_x = 32, local_size_y = 32) in;
 
 void main() {
-    vec2 uv = vec2(gl_GlobalInvocationID.xy) / vec2(800.0f, 600.0f);
+    vec2 uv = vec2(gl_GlobalInvocationID.xy) / vec2(pc_data.resolution);
     imageStore(outColorRenderTarget, ivec2(gl_GlobalInvocationID.xy), vec4(uv, 1.0f, 1.0f));
     return;
 }

@@ -643,13 +643,11 @@ typedef struct gfx_descriptor_set_layout
 
 typedef struct gfx_push_constant
 {
-    random_uuid_t uuid;
-    uint32_t      table_idx;
-    uint32_t      _pad0;
-    void*         data;
-    uint32_t      size;
-    uint32_t      offset;
-    void*         backend;
+    uint32_t         size;
+    uint32_t         offset;
+    gfx_shader_stage stage;
+    uint32_t         _pad0;
+    void*            data;
 } gfx_push_constant;
 
 typedef struct gfx_push_constant_range

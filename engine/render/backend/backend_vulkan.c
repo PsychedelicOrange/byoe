@@ -2409,14 +2409,11 @@ rhi_error_codes vulkan_device_bind_descriptor_table(const gfx_cmd_buf* cmd_buf, 
     return Success;
 }
 
-rhi_error_codes vulkan_device_bind_push_constants(const gfx_cmd_buf* cmd_buf, gfx_root_signature* root_sig, gfx_push_constant* push_constants, uint32_t num_push_constants)
+rhi_error_codes vulkan_device_bind_push_constant(const gfx_cmd_buf* cmd_buf, gfx_root_signature* root_sig, gfx_push_constant push_constant)
 {
-    (void) cmd_buf;
-    (void) root_sig;
-    (void) push_constants;
-    (void) num_push_constants;
-    //VkCommandBuffer commandBuffer = *(VkCommandBuffer*) cmd_buf->backend;
-    //vkCmdPushConstants(commandBuffer, );
+    VkCommandBuffer commandBuffer = *(VkCommandBuffer*) cmd_buf->backend;
+    root_signature_backend* rootS_sig_backend = root_sig->backend;
+    vkCmdPushConstants(commandBuffer, rootS_sig_backend->pipeline_layout, vulkan_util_shader_stage_bits(push_constant.stage), push_constant.offset, push_constant.size, push_constant.data);
     return Success;
 }
 

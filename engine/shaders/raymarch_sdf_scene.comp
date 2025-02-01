@@ -246,10 +246,10 @@ layout(binding = 0, set = 0) uniform SDFScene {
 }; 
 
 layout (push_constant) uniform PushConstant {
-    ivec2 resolution;              
-    int sdf_node_count;       
-    int curr_draw_node_idx;
+    mat4 view_proj;
+    ivec2 resolution;    
     vec3 dir_light_pos;  
+    int curr_draw_node_idx;
 }pc_data;
 ////////////////////////////////////////////////////////////////////////////////////////
 // RW Resources
