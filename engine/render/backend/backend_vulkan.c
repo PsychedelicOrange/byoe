@@ -411,15 +411,114 @@ static void vulkan_internal_destroy_debug_utils_messenger(VkInstance instance, V
 }
 
 // Debug callback
-static VkBool32 vulkan_backend_debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
+static const char* vk_object_type_to_string(VkObjectType type) {
+    switch (type) {
+        case VK_OBJECT_TYPE_INSTANCE: return "Instance";
+        case VK_OBJECT_TYPE_PHYSICAL_DEVICE: return "Physical Device";
+        case VK_OBJECT_TYPE_DEVICE: return "Device";
+        case VK_OBJECT_TYPE_QUEUE: return "Queue";
+        case VK_OBJECT_TYPE_SEMAPHORE: return "Semaphore";
+        case VK_OBJECT_TYPE_COMMAND_BUFFER: return "Command Buffer";
+        case VK_OBJECT_TYPE_FENCE: return "Fence";
+        case VK_OBJECT_TYPE_DEVICE_MEMORY: return "Device Memory";
+        case VK_OBJECT_TYPE_BUFFER: return "Buffer";
+        case VK_OBJECT_TYPE_IMAGE: return "Image";
+        case VK_OBJECT_TYPE_EVENT: return "Event";
+        case VK_OBJECT_TYPE_QUERY_POOL: return "Query Pool";
+        case VK_OBJECT_TYPE_BUFFER_VIEW: return "Buffer View";
+        case VK_OBJECT_TYPE_IMAGE_VIEW: return "Image View";
+        case VK_OBJECT_TYPE_SHADER_MODULE: return "Shader Module";
+        case VK_OBJECT_TYPE_PIPELINE_CACHE: return "Pipeline Cache";
+        case VK_OBJECT_TYPE_PIPELINE_LAYOUT: return "Pipeline Layout";
+        case VK_OBJECT_TYPE_RENDER_PASS: return "Render Pass";
+        case VK_OBJECT_TYPE_PIPELINE: return "Pipeline";
+        case VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT: return "Descriptor Set Layout";
+        case VK_OBJECT_TYPE_SAMPLER: return "Sampler";
+        case VK_OBJECT_TYPE_DESCRIPTOR_POOL: return "Descriptor Pool";
+        case VK_OBJECT_TYPE_DESCRIPTOR_SET: return "Descriptor Set";
+        case VK_OBJECT_TYPE_FRAMEBUFFER: return "Framebuffer";
+        case VK_OBJECT_TYPE_COMMAND_POOL: return "Command Pool";
+        case VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION: return "Sampler YCbCr Conversion";
+        case VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE: return "Descriptor Update Template";
+        case VK_OBJECT_TYPE_SURFACE_KHR: return "Surface";
+        case VK_OBJECT_TYPE_SWAPCHAIN_KHR: return "Swapchain";
+        case VK_OBJECT_TYPE_DISPLAY_KHR: return "Display";
+        case VK_OBJECT_TYPE_DISPLAY_MODE_KHR: return "Display Mode";
+        case VK_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT: return "Debug Report Callback";
+        case VK_OBJECT_TYPE_DEBUG_UTILS_MESSENGER_EXT: return "Debug Utils Messenger";
+        default: return "Unknown";
+    }
+}
+
+static void format_message(const char* message) {
+    // Find the part after "MessageID = ..." and extract only the relevant error message
+    const char* msg_start = strstr(message, "| vkDestroyDevice():");
+    if (msg_start) {
+        msg_start += 2; // Skip "| "
+    } else {
+        msg_start = message;
+    }
+
+    printf("  ├── Description :\n");
+    printf("  │   %s\n", msg_start);
+
+    const char* doc_link = strstr(message, "https://");
+    if (doc_link) {
+        printf("  ├── Docs Ref    : %s\n", doc_link);
+    }
+
+    printf("  └──────────────────────────────────────────────────\n");
+}
+
+static VkBool32 vulkan_backend_debug_callback(
+    VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+    VkDebugUtilsMessageTypeFlagsEXT messageTypes,
+    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+    void* pUserData)
 {
+    (void) pUserData;
     (void) messageSeverity;
     (void) messageTypes;
     (void) pCallbackData;
-    (void) pUserData;
 
-    if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) LOG_ERROR("%s", pCallbackData->pMessage);
-    if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) LOG_WARN("%s", pCallbackData->pMessage);
+    const char* severity_str = "INFO";
+    const char* type_str = "GENERAL";
+    const char* color = "\033[0m";
+    const char* reset = "\033[0m";
+
+    if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
+        severity_str = "ERROR";
+        color = "\033[1;31m"; // Red for errors
+    }
+    else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
+        severity_str = "WARNING";
+        color = "\033[1;33m"; // Yellow for warnings
+    }
+
+    if (messageTypes & VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT) {
+        type_str = "VALIDATION";
+    }
+    else if (messageTypes & VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT) {
+        type_str = "PERFORMANCE";
+    }
+    else if (messageTypes & VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT) {
+        type_str = "BINDING";
+    }
+
+    printf("\n%s[ %s | %s ]%s\n", color, severity_str, type_str, reset);
+    printf("  ├── Message ID  : 0x%08X\n", pCallbackData->messageIdNumber);
+    printf("  ├── Message Name: %s\n", pCallbackData->pMessageIdName);
+
+    if (pCallbackData->objectCount > 0) {
+        printf("  ├── Objects Involved:\n");
+        for (uint32_t i = 0; i < pCallbackData->objectCount; i++) {
+            printf("  │   ├── Handle: 0x%llu | Type: %s\n",
+                   pCallbackData->pObjects[i].objectHandle,
+                   vk_object_type_to_string(pCallbackData->pObjects[i].objectType));
+        }
+    }
+
+    format_message(pCallbackData->pMessage);
 
     return VK_TRUE;
 }
@@ -458,7 +557,7 @@ static VkInstance vulkan_internal_create_instance(void)
                            VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
                            VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
         .messageType =
-            VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+            // VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
             VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
             VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT |
             VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT,
