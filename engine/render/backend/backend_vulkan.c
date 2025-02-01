@@ -580,8 +580,8 @@ static void vulkan_internal_insert_image_memory_barrier(VkCommandBuffer cmdBuffe
 {
     VkImageMemoryBarrier barrier = {
         .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-        .oldLayout           = vulkan_util_translate_image_layout(old_layout),
-        .newLayout           = vulkan_util_translate_image_layout(new_layout),
+        .oldLayout           = old_layout,
+        .newLayout           = new_layout,
         .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         .image               = image,
@@ -599,33 +599,33 @@ static void vulkan_internal_insert_image_memory_barrier(VkCommandBuffer cmdBuffe
     VkPipelineStageFlags sourceStage      = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
     VkPipelineStageFlags destinationStage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
 
-    if (old_layout == GFX_IMAGE_LAYOUT_UNDEFINED && new_layout == GFX_IMAGE_LAYOUT_GENERAL) {
+    if (old_layout == VK_IMAGE_LAYOUT_UNDEFINED && new_layout == VK_IMAGE_LAYOUT_GENERAL) {
         barrier.srcAccessMask = 0;
         barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
         sourceStage           = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
         destinationStage      = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    } else if (old_layout == GFX_IMAGE_LAYOUT_UNDEFINED && new_layout == GFX_IMAGE_LAYOUT_TRANSFER_DST) {
+    } else if (old_layout == VK_IMAGE_LAYOUT_UNDEFINED && new_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
         barrier.srcAccessMask = 0;
         barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
         sourceStage           = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
         destinationStage      = VK_PIPELINE_STAGE_TRANSFER_BIT;
-    } else if (old_layout == GFX_IMAGE_LAYOUT_TRANSFER_DST && new_layout == GFX_IMAGE_LAYOUT_SHADER_READ_ONLY) {
+    } else if (old_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && new_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
         barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
         barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
         sourceStage           = VK_PIPELINE_STAGE_TRANSFER_BIT;
         destinationStage      = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    } else if (old_layout == GFX_IMAGE_LAYOUT_UNDEFINED && new_layout == GFX_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT) {
+    } else if (old_layout == VK_IMAGE_LAYOUT_UNDEFINED && new_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
         barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
         barrier.srcAccessMask               = 0;
         barrier.dstAccessMask               = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
         sourceStage                         = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
         destinationStage                    = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-    } else if (old_layout == GFX_IMAGE_LAYOUT_COLOR_ATTACHMENT && new_layout == GFX_IMAGE_LAYOUT_PRESENTATION) {
+    } else if (old_layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL && new_layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
         barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
         barrier.dstAccessMask = 0;
         sourceStage           = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
         destinationStage      = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-    } else if (old_layout == GFX_IMAGE_LAYOUT_UNDEFINED && new_layout == GFX_IMAGE_LAYOUT_PRESENTATION) {
+    } else if (old_layout == VK_IMAGE_LAYOUT_UNDEFINED && new_layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
         barrier.srcAccessMask = 0;
         barrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
         sourceStage           = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
@@ -1210,7 +1210,7 @@ gfx_swapchain vulkan_device_create_swapchain(uint32_t width, uint32_t height)
 
     for (uint32_t i = 0; i < MAX_BACKBUFFERS; i++) {
         gfx_cmd_buf cmd_buff = vulkan_device_create_single_time_command_buffer();
-        vulkan_internal_insert_image_memory_barrier(*(VkCommandBuffer*) (cmd_buff.backend), backend->backbuffers[i], GFX_IMAGE_LAYOUT_UNDEFINED, GFX_IMAGE_LAYOUT_PRESENTATION);
+        vulkan_internal_insert_image_memory_barrier(*(VkCommandBuffer*) (cmd_buff.backend), backend->backbuffers[i], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
         vulkan_device_destroy_single_time_command_buffer(&cmd_buff);
     }
 
@@ -1842,7 +1842,9 @@ gfx_descriptor_table vulkan_device_create_descriptor_table(const gfx_root_signat
     VkDescriptorPoolSize pool_sizes[] = {
         {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 128},
         {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 128},
-        {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 64},
+        {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 32},
+        {VK_DESCRIPTOR_TYPE_SAMPLER, 32},
+        {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 32},
     };
 
     VkDescriptorPoolCreateInfo pool_ci = {
@@ -1850,7 +1852,7 @@ gfx_descriptor_table vulkan_device_create_descriptor_table(const gfx_root_signat
         .pNext         = NULL,
         .flags         = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
         .maxSets       = root_signature->descriptor_layout_count,
-        .poolSizeCount = sizeof(pool_sizes) / sizeof(pool_sizes[0]),
+        .poolSizeCount = sizeof(pool_sizes) / sizeof(VkDescriptorPoolSize),
         .pPoolSizes    = pool_sizes,
     };
 
@@ -1920,13 +1922,13 @@ void vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_tabl
             case GFX_RESOURCE_TYPE_STORAGE_IMAGE: {
                 VkDescriptorImageInfo storage_image_info = {
                     .imageView   = (VkImageView) ((tex_resource_view_backend*) (res_view->backend))->view,
-                    .imageLayout = GFX_IMAGE_LAYOUT_GENERAL};
+                    .imageLayout = VK_IMAGE_LAYOUT_GENERAL};
                 writes[i].pImageInfo = &storage_image_info;
             } break;
             case GFX_RESOURCE_TYPE_SAMPLED_IMAGE: {
                 VkDescriptorImageInfo image_info = {
                     .imageView   = (VkImageView) ((tex_resource_view_backend*) (res_view->backend))->view,
-                    .imageLayout = GFX_IMAGE_LAYOUT_SHADER_READ_ONLY};
+                    .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
                 writes[i].pImageInfo = &image_info;
             } break;
             default:
@@ -1974,7 +1976,7 @@ gfx_resource vulkan_device_create_texture_resource(gfx_texture_create_desc desc)
         .tiling        = VK_IMAGE_TILING_LINEAR,
         .usage         = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
         .sharingMode   = VK_SHARING_MODE_EXCLUSIVE,
-        .initialLayout = GFX_IMAGE_LAYOUT_UNDEFINED,
+        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
     };
 
     if (resource.type == GFX_RESOURCE_TYPE_STORAGE_IMAGE)
@@ -2174,7 +2176,7 @@ rhi_error_codes vulkan_begin_render_pass(const gfx_cmd_buf* cmd_buf, gfx_render_
         gfx_attachment            col_attach  = render_pass.color_attachments[i];
         VkRenderingAttachmentInfo attach_info = {
             .sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-            .imageLayout = GFX_IMAGE_LAYOUT_COLOR_ATTACHMENT};
+            .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
         memcpy(attach_info.clearValue.color.float32, col_attach.clear_color.raw, sizeof(vec4s));
         if (col_attach.clear) {
             attach_info.loadOp  = VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -2435,7 +2437,7 @@ rhi_error_codes vulkan_transition_image_layout(const gfx_cmd_buf* cmd_buffer, co
     VkCommandBuffer  vkCmdBuffer = *(VkCommandBuffer*) cmd_buffer->backend;
     texture_backend* backend     = image->texture.backend;
 
-    vulkan_internal_insert_image_memory_barrier(vkCmdBuffer, backend->image, old_layout, new_layout);
+    vulkan_internal_insert_image_memory_barrier(vkCmdBuffer, backend->image, vulkan_util_translate_image_layout(old_layout), vulkan_util_translate_image_layout(new_layout));
 
     return Success;
 }
