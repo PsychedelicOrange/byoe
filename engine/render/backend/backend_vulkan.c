@@ -1961,7 +1961,6 @@ gfx_resource vulkan_device_create_texture_resource(gfx_texture_create_desc desc)
 
     VK_CHECK_RESULT(vkAllocateMemory(VKDEVICE, &alloc_info, NULL, &backend->memory), "[Vulkan] cannot allocate memory for image");
     vkBindImageMemory(VKDEVICE, backend->image, backend->memory, 0);
-
     return resource;
 }
 
@@ -1969,13 +1968,17 @@ void vulkan_device_destroy_texture_resource(gfx_resource* resource)
 {
     uuid_destroy(&resource->texture.uuid);
 
-    VkImage vk_image = ((texture_backend*) resource->texture.backend)->image;
+    texture_backend* backend = ((texture_backend*) resource->texture.backend);
+
+    vkFreeMemory(VKDEVICE, backend->memory, NULL);
+
+    VkImage vk_image = backend->image;
     vkDestroyImage(VKDEVICE, vk_image, NULL);
-    free(resource->texture.backend);
-    resource->texture.backend = NULL;
+    free(backend);
+    backend = NULL;
 }
 
-gfx_resource_view vulkan_device_create_texture_res_view(const gfx_resource_view_desc desc)
+gfx_resource_view vulkan_device_create_texture_resource_view(const gfx_resource_view_desc desc)
 {
     gfx_resource_view view = {0};
     uuid_generate(&view.uuid);
@@ -2006,7 +2009,7 @@ gfx_resource_view vulkan_device_create_texture_res_view(const gfx_resource_view_
     return view;
 }
 
-void vulkan_device_destroy_texture_res_view(gfx_resource_view* view)
+void vulkan_device_destroy_texture_resource_view(gfx_resource_view* view)
 {
     uuid_destroy(&view->uuid);
 

@@ -62,8 +62,8 @@ void (*gfx_update_descriptor_table)(gfx_descriptor_table* descriptor_table, gfx_
 gfx_resource (*gfx_create_texture_resource)(gfx_texture_create_desc desc);
 void (*gfx_destroy_texture_resource)(gfx_resource* resource);
 
-gfx_resource_view (*gfx_create_texture_res_view)(gfx_resource_view_desc desc);
-void (*gfx_destroy_texture_res_view)(gfx_resource_view* view);
+gfx_resource_view (*gfx_create_texture_resource_view)(gfx_resource_view_desc desc);
+void (*gfx_destroy_texture_resource_view)(gfx_resource_view* view);
 
 gfx_resource (*gfx_create_sampler)(gfx_sampler_create_desc desc);
 void (*gfx_destroy_sampler)(gfx_resource* sampler);

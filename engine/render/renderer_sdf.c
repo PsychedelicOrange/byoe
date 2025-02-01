@@ -129,7 +129,7 @@ static void renderer_internal_create_sdf_pass_resources(void)
         .depth  = 1});
     (void) sdf_scene_texture;
 
-    gfx_resource_view sdf_write_view = gfx_create_texture_res_view((gfx_resource_view_desc){
+    gfx_resource_view sdf_write_view = gfx_create_texture_resource_view((gfx_resource_view_desc){
         .resource = &sdf_scene_texture,
         .texture  = {
              .layer_count  = 1,
@@ -162,8 +162,14 @@ static void renderer_internal_create_sdf_pass_resources(void)
     (void) sdf_binding_table;
     gfx_descriptor_table_entry table_entries[1] = {(gfx_descriptor_table_entry){&sdf_scene_texture, &sdf_write_view}};
     gfx_update_descriptor_table(&sdf_binding_table, table_entries, 1);
-#if DISABLE_THIS_CODE_COZ_IM_TESTING
-#endif
+
+    gfx_flush_gpu_work();
+
+    // TESTING clean up
+    gfx_destroy_texture_resource(&sdf_scene_texture);
+    gfx_destroy_texture_resource_view(&sdf_write_view);
+    gfx_destroy_root_signature(&sdf_root_sig);
+    gfx_destroy_descriptor_table(&sdf_binding_table);
 }
 
 //----------------------------------------------------------------
@@ -191,6 +197,7 @@ bool renderer_sdf_init(renderer_desc desc)
 void renderer_sdf_destroy(void)
 {
     gfx_flush_gpu_work();
+
     renderer_internal_destroy_shaders();
     renderer_internal_destroy_pipelines();
 
