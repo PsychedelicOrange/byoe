@@ -121,6 +121,7 @@ static void renderer_internal_create_sdf_pass_resources(void)
     // create the root signature and table to hold the resources/
     // in this pass it's an RW texture2d and it's view
     gfx_resource sdf_scene_texture = gfx_create_texture_resource((gfx_texture_create_desc){
+        .type   = GFX_RESOURCE_TYPE_SAMPLED_IMAGE,
         .width  = 800,
         .height = 600,
         .format = GFX_FORMAT_RGBA32F,
@@ -129,7 +130,6 @@ static void renderer_internal_create_sdf_pass_resources(void)
     (void) sdf_scene_texture;
 
     gfx_resource_view sdf_write_view = gfx_create_texture_res_view((gfx_resource_view_desc){
-        .type     = GFX_RESOURCE_TYPE_SAMPLED_IMAGE,
         .resource = &sdf_scene_texture,
         .texture  = {
              .layer_count  = 1,
@@ -160,9 +160,9 @@ static void renderer_internal_create_sdf_pass_resources(void)
 
     gfx_descriptor_table sdf_binding_table = gfx_create_descriptor_table(&sdf_root_sig);
     (void) sdf_binding_table;
-#if DISABLE_THIS_CODE_COZ_IM_TESTING
-    gfx_descriptor_table_entry table_entries = {(gfx_descriptor_table_entry){&sdf_scene_texture, &sdf_write_view}};
+    gfx_descriptor_table_entry table_entries[1] = {(gfx_descriptor_table_entry){&sdf_scene_texture, &sdf_write_view}};
     gfx_update_descriptor_table(&sdf_binding_table, table_entries, 1);
+#if DISABLE_THIS_CODE_COZ_IM_TESTING
 #endif
 }
 

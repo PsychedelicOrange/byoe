@@ -398,11 +398,9 @@ typedef enum gfx_compare_op
     GFX_COMPARE_OP_ALWAYS
 } gfx_compare_op;
 
-// TODO: Rename this as gfx_resource_type
 typedef enum gfx_resource_type
 {
     GFX_RESOURCE_TYPE_SAMPLER,
-    GFX_RESOURCE_TYPE_COMBINED_IMAGE_SAMPLER,
     GFX_RESOURCE_TYPE_SAMPLED_IMAGE,
     GFX_RESOURCE_TYPE_STORAGE_IMAGE,
     GFX_RESOURCE_TYPE_UNIFORM_BUFFER,
@@ -542,7 +540,6 @@ typedef struct gfx_resource
 typedef struct gfx_resource_view_desc
 {
     const gfx_resource* resource;
-    gfx_resource_type   type;
     union
     {
         struct
@@ -619,7 +616,7 @@ typedef struct gfx_descriptor_binding
 {
     uint32_t          binding;
     uint32_t          set;
-    gfx_resource_type type;
+    gfx_resource_type type;    // can we remove this from here?
     uint32_t          count;
     gfx_shader_stage  stage_flags;
 } gfx_descriptor_binding;
@@ -656,10 +653,11 @@ typedef struct gfx_descriptor_table
     uint32_t      _pad0;
 } gfx_descriptor_table;
 
-typedef struct gfx_descriptor_table_entry {
-    const gfx_resource*    resource;
+typedef struct gfx_descriptor_table_entry
+{
+    const gfx_resource*      resource;
     const gfx_resource_view* resource_view;
-}gfx_descriptor_table_entry;
+} gfx_descriptor_table_entry;
 
 typedef struct gfx_root_signature
 {

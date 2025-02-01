@@ -302,7 +302,6 @@ static VkDescriptorType vulkan_util_descriptor_type_translate(gfx_resource_type 
 {
     switch (descriptor_type) {
         case GFX_RESOURCE_TYPE_SAMPLER: return VK_DESCRIPTOR_TYPE_SAMPLER;
-        case GFX_RESOURCE_TYPE_COMBINED_IMAGE_SAMPLER: return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         case GFX_RESOURCE_TYPE_SAMPLED_IMAGE: return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
         case GFX_RESOURCE_TYPE_STORAGE_IMAGE: return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
         case GFX_RESOURCE_TYPE_UNIFORM_BUFFER: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -1874,6 +1873,7 @@ void vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_tabl
             .dstSet          = sets[res->set],
             .dstBinding      = res->binding,
             .dstArrayElement = 0,
+            .descriptorType  = (VkDescriptorType) vulkan_util_descriptor_type_translate(res->type),
             .descriptorCount = 1};
 
         switch (res->type) {
@@ -1883,24 +1883,22 @@ void vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_tabl
                     .buffer = (VkBuffer) (res->ubo.backend),
                     .offset = 0,
                     .range  = VK_WHOLE_SIZE};
-                writes[i].descriptorType = (VkDescriptorType) res->type;
-                writes[i].pBufferInfo    = &buffer_info;
+                writes[i].pBufferInfo = &buffer_info;
                 break;
             }
             case GFX_RESOURCE_TYPE_SAMPLER: {
                 VkDescriptorImageInfo sampler_info = {
                     .sampler = (VkSampler) ((sampler_backend*) (res_view->backend))->sampler};
-                writes[i].descriptorType = (VkDescriptorType) res->type;
+                writes[i].descriptorType = (VkDescriptorType) vulkan_util_descriptor_type_translate(res->type);
                 writes[i].pImageInfo     = &sampler_info;
                 break;
             }
             case GFX_RESOURCE_TYPE_SAMPLED_IMAGE:
-            case GFX_RESOURCE_TYPE_STORAGE_IMAGE:
-            case GFX_RESOURCE_TYPE_COMBINED_IMAGE_SAMPLER: {
+            case GFX_RESOURCE_TYPE_STORAGE_IMAGE: {
                 VkDescriptorImageInfo image_info = {
                     .imageView   = (VkImageView) ((tex_resource_view_backend*) (res_view->backend))->view,
                     .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
-                writes[i].descriptorType = (VkDescriptorType) res->type;
+                writes[i].descriptorType = (VkDescriptorType) vulkan_util_descriptor_type_translate(res->type);
                 writes[i].pImageInfo     = &image_info;
                 break;
             }
@@ -1927,6 +1925,7 @@ uint32_t vulkan_internal_find_memory_type(VkPhysicalDevice physical_device, uint
 gfx_resource vulkan_device_create_texture_resource(gfx_texture_create_desc desc)
 {
     gfx_resource resource = {0};
+    resource.type         = GFX_RESOURCE_TYPE_SAMPLED_IMAGE;
     uuid_generate(&resource.texture.uuid);
 
     gfx_texture* texture = &resource.texture;
@@ -2019,6 +2018,7 @@ void vulkan_device_destroy_texture_res_view(gfx_resource_view* view)
 gfx_resource vulkan_device_create_sampler(gfx_sampler_create_desc desc)
 {
     gfx_resource resource = {0};
+    resource.type         = GFX_RESOURCE_TYPE_SAMPLER;
     uuid_generate(&resource.sampler.uuid);
     gfx_sampler* sampler = &resource.sampler;
 
