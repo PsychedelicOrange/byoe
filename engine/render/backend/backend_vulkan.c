@@ -458,16 +458,16 @@ static void format_message(const char* message) {
     } else {
         msg_start = message;
     }
-
-    printf("  ├── Description :\n");
-    printf("  │   %s\n", msg_start);
+              
+    printf("  |-- Description :\n");
+    printf("  |   %s\n", msg_start);
 
     const char* doc_link = strstr(message, "https://");
     if (doc_link) {
-        printf("  ├── Docs Ref    : %s\n", doc_link);
+        printf("  |-- Docs Ref    : %s\n", doc_link);
     }
 
-    printf("  └──────────────────────────────────────────────────\n");
+    printf("  |-----------------------------------------\n");
 }
 
 static VkBool32 vulkan_backend_debug_callback(
@@ -506,13 +506,13 @@ static VkBool32 vulkan_backend_debug_callback(
     }
 
     printf("\n%s[ %s | %s ]%s\n", color, severity_str, type_str, reset);
-    printf("  ├── Message ID  : 0x%08X\n", pCallbackData->messageIdNumber);
-    printf("  ├── Message Name: %s\n", pCallbackData->pMessageIdName);
+    printf("  |-- Message ID  : 0x%08X\n", pCallbackData->messageIdNumber);
+    printf("  |-- Message Name: %s\n", pCallbackData->pMessageIdName);
 
     if (pCallbackData->objectCount > 0) {
-        printf("  ├── Objects Involved:\n");
+        printf("  |-- Objects Involved:\n");
         for (uint32_t i = 0; i < pCallbackData->objectCount; i++) {
-            printf("  │   ├── Handle: 0x%llu | Type: %s\n",
+            printf("  |   |-- Handle: 0x%llu | Type: %s\n",
                    pCallbackData->pObjects[i].objectHandle,
                    vk_object_type_to_string(pCallbackData->pObjects[i].objectType));
         }
