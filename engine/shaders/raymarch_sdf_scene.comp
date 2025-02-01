@@ -638,11 +638,11 @@ hit_info raymarch(Ray ray) {
 
 ////////////////////////////////////////////////////////////////////////////////////////
 // Main
-layout(local_size_x = 64, local_size_y = 64) in;
+layout(local_size_x = 32, local_size_y = 32) in;
 
 void main() {
-    //ivec2 uv = ivec2(gl_GlobalInvocationID.xy) / pc_data.resolution;
-    //imageStore(outColorRenderTarget, ivec2(gl_GlobalInvocationID.xy), vec4(uv, 0.0f, 1.0f));
+    ivec2 uv = ivec2(gl_GlobalInvocationID.xy) / ivec2(800, 600);
+    imageStore(outColorRenderTarget, ivec2(gl_GlobalInvocationID.xy), vec4(uv, 0.0f, 1.0f));
     return;
 
 

@@ -76,7 +76,12 @@ int gfx_init(rhi_api api)
         rhi_bind_gfx_pipeline     = vulkan_bind_gfx_pipeline;
         rhi_bind_compute_pipeline = vulkan_bind_compute_pipeline;
 
-        rhi_draw = vulkan_draw;
+        rhi_bind_root_signature   = vulkan_device_bind_root_signature;
+        rhi_bind_descriptor_table = vulkan_device_bind_descriptor_table;
+        rhi_bind_push_constants   = vulkan_device_bind_push_constants;
+
+        rhi_draw     = vulkan_draw;
+        rhi_dispatch = vulkan_dispatch;
     }
 
     return Success;

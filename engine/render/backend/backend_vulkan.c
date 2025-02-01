@@ -181,6 +181,7 @@ typedef struct context_backend
     VkExtensionProperties*           supported_extensions;
     queue_indices                    queue_idxs;
     queue_backend                    queues;
+    cmd_pool_backend                 single_time_cmd_pool;
 } context_backend;
 
 static context_backend s_VkCtx;
@@ -331,7 +332,7 @@ static VkShaderStageFlagBits vulkan_util_shader_stage_bits(gfx_shader_stage shad
     }
 }
 
-VkImageType vulkan_util_texture_image_type_translate(gfx_texture_type type)
+static VkImageType vulkan_util_texture_image_type_translate(gfx_texture_type type)
 {
     switch (type) {
         case GFX_TEXTURE_TYPE_1D: return VK_IMAGE_TYPE_1D;
@@ -343,7 +344,7 @@ VkImageType vulkan_util_texture_image_type_translate(gfx_texture_type type)
     }
 }
 
-VkImageViewType vulkan_util_texture_view_type_translate(gfx_texture_type type)
+static VkImageViewType vulkan_util_texture_view_type_translate(gfx_texture_type type)
 {
     switch (type) {
         case GFX_TEXTURE_TYPE_1D: return VK_IMAGE_VIEW_TYPE_1D;
@@ -355,7 +356,7 @@ VkImageViewType vulkan_util_texture_view_type_translate(gfx_texture_type type)
     }
 }
 
-VkFilter vulkan_util_filter_translate(gfx_filter_mode filter)
+static VkFilter vulkan_util_filter_translate(gfx_filter_mode filter)
 {
     switch (filter) {
         case GFX_FILTER_MODE_NEAREST: return VK_FILTER_NEAREST;
@@ -364,7 +365,7 @@ VkFilter vulkan_util_filter_translate(gfx_filter_mode filter)
     }
 }
 
-VkSamplerAddressMode vulkan_util_sampler_address_mode_translate(gfx_wrap_mode mode)
+static VkSamplerAddressMode vulkan_util_sampler_address_mode_translate(gfx_wrap_mode mode)
 {
     switch (mode) {
         case GFX_WRAP_MODE_REPEAT: return VK_SAMPLER_ADDRESS_MODE_REPEAT;
@@ -372,6 +373,15 @@ VkSamplerAddressMode vulkan_util_sampler_address_mode_translate(gfx_wrap_mode mo
         case GFX_WRAP_MODE_CLAMP_TO_EDGE: return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
         case GFX_WRAP_MODE_CLAMP_TO_BORDER: return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
         default: return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    }
+}
+
+static VkPipelineBindPoint vulkan_util_pipeline_type_bindpoint_translate(gfx_pipeline_type pipeline_type)
+{
+    switch (pipeline_type) {
+        case GFX_PIPELINE_TYPE_GRAPHICS: return VK_PIPELINE_BIND_POINT_GRAPHICS;
+        case GFX_PIPELINE_TYPE_COMPUTE: return VK_PIPELINE_BIND_POINT_COMPUTE;
+        default: return VK_PIPELINE_BIND_POINT_GRAPHICS;
     }
 }
 
@@ -537,6 +547,135 @@ static void vulkan_internal_cmd_end_rendering(VkCommandBuffer commandBuffer)
         func(commandBuffer);
     else
         LOG_ERROR("VkCmdEndRenderingKHR Function not found");
+}
+
+static void vulkan_device_transition_image_layout(
+    const gfx_cmd_buf*   cmd_buf,
+    VkImage              image,
+    VkImageLayout        old_layout,
+    VkImageLayout        new_layout,
+    VkPipelineStageFlags src_stage,
+    VkPipelineStageFlags dst_stage)
+{
+    VkCommandBuffer vk_cmd_buf = *(VkCommandBuffer*) cmd_buf->backend;
+
+    VkImageMemoryBarrier barrier = {0};
+    barrier.sType                = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrier.oldLayout            = old_layout;
+    barrier.newLayout            = new_layout;
+    barrier.srcQueueFamilyIndex  = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex  = VK_QUEUE_FAMILY_IGNORED;
+    barrier.image                = image;
+
+    if (new_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
+        barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+    } else {
+        barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    }
+
+    barrier.subresourceRange.baseMipLevel   = 0;
+    barrier.subresourceRange.levelCount     = 1;
+    barrier.subresourceRange.baseArrayLayer = 0;
+    barrier.subresourceRange.layerCount     = 1;
+
+    VkAccessFlags src_access_mask = 0;
+    VkAccessFlags dst_access_mask = 0;
+
+    switch (old_layout) {
+        case VK_IMAGE_LAYOUT_UNDEFINED:
+            src_access_mask = 0;
+            break;
+        case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+            src_access_mask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            break;
+        case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
+            src_access_mask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            break;
+        case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
+            src_access_mask = VK_ACCESS_SHADER_READ_BIT;
+            break;
+        default:
+            break;
+    }
+
+    switch (new_layout) {
+        case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
+            dst_access_mask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            break;
+        case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
+            dst_access_mask = VK_ACCESS_TRANSFER_READ_BIT;
+            break;
+        case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+            dst_access_mask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            break;
+        case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
+            dst_access_mask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+            break;
+        case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
+            if (src_access_mask == 0) {
+                src_access_mask = VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
+            }
+            dst_access_mask = VK_ACCESS_SHADER_READ_BIT;
+            break;
+        default:
+            break;
+    }
+
+    barrier.srcAccessMask = src_access_mask;
+    barrier.dstAccessMask = dst_access_mask;
+
+    vkCmdPipelineBarrier(
+        vk_cmd_buf,
+        src_stage,
+        dst_stage,
+        0,
+        0,
+        NULL,
+        0,
+        NULL,
+        1,
+        &barrier);
+}
+
+static gfx_cmd_buf vulkan_create_single_time_command_buffer()
+{
+    VkCommandBufferAllocateInfo alloc_info = {
+        .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .commandPool        = s_VkCtx.single_time_cmd_pool.pool,
+        .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = 1};
+
+    gfx_cmd_buf cmd_buf = {0};
+    uuid_generate(&cmd_buf.uuid);
+    cmd_buf.backend = malloc(sizeof(VkCommandBuffer));
+
+    VK_CHECK_RESULT(vkAllocateCommandBuffers(VKDEVICE, &alloc_info, cmd_buf.backend), "[Vulkan] Failed to allocate single-time command buffer");
+    VkCommandBufferBeginInfo begin_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT};
+
+    vkBeginCommandBuffer(*(VkCommandBuffer*) (cmd_buf.backend), &begin_info);
+    return cmd_buf;
+}
+
+static void vulkan_destroy_single_time_command_buffer(gfx_cmd_buf* cmd_buf)
+{
+    VkCommandBuffer vk_cmd_buf = *(VkCommandBuffer*) (cmd_buf->backend);
+
+    vkEndCommandBuffer(vk_cmd_buf);
+
+    VkSubmitInfo submit_info = {
+        .sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .commandBufferCount = 1,
+        .pCommandBuffers    = &vk_cmd_buf};
+
+    vkQueueSubmit(s_VkCtx.queues.gfx, 1, &submit_info, VK_NULL_HANDLE);
+    vkDeviceWaitIdle(VKDEVICE);
+
+    vkFreeCommandBuffers(VKDEVICE, s_VkCtx.single_time_cmd_pool.pool, 1, &vk_cmd_buf);
+
+    uuid_destroy(&cmd_buf->uuid);
+    free(cmd_buf->backend);
 }
 
 //--------------------------------------------------------
@@ -917,6 +1056,12 @@ gfx_context vulkan_ctx_init(GLFWwindow* window, uint32_t width, uint32_t height)
         return ctx;
 
     s_VkCtx.queues = vulkan_internal_create_queues(s_VkCtx.queue_idxs);
+
+    VkCommandPoolCreateInfo cmdPoolCI = {0};
+    cmdPoolCI.sType                   = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    cmdPoolCI.queueFamilyIndex        = s_VkCtx.queue_idxs.gfx;    // same as present
+    cmdPoolCI.flags                   = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    VK_CHECK_RESULT(vkCreateCommandPool(VKDEVICE, &cmdPoolCI, NULL, &s_VkCtx.single_time_cmd_pool.pool), "Cannot create single time gfx command pool");
 
     uuid_generate(&ctx.uuid);
     ctx.backend = &s_VkCtx;
@@ -1494,8 +1639,21 @@ static gfx_pipeline vulkan_internal_create_compute_pipeline(gfx_pipeline_create_
     gfx_pipeline pipeline = {0};
     uuid_generate(&pipeline.uuid);
 
-    (void) info;
+    pipeline_backend* backend = malloc(sizeof(pipeline_backend));
+    memset(backend, 0, sizeof(pipeline_backend));
 
+    shader_backend* cs_backend = (shader_backend*) info.shader.stages.CS;
+
+    VkComputePipelineCreateInfo computePipelineCI = {
+        .sType  = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+        .layout = *((VkPipelineLayout*) (info.root_sig.backend)),
+        .flags  = 0,
+        .stage  = cs_backend->stage_ci,
+    };
+
+    VK_CHECK_RESULT(vkCreateComputePipelines(VKDEVICE, VK_NULL_HANDLE, 1, &computePipelineCI, NULL, &backend->pipeline), "[Vulkan] Cannot create compute graphics pipeline");
+
+    pipeline.backend = backend;
     return pipeline;
 }
 
@@ -1505,6 +1663,9 @@ static gfx_pipeline vulkan_internal_create_gfx_pipeline(gfx_pipeline_create_info
 {
     gfx_pipeline pipeline = {0};
     uuid_generate(&pipeline.uuid);
+
+    pipeline_backend* backend = malloc(sizeof(pipeline_backend));
+    memset(backend, 0, sizeof(pipeline_backend));
 
     //----------------------------
     // Vertex Input Layout Stage
@@ -1665,9 +1826,6 @@ static gfx_pipeline vulkan_internal_create_gfx_pipeline(gfx_pipeline_create_info
         shader_backend* ps_backend = (shader_backend*) info.shader.stages.PS;
         stages[current_stage++]    = ps_backend->stage_ci;
     }
-
-    pipeline_backend* backend = malloc(sizeof(pipeline_backend));
-    memset(backend, 0, sizeof(pipeline_backend));
 
     VkGraphicsPipelineCreateInfo graphics_pipeline_ci = {
         .sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
@@ -1889,17 +2047,21 @@ void vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_tabl
             case GFX_RESOURCE_TYPE_SAMPLER: {
                 VkDescriptorImageInfo sampler_info = {
                     .sampler = (VkSampler) ((sampler_backend*) (res_view->backend))->sampler};
-                writes[i].descriptorType = (VkDescriptorType) vulkan_util_descriptor_type_translate(res->type);
-                writes[i].pImageInfo     = &sampler_info;
+                writes[i].pImageInfo = &sampler_info;
                 break;
             }
-            case GFX_RESOURCE_TYPE_SAMPLED_IMAGE:
             case GFX_RESOURCE_TYPE_STORAGE_IMAGE: {
+                VkDescriptorImageInfo storage_image_info = {
+                    .imageView   = (VkImageView) ((tex_resource_view_backend*) (res_view->backend))->view,
+                    .imageLayout = VK_IMAGE_LAYOUT_GENERAL};
+                writes[i].pImageInfo = &storage_image_info;
+                break;
+            }
+            case GFX_RESOURCE_TYPE_SAMPLED_IMAGE: {
                 VkDescriptorImageInfo image_info = {
                     .imageView   = (VkImageView) ((tex_resource_view_backend*) (res_view->backend))->view,
                     .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
-                writes[i].descriptorType = (VkDescriptorType) vulkan_util_descriptor_type_translate(res->type);
-                writes[i].pImageInfo     = &image_info;
+                writes[i].pImageInfo = &image_info;
                 break;
             }
             default:
@@ -1925,7 +2087,7 @@ uint32_t vulkan_internal_find_memory_type(VkPhysicalDevice physical_device, uint
 gfx_resource vulkan_device_create_texture_resource(gfx_texture_create_desc desc)
 {
     gfx_resource resource = {0};
-    resource.type         = GFX_RESOURCE_TYPE_SAMPLED_IMAGE;
+    resource.type         = desc.res_type;
     uuid_generate(&resource.texture.uuid);
 
     gfx_texture* texture = &resource.texture;
@@ -1937,17 +2099,20 @@ gfx_resource vulkan_device_create_texture_resource(gfx_texture_create_desc desc)
         .sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .pNext         = NULL,
         .flags         = 0,
-        .imageType     = vulkan_util_texture_image_type_translate(desc.type),
+        .imageType     = vulkan_util_texture_image_type_translate(desc.tex_type),
         .format        = vulkan_util_format_translate(desc.format),
         .extent        = {desc.width, desc.height, desc.depth},
         .mipLevels     = 1,    // Note: No MIPS!
-        .arrayLayers   = (desc.type == GFX_TEXTURE_TYPE_CUBEMAP) ? 6 : 1,
+        .arrayLayers   = (desc.tex_type == GFX_TEXTURE_TYPE_CUBEMAP) ? 6 : 1,
         .samples       = VK_SAMPLE_COUNT_1_BIT,
         .tiling        = VK_IMAGE_TILING_OPTIMAL,
         .usage         = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
         .sharingMode   = VK_SHARING_MODE_EXCLUSIVE,
         .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
     };
+
+    if (resource.type == GFX_RESOURCE_TYPE_STORAGE_IMAGE)
+        image_info.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
 
     VK_CHECK_RESULT(vkCreateImage(VKDEVICE, &image_info, NULL, &backend->image), "[Vulkan] cannot create VkImage");
 
@@ -2082,6 +2247,8 @@ gfx_frame_sync* vulkan_frame_begin(gfx_context* context)
 
 rhi_error_codes vulkan_begin_render_pass(const gfx_cmd_buf* cmd_buf, gfx_render_pass render_pass, uint32_t backbuffer_index)
 {
+    if (render_pass.is_compute_pass) return Success;
+
     VkRenderingAttachmentInfo color_attachments[MAX_RT] = {0};
 
     if (render_pass.is_swap_pass) render_pass.color_attachments_count = 1;
@@ -2132,9 +2299,10 @@ rhi_error_codes vulkan_begin_render_pass(const gfx_cmd_buf* cmd_buf, gfx_render_
     return Success;
 }
 
-rhi_error_codes vulkan_end_render_pass(const gfx_cmd_buf* cmd_buf)
+rhi_error_codes vulkan_end_render_pass(const gfx_cmd_buf* cmd_buf, gfx_render_pass render_pass)
 {
-    vulkan_internal_cmd_end_rendering(*(VkCommandBuffer*) cmd_buf->backend);
+    if (!render_pass.is_compute_pass)
+        vulkan_internal_cmd_end_rendering(*(VkCommandBuffer*) cmd_buf->backend);
     return Success;
 }
 
@@ -2309,8 +2477,40 @@ rhi_error_codes vulkan_bind_compute_pipeline(const gfx_cmd_buf* cmd_buf, gfx_pip
     return Success;
 }
 
+rhi_error_codes vulkan_device_bind_root_signature(const gfx_cmd_buf* cmd_buf, const gfx_root_signature* root_signature)
+{
+    (void) cmd_buf;
+    (void) root_signature;
+    return Success;
+}
+
+rhi_error_codes vulkan_device_bind_descriptor_table(const gfx_cmd_buf* cmd_buf, const gfx_descriptor_table* descriptor_table, gfx_pipeline_type pipeline_type)
+{
+    VkCommandBuffer           commandBuffer = *(VkCommandBuffer*) cmd_buf->backend;
+    descriptor_table_backend* backend       = descriptor_table->backend;
+    vkCmdBindDescriptorSets(commandBuffer, vulkan_util_pipeline_type_bindpoint_translate(pipeline_type), backend->pipeline_layout_ref_handle, 0, backend->num_sets, backend->sets, 0, NULL);
+    return Success;
+}
+
+rhi_error_codes vulkan_device_bind_push_constants(const gfx_cmd_buf* cmd_buf, gfx_root_signature* root_sig, gfx_push_constant* push_constants, uint32_t num_push_constants)
+{
+    (void) cmd_buf;
+    (void) root_sig;
+    (void) push_constants;
+    (void) num_push_constants;
+    //VkCommandBuffer commandBuffer = *(VkCommandBuffer*) cmd_buf->backend;
+    //vkCmdPushConstants(commandBuffer, );
+    return Success;
+}
+
 rhi_error_codes vulkan_draw(const gfx_cmd_buf* cmd_buf, uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance)
 {
     vkCmdDraw(*(VkCommandBuffer*) cmd_buf->backend, vertex_count, instance_count, first_vertex, first_instance);
+    return Success;
+}
+
+rhi_error_codes vulkan_dispatch(const gfx_cmd_buf* cmd_buf, uint32_t dimX, uint32_t dimY, uint32_t dimZ)
+{
+    vkCmdDispatch(*(VkCommandBuffer*) cmd_buf->backend, dimX, dimY, dimZ);
     return Success;
 }

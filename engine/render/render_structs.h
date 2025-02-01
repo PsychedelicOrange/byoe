@@ -20,6 +20,8 @@
 #define EPSILON      0.01
 
 #define MAX_GPU_STACK_SIZE 32
+
+#define DISPATCH_LOCAL_DIM 32
 //-----------------------------
 
 // Docs: https://github.com/PsychedelicOrange/byoe/pull/10
@@ -499,7 +501,8 @@ typedef struct gfx_texture_create_desc
     uint32_t         height;
     uint32_t         depth;
     gfx_format       format;
-    gfx_texture_type type;
+    gfx_texture_type tex_type;
+    gfx_resource_type res_type;
 } gfx_texture_create_desc;
 
 typedef struct gfx_texture
@@ -564,7 +567,6 @@ typedef struct gfx_resource_view
 {
     random_uuid_t       uuid;
     const gfx_resource* resource;
-    gfx_resource_type   type;
     void*               backend;
 } gfx_resource_view;
 
