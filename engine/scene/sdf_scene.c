@@ -75,41 +75,4 @@ void sdf_scene_upload_scene_nodes_to_gpu(const SDF_Scene* scene)
 {
     if (!scene)
         return;
-
-    glBindBuffer(GL_UNIFORM_BUFFER, s_GPUSceneNodesUBO);
-    for (uint32_t i = 0; i < scene->current_node_head; ++i) {
-        SDF_Node node = scene->nodes[i];
-
-        // if (!node.is_dirty)
-        //     return;
-
-        scene->nodes[i].is_dirty = false;
-
-        SDF_NodeGPUData data;
-        memset(&data, 0, sizeof(SDF_NodeGPUData));
-
-        data.nodeType = node.type;
-        if (node.type == SDF_NODE_PRIMITIVE) {
-            data.primType = node.primitive.type;
-
-            mat4s transform = create_transform_matrix(node.primitive.transform.position.raw, node.primitive.transform.rotation, (vec3) {1.0f, 1.0f, 1.0f});
-            data.transform  = transform;
-            data.scale      = node.primitive.transform.scale;
-
-            glm_vec4_copy(node.primitive.props.packed_data[0].raw, data.packed_params[0].raw);
-            glm_vec4_copy(node.primitive.props.packed_data[1].raw, data.packed_params[1].raw);
-
-            data.material = node.primitive.material;
-        } else {
-            data.blend  = node.object.type;
-            data.prim_a = node.object.prim_a;
-            data.prim_b = node.object.prim_b;
-
-            mat4s transform = create_transform_matrix(node.object.transform.position.raw, node.object.transform.rotation, (vec3) {1.0f, 1.0f, 1.0f});
-            data.transform  = transform;
-            data.scale      = node.object.transform.scale;
-        }
-
-        glBufferSubData(GL_UNIFORM_BUFFER, i * sizeof(SDF_NodeGPUData), sizeof(SDF_NodeGPUData), &data);
-    }
 }

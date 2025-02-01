@@ -295,22 +295,7 @@ void renderer_sdf_render(void)
 
     // Scene Culling is done before any rendering begins (might move it to update part of engine loop)
 
-    gfx_frame_sync* frame_sync = rhi_frame_begin(&s_RendererSDFInternalState.gfxcontext);
-    {
-        gfx_cmd_buf* cmd_buff = &s_RendererSDFInternalState.gfxcontext.draw_cmds[s_RendererSDFInternalState.gfxcontext.frame_idx];
-
-        rhi_begin_gfx_cmd_recording(cmd_buff);
-
-        renderer_internal_scene_draw_pass(cmd_buff);
-
-        renderer_internal_sdf_clear_screen_pass(cmd_buff);
-
-        rhi_end_gfx_cmd_recording(cmd_buff);
-
-        rhi_gfx_cmd_enque_submit(&s_RendererSDFInternalState.gfxcontext.cmd_queue, cmd_buff);
-        rhi_gfx_cmd_submit_queue(&s_RendererSDFInternalState.gfxcontext.cmd_queue, frame_sync);
-    }
-    rhi_frame_end(&s_RendererSDFInternalState.gfxcontext);
+    renderer_sdf_draw_scene(s_RendererSDFInternalState.scene);
 
     glfwPollEvents();
 }
@@ -332,7 +317,22 @@ void renderer_sdf_draw_scene(const SDF_Scene* scene)
 
     sdf_scene_upload_scene_nodes_to_gpu(s_RendererSDFInternalState.scene);
 
-    // rhi_draw here
+    gfx_frame_sync* frame_sync = rhi_frame_begin(&s_RendererSDFInternalState.gfxcontext);
+    {
+        gfx_cmd_buf* cmd_buff = &s_RendererSDFInternalState.gfxcontext.draw_cmds[s_RendererSDFInternalState.gfxcontext.frame_idx];
+
+        rhi_begin_gfx_cmd_recording(cmd_buff);
+
+        renderer_internal_scene_draw_pass(cmd_buff);
+
+        renderer_internal_sdf_clear_screen_pass(cmd_buff);
+
+        rhi_end_gfx_cmd_recording(cmd_buff);
+
+        rhi_gfx_cmd_enque_submit(&s_RendererSDFInternalState.gfxcontext.cmd_queue, cmd_buff);
+        rhi_gfx_cmd_submit_queue(&s_RendererSDFInternalState.gfxcontext.cmd_queue, frame_sync);
+    }
+    rhi_frame_end(&s_RendererSDFInternalState.gfxcontext);
 }
 
 void renderer_sdf_set_capture_swapchain_ready(void)
