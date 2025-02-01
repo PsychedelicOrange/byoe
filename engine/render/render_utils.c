@@ -31,10 +31,6 @@ void render_utils_crash_game(char* msg)
 GLFWwindow* render_utils_create_glfw_window(const char* title, uint32_t width, uint32_t height)
 {
     GLFWwindow* window = glfwCreateWindow(width, height, title, NULL, NULL);
-    if (window == NULL) {
-        render_utils_crash_game("Unable to create glfw window");
-        glfwTerminate();
-    }
     glfwMakeContextCurrent(window);
     if (glfwRawMouseMotionSupported())
         glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);

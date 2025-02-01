@@ -45,15 +45,15 @@ DEFINE_CLAMP(int)
 //      - [x] pipeline API
 //      - [x] draw API
 // - [x] Descriptors API + pipeline layout handling etc.
-// - [ ] Texture API for binding the r/w texture to composition pass
+// - [x] Texture API for binding the r/w texture to composition pass
 //      - [x] basic API to create types of textures
 //      - [x] resource view creation API --> VkImageView(s)
 //      - [x] sampler API
-//      - [x] create a 2D RW texture resource/view/sampler and attach it to a CS using descriptors API and check on renderdoc
+//      - [x] create a 2D RW texture resource/view/sampler and attach it to a CS using descriptors API and check on render doc
 //      - [x] fix any issues with the descriptor API
-//      - [ ] bind this to the screen_quad pass
-// - [x] Single time command buffers
-// - [x] Barriers (image memory) and Transition layout API
+//      - [x] bind this to the screen_quad pass
+// - [P] Single time command buffers
+// - [P] Barriers (image memory) and Transition layout API
 // - [ ] UBOs + Push constants API + setup descriptor sets for the resources x2
 //      - [ ] UBO resource API
 //      - [ ] hook this up with resource views and descriptor table API
@@ -61,6 +61,7 @@ DEFINE_CLAMP(int)
 // - [ ] CS dispatch -> SDF raymarching shader
 //      - [ ] bring descriptors, resource and views and rhi binding APIs together
 //      - [ ] Debug, Test and Fix Issues
+// - [ ] IMPORTANT!!! Texture read back for tests
 // ----------------------> renderer_backend Draft-1
 // Draft-2 Goals: resource memory pool RAAI kinda simulation + backend* design consistency using macros + MSAA
 
@@ -2015,36 +2016,33 @@ void vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_tabl
                     .offset = 0,
                     .range  = VK_WHOLE_SIZE};
                 writes[i].pBufferInfo = &buffer_info;
-                break;
-            }
+            } break;
             case GFX_RESOURCE_TYPE_SAMPLER: {
                 VkDescriptorImageInfo sampler_info = {
                     .sampler = (VkSampler) ((sampler_backend*) (res_view->backend))->sampler};
                 writes[i].pImageInfo = &sampler_info;
-                break;
-            }
+            } break;
             case GFX_RESOURCE_TYPE_STORAGE_IMAGE: {
                 VkDescriptorImageInfo storage_image_info = {
                     .imageView   = (VkImageView) ((tex_resource_view_backend*) (res_view->backend))->view,
                     .imageLayout = VK_IMAGE_LAYOUT_GENERAL};
                 writes[i].pImageInfo = &storage_image_info;
-                break;
-            }
+            } break;
             case GFX_RESOURCE_TYPE_SAMPLED_IMAGE: {
                 VkDescriptorImageInfo image_info = {
                     .imageView   = (VkImageView) ((tex_resource_view_backend*) (res_view->backend))->view,
                     .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
                 writes[i].pImageInfo = &image_info;
-                break;
-            }
+            } break;
             default:
+                LOG_ERROR("[Vulkan] unknow resource type!");
                 break;
         }
     }
     vkUpdateDescriptorSets(VKDEVICE, num_entries, writes, 0, NULL);
 }
 
-uint32_t vulkan_internal_find_memory_type(VkPhysicalDevice physical_device, uint32_t type_filter, VkMemoryPropertyFlags properties)
+static uint32_t vulkan_internal_find_memory_type(VkPhysicalDevice physical_device, uint32_t type_filter, VkMemoryPropertyFlags properties)
 {
     VkPhysicalDeviceMemoryProperties memory_properties;
     vkGetPhysicalDeviceMemoryProperties(physical_device, &memory_properties);
