@@ -49,11 +49,11 @@ DEFINE_CLAMP(int)
 //      - [x] basic API to create types of textures
 //      - [x] resource view creation API --> VkImageView(s)
 //      - [x] sampler API
-//      - [ ] create a 2D RW texture resource/view/sampler and attach it to a CS using descriptors API and check on renderdoc
-//      - [ ] fix any issues with the descriptor API
+//      - [x] create a 2D RW texture resource/view/sampler and attach it to a CS using descriptors API and check on renderdoc
+//      - [x] fix any issues with the descriptor API
 //      - [ ] bind this to the screen_quad pass
-// - [ ] Single time command buffers
-// - [ ] Barriers (image memory) and Transition layout API
+// - [x] Single time command buffers
+// - [x] Barriers (image memory) and Transition layout API
 // - [ ] UBOs + Push constants API + setup descriptor sets for the resources x2
 //      - [ ] UBO resource API
 //      - [ ] hook this up with resource views and descriptor table API
@@ -1076,6 +1076,7 @@ void vulkan_ctx_destroy(gfx_context* ctx)
 
     free(s_VkCtx.supported_extensions);
 
+    vkDestroyCommandPool(VKDEVICE, s_VkCtx.single_time_cmd_pool.pool, NULL);
     vkDestroySurfaceKHR(VKINSTANCE, s_VkCtx.surface, NULL);
     vkDestroyDevice(s_VkCtx.logical_device, NULL);
     vulkan_internal_destroy_debug_utils_messenger(VKINSTANCE, s_VkCtx.debug_messenger, NULL);
@@ -1185,40 +1186,9 @@ static void vulkan_internal_destroy_backbuffers(swapchain_backend* backend)
     }
 }
 
-static void vulkan_internal_transition_image_layout_with_command_buffer(VkDevice device, VkQueue queue, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout)
+static void vulkan_transition_image_layout(const gfx_cmd_buf* cmd_buffer, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout)
 {
-    VkCommandPool           commandPool;
-    VkCommandPoolCreateInfo poolInfo = {
-        .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-        .flags            = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
-        .queueFamilyIndex = s_VkCtx.queue_idxs.gfx,
-    };
-
-    if (vkCreateCommandPool(device, &poolInfo, NULL, &commandPool) != VK_SUCCESS) {
-        fprintf(stderr, "Failed to create temporary command pool\n");
-        return;
-    }
-
-    VkCommandBuffer             commandBuffer;
-    VkCommandBufferAllocateInfo allocInfo = {
-        .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-        .commandPool        = commandPool,
-        .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-        .commandBufferCount = 1,
-    };
-
-    if (vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer) != VK_SUCCESS) {
-        fprintf(stderr, "Failed to allocate temporary command buffer\n");
-        vkDestroyCommandPool(device, commandPool, NULL);
-        return;
-    }
-
-    VkCommandBufferBeginInfo beginInfo = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-    };
-
-    vkBeginCommandBuffer(commandBuffer, &beginInfo);
+    VkCommandBuffer vkCmdBuffer = *(VkCommandBuffer*) cmd_buffer->backend;
 
     VkImageMemoryBarrier barrier = {
         .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
@@ -1228,24 +1198,40 @@ static void vulkan_internal_transition_image_layout_with_command_buffer(VkDevice
         .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         .image               = image,
         .subresourceRange    = {
-               .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+               .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,    // TODO: Handle depth image too
                .baseMipLevel   = 0,
-               .levelCount     = 1,
+               .levelCount     = VK_REMAINING_MIP_LEVELS,
                .baseArrayLayer = 0,
-               .layerCount     = 1,
+               .layerCount     = VK_REMAINING_ARRAY_LAYERS,
         },
         .srcAccessMask = 0,
         .dstAccessMask = 0,
     };
 
-    VkPipelineStageFlags sourceStage;
-    VkPipelineStageFlags destinationStage;
+    VkPipelineStageFlags sourceStage      = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+    VkPipelineStageFlags destinationStage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
 
-    if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
+    if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_GENERAL) {
         barrier.srcAccessMask = 0;
-        barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
         sourceStage           = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-        destinationStage      = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        destinationStage      = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    } else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+        barrier.srcAccessMask = 0;
+        barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        sourceStage           = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+        destinationStage      = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    } else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        sourceStage           = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        destinationStage      = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    } else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
+        barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+        barrier.srcAccessMask               = 0;
+        barrier.dstAccessMask               = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        sourceStage                         = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+        destinationStage                    = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
     } else if (oldLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
         barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
         barrier.dstAccessMask = 0;
@@ -1257,13 +1243,12 @@ static void vulkan_internal_transition_image_layout_with_command_buffer(VkDevice
         sourceStage           = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
         destinationStage      = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
     } else {
-        LOG_ERROR("Unsupported layout transition");
-        vkDestroyCommandPool(device, commandPool, NULL);
+        LOG_ERROR("Unsupported image layout transition!");
         return;
     }
 
     vkCmdPipelineBarrier(
-        commandBuffer,
+        vkCmdBuffer,
         sourceStage,
         destinationStage,
         0,
@@ -1273,20 +1258,6 @@ static void vulkan_internal_transition_image_layout_with_command_buffer(VkDevice
         NULL,
         1,
         &barrier);
-
-    vkEndCommandBuffer(commandBuffer);
-
-    VkSubmitInfo submitInfo = {
-        .sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-        .commandBufferCount = 1,
-        .pCommandBuffers    = &commandBuffer,
-    };
-
-    vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
-    vkQueueWaitIdle(queue);
-
-    vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
-    vkDestroyCommandPool(device, commandPool, NULL);
 }
 
 gfx_swapchain vulkan_device_create_swapchain(uint32_t width, uint32_t height)
@@ -1342,7 +1313,9 @@ gfx_swapchain vulkan_device_create_swapchain(uint32_t width, uint32_t height)
     vulkan_internal_retrieve_swap_image_views(backend);
 
     for (uint32_t i = 0; i < MAX_BACKBUFFERS; i++) {
-        vulkan_internal_transition_image_layout_with_command_buffer(VKDEVICE, s_VkCtx.queues.gfx, backend->backbuffers[i], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+        gfx_cmd_buf cmd_buff = vulkan_create_single_time_command_buffer();
+        vulkan_transition_image_layout(&cmd_buff, backend->backbuffers[i], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+        vulkan_destroy_single_time_command_buffer(&cmd_buff);
     }
 
     return swapchain;
@@ -2126,6 +2099,14 @@ gfx_resource vulkan_device_create_texture_resource(gfx_texture_create_desc desc)
 
     VK_CHECK_RESULT(vkAllocateMemory(VKDEVICE, &alloc_info, NULL, &backend->memory), "[Vulkan] cannot allocate memory for image");
     vkBindImageMemory(VKDEVICE, backend->image, backend->memory, 0);
+
+    // transition layout
+    gfx_cmd_buf cmd_buff = vulkan_create_single_time_command_buffer();
+    {
+        vulkan_transition_image_layout(&cmd_buff, backend->image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+    }
+    vulkan_destroy_single_time_command_buffer(&cmd_buff);
+
     return resource;
 }
 

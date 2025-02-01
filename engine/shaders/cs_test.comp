@@ -12,7 +12,7 @@
 //}pc_data;
 ////////////////////////////////////////////////////////////////////////////////////////
 // RW Resources
-layout(binding = 0, set = 0, rgba16f) writeonly uniform image2D outColorRenderTarget;
+layout(binding = 0, set = 0, rgba32f) writeonly uniform image2D outColorRenderTarget;
 //layout(binding = 1, set = 0, r32f) writeonly uniform image2D outDepthRenderTarget;
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -20,7 +20,7 @@ layout(binding = 0, set = 0, rgba16f) writeonly uniform image2D outColorRenderTa
 layout(local_size_x = 32, local_size_y = 32) in;
 
 void main() {
-    ivec2 uv = ivec2(gl_GlobalInvocationID.xy) / ivec2(800, 600);
-    imageStore(outColorRenderTarget, ivec2(gl_GlobalInvocationID.xy), vec4(uv, 0.0f, 1.0f));
+    vec2 uv = vec2(gl_GlobalInvocationID.xy) / vec2(800.0f, 600.0f);
+    imageStore(outColorRenderTarget, ivec2(gl_GlobalInvocationID.xy), vec4(uv, 1.0f, 1.0f));
     return;
 }
