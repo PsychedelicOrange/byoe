@@ -55,6 +55,7 @@ DEFINE_CLAMP(int)
 // - [x] Single time command buffers
 // - [x] Transition layout API
 // - [ ] UBOs + Push constants API + setup descriptor sets for the resources x2
+//      - [x] push constants
 //      - [ ] UBO resource API
 //      - [ ] hook this up with resource views and descriptor table API
 //      - [ ] use above API to bind Push Constant and UBO to upload SDF_NodeGPUData and curr_node_draw_idx
