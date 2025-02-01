@@ -645,6 +645,7 @@ void main() {
     imageStore(outColorRenderTarget, ivec2(gl_GlobalInvocationID.xy), vec4(uv, 0.0f, 1.0f));
     return;
 
+    // convert UV to -1, +1 NDC
     //vec4 position = vec4(aPos, 0.0, 1.0);
     //vec4 clipPos = viewproj * position;  
     //
