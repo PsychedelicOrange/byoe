@@ -21,7 +21,7 @@
 
 typedef struct SDFPushConstant
 {
-    mat4  view_proj;
+    mat4s view_proj;
     ivec2 resolution;
     ivec2 _pad0;
     vec3  dir_light_pos;
@@ -321,6 +321,10 @@ static void renderer_internal_scene_draw_pass(gfx_cmd_buf* cmd_buff)
 
         rhi_bind_descriptor_table(cmd_buff, &s_RendererSDFInternalState.sdfscene_resources.table, GFX_PIPELINE_TYPE_COMPUTE);
 
+        const Camera camera     = gamestate_get_global_instance()->camera;
+        mat4s        projection = glms_perspective(camera.fov, (float) s_RendererSDFInternalState.width / (float) s_RendererSDFInternalState.height, camera.near_plane, camera.far_plane);
+
+        s_RendererSDFInternalState.sdfscene_resources.pc_data.view_proj          = glms_mul(projection, camera.lookAt);
         s_RendererSDFInternalState.sdfscene_resources.pc_data.curr_draw_node_idx = 0;
         s_RendererSDFInternalState.sdfscene_resources.pc_data.resolution[0]      = s_RendererSDFInternalState.width;
         s_RendererSDFInternalState.sdfscene_resources.pc_data.resolution[1]      = s_RendererSDFInternalState.height;
