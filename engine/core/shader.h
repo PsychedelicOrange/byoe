@@ -4,6 +4,12 @@
 #include <cglm/cglm.h>
 #include <cglm/struct.h>
 
+typedef struct
+{
+    uint32_t* data;
+    size_t    size;
+} SPVBuffer;
+
 unsigned int create_shader_compute(char* computePath);
 unsigned int create_shader(char* vertexPath, char* shaderPath);
 unsigned int compile_shader(char* shaderCode, int shaderType);
@@ -16,5 +22,7 @@ void setUniformVec2Int(unsigned int shaderProgram, int vector[2], char* location
 void setUniformMat4(unsigned int shaderProgram, mat4s matrix, char* location);
 
 char* readFileToString(const char* filename, uint32_t* file_size);
+
+SPVBuffer loadSPVFile(const char* filename);
 
 #endif

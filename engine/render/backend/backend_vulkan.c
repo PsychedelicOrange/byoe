@@ -114,12 +114,6 @@ typedef struct shader_backend
     } modules;
 } shader_backend;
 
-typedef struct
-{
-    uint32_t* data;
-    size_t    size;
-} SPVBuffer;
-
 typedef struct pipeline_backend
 {
     VkPipeline pipeline;
@@ -1382,46 +1376,6 @@ void vulkan_device_destroy_frame_sync(gfx_frame_sync* frame_sync)
     free(frame_sync->rendering_done.backend);
     free(frame_sync->image_ready.backend);
     free(frame_sync->in_flight.backend);
-}
-
-static SPVBuffer loadSPVFile(const char* filename)
-{
-    SPVBuffer buffer = {NULL, 0};
-    FILE*     file   = fopen(filename, "rb");
-    if (!file) {
-        fprintf(stderr, "Failed to open file: %s\n", filename);
-        return buffer;
-    }
-
-    fseek(file, 0, SEEK_END);
-    unsigned long fileSize = ftell(file);
-    fseek(file, 0, SEEK_SET);
-
-    if (fileSize <= 0) {
-        fprintf(stderr, "Invalid SPV file size.\n");
-        fclose(file);
-        return buffer;
-    }
-
-    buffer.size = fileSize;
-    buffer.data = (uint32_t*) malloc(fileSize);
-    if (!buffer.data) {
-        fprintf(stderr, "Memory allocation failed.\n");
-        fclose(file);
-        return buffer;
-    }
-
-    if (fread(buffer.data, 1, fileSize, file) != fileSize) {
-        fprintf(stderr, "Failed to read the file.\n");
-        free(buffer.data);
-        buffer.data = NULL;
-        buffer.size = 0;
-        fclose(file);
-        return buffer;
-    }
-
-    fclose(file);
-    return buffer;
 }
 
 static VkShaderModule vulkan_internal_create_shader_handle(const char* spv_file_path)
