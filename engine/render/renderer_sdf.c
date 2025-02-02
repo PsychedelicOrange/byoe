@@ -87,28 +87,19 @@ static void renderer_internal_sdf_resize(GLFWwindow* window, int width, int heig
     rhi_resize_swapchain(&s_RendererSDFInternalState.gfxcontext.swapchain, width, height);
 }
 
-static void renderer_internal_destroy_shaders(void)
-{
-    gfx_destroy_compute_shader(&s_RendererSDFInternalState.sdfscene_resources.shader);
-    gfx_destroy_vs_ps_shader(&s_RendererSDFInternalState.screen_quad_resources.shader);
-}
-
 static void renderer_internal_create_shaders(void)
 {
     s_RendererSDFInternalState.sdfscene_resources.shader    = gfx_create_compute_shader("./game/shaders_built/cs_test.comp.spv");
     s_RendererSDFInternalState.screen_quad_resources.shader = gfx_create_vs_ps_shader("./game/shaders_built/screen_quad.vert.spv", "./game/shaders_built/screen_quad.frag.spv");
 }
 
-static void renderer_internal_destroy_pipelines(void)
+static void renderer_internal_destroy_shaders(void)
 {
-    gfx_destroy_root_signature(&s_RendererSDFInternalState.sdfscene_resources.root_sig);
-    gfx_destroy_pipeline(&s_RendererSDFInternalState.sdfscene_resources.pipeline);
-
-    gfx_destroy_root_signature(&s_RendererSDFInternalState.screen_quad_resources.root_sig);
-    gfx_destroy_pipeline(&s_RendererSDFInternalState.screen_quad_resources.pipeline);
+    gfx_destroy_compute_shader(&s_RendererSDFInternalState.sdfscene_resources.shader);
+    gfx_destroy_vs_ps_shader(&s_RendererSDFInternalState.screen_quad_resources.shader);
 }
 
-static void renderer_internal_create_pipelines(void)
+static void renderer_internal_create_root_sigs(void)
 {
     gfx_descriptor_binding sdf_scene_tex_binding = {
         .location = {
@@ -131,14 +122,6 @@ static void renderer_internal_create_pipelines(void)
         .stage  = GFX_SHADER_STAGE_CS};
 
     s_RendererSDFInternalState.sdfscene_resources.root_sig = gfx_create_root_signature(&set_layout_0, 1, &pc_range, 1);
-
-    gfx_pipeline_create_info scene_pipeline_ci = {
-        .type     = GFX_PIPELINE_TYPE_COMPUTE,
-        .root_sig = s_RendererSDFInternalState.sdfscene_resources.root_sig,
-        .shader   = s_RendererSDFInternalState.sdfscene_resources.shader,
-    };
-
-    s_RendererSDFInternalState.sdfscene_resources.pipeline = gfx_create_pipeline(scene_pipeline_ci);
 
     //------------------------------------------------
 
@@ -170,6 +153,25 @@ static void renderer_internal_create_pipelines(void)
     };
 
     s_RendererSDFInternalState.screen_quad_resources.root_sig = gfx_create_root_signature(&screen_set_layout_0, 1, NULL, 0);
+}
+
+static void renderer_internal_destroy_root_sigs(void)
+{
+    gfx_destroy_root_signature(&s_RendererSDFInternalState.sdfscene_resources.root_sig);
+    gfx_destroy_root_signature(&s_RendererSDFInternalState.screen_quad_resources.root_sig);
+}
+
+static void renderer_internal_create_pipelines(void)
+{
+    gfx_pipeline_create_info scene_pipeline_ci = {
+        .type     = GFX_PIPELINE_TYPE_COMPUTE,
+        .root_sig = s_RendererSDFInternalState.sdfscene_resources.root_sig,
+        .shader   = s_RendererSDFInternalState.sdfscene_resources.shader,
+    };
+
+    s_RendererSDFInternalState.sdfscene_resources.pipeline = gfx_create_pipeline(scene_pipeline_ci);
+
+    //------------------------------------------------
 
     gfx_pipeline_create_info scrn_pipeline_ci = {
         .type                = GFX_PIPELINE_TYPE_GRAPHICS,
@@ -186,6 +188,13 @@ static void renderer_internal_create_pipelines(void)
     };
 
     s_RendererSDFInternalState.screen_quad_resources.pipeline = gfx_create_pipeline(scrn_pipeline_ci);
+}
+
+static void renderer_internal_destroy_pipelines(void)
+{
+    gfx_destroy_pipeline(&s_RendererSDFInternalState.sdfscene_resources.pipeline);
+
+    gfx_destroy_pipeline(&s_RendererSDFInternalState.screen_quad_resources.pipeline);
 }
 
 static void renderer_internal_create_scene_pass_descriptor_table(void)
@@ -251,14 +260,15 @@ static void renderer_internal_create_screen_pass_descriptor_table(void)
     gfx_update_descriptor_table(&s_RendererSDFInternalState.screen_quad_resources.table, screen_table_entries, sizeof(screen_table_entries) / sizeof(gfx_descriptor_table_entry));
 }
 
-static void renderer_internal_create_sdf_pass_resources(void)
+static void renderer_internal_hot_reload_shaders(void)
 {
-    // create the shaders and pipeline
+    gfx_flush_gpu_work();
+
+    renderer_internal_destroy_shaders();
+    renderer_internal_destroy_pipelines();
+
     renderer_internal_create_shaders();
     renderer_internal_create_pipelines();
-
-    renderer_internal_create_scene_pass_descriptor_table();
-    renderer_internal_create_screen_pass_descriptor_table();
 
     gfx_flush_gpu_work();
 }
@@ -287,6 +297,35 @@ static bool render_internal_sdf_init_gfx_ctx(uint32_t width, uint32_t height)
 
 //----------------------------------------------------------------
 
+static void renderer_internal_create_sdf_pass_resources(void)
+{
+    // create the shaders and pipeline
+    renderer_internal_create_shaders();
+    renderer_internal_create_root_sigs();
+    renderer_internal_create_pipelines();
+
+    renderer_internal_create_scene_pass_descriptor_table();
+    renderer_internal_create_screen_pass_descriptor_table();
+
+    gfx_flush_gpu_work();
+}
+
+static void renderer_internal_destroy_sdf_pass_resources(void)
+{
+    renderer_internal_destroy_shaders();
+    renderer_internal_destroy_root_sigs();
+    renderer_internal_destroy_pipelines();
+
+    gfx_destroy_texture_resource(&s_RendererSDFInternalState.sdfscene_resources.scene_texture);
+    gfx_destroy_texture_resource_view(&s_RendererSDFInternalState.sdfscene_resources.scene_cs_write_view);
+    gfx_destroy_descriptor_table(&s_RendererSDFInternalState.sdfscene_resources.table);
+
+    gfx_destroy_texture_resource_view(&s_RendererSDFInternalState.screen_quad_resources.shader_read_view);
+    gfx_destroy_sampler_resource_view(&s_RendererSDFInternalState.screen_quad_resources.sampler_view);
+    gfx_destroy_sampler(&s_RendererSDFInternalState.screen_quad_resources.scene_tex_sampler);
+    gfx_destroy_descriptor_table(&s_RendererSDFInternalState.screen_quad_resources.table);
+}
+
 bool renderer_sdf_init(renderer_desc desc)
 {
     // use the desc to init the internal state
@@ -312,17 +351,7 @@ void renderer_sdf_destroy(void)
     gfx_flush_gpu_work();
 
     // clean up
-    gfx_destroy_texture_resource(&s_RendererSDFInternalState.sdfscene_resources.scene_texture);
-    gfx_destroy_texture_resource_view(&s_RendererSDFInternalState.sdfscene_resources.scene_cs_write_view);
-    gfx_destroy_descriptor_table(&s_RendererSDFInternalState.sdfscene_resources.table);
-
-    gfx_destroy_texture_resource_view(&s_RendererSDFInternalState.screen_quad_resources.shader_read_view);
-    gfx_destroy_sampler_resource_view(&s_RendererSDFInternalState.screen_quad_resources.sampler_view);
-    gfx_destroy_sampler(&s_RendererSDFInternalState.screen_quad_resources.scene_tex_sampler);
-    gfx_destroy_descriptor_table(&s_RendererSDFInternalState.screen_quad_resources.table);
-
-    renderer_internal_destroy_shaders();
-    renderer_internal_destroy_pipelines();
+    renderer_internal_destroy_sdf_pass_resources();
 
     gfx_destroy_gfx_cmd_pool(&s_RendererSDFInternalState.gfxcontext.draw_cmds_pool);
     for (uint32_t i = 0; i < MAX_FRAME_INFLIGHT; i++) {
@@ -406,8 +435,8 @@ void renderer_sdf_render(void)
     if (game_state->keycodes[GLFW_KEY_ESCAPE] == GLFW_PRESS)
         glfwSetWindowShouldClose(s_RendererSDFInternalState.window, true);
 
-    // if (game_state->keycodes[GLFW_KEY_SPACE] == GLFW_PRESS)
-    //     renderer_internal_sdf_hot_reload_shaders();
+    if (game_state->keycodes[GLFW_KEY_SPACE] == GLFW_PRESS)
+        renderer_internal_hot_reload_shaders();
 
     // Scene Culling is done before any rendering begins (might move it to update part of engine loop)
 
