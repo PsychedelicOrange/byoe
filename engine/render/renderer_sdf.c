@@ -391,7 +391,7 @@ static void renderer_internal_scene_draw_pass(gfx_cmd_buf* cmd_buff)
         gfx_push_constant pc = {.stage = GFX_SHADER_STAGE_CS, .size = sizeof(SDFPushConstant), .offset = 0, .data = &s_RendererSDFInternalState.sdfscene_resources.pc_data};
         rhi_bind_push_constant(cmd_buff, &s_RendererSDFInternalState.sdfscene_resources.root_sig, pc);
 
-        rhi_dispatch(cmd_buff, s_RendererSDFInternalState.width / DISPATCH_LOCAL_DIM, s_RendererSDFInternalState.height / DISPATCH_LOCAL_DIM, 1);
+        rhi_dispatch(cmd_buff, (s_RendererSDFInternalState.width + DISPATCH_LOCAL_DIM) / DISPATCH_LOCAL_DIM, (s_RendererSDFInternalState.height + DISPATCH_LOCAL_DIM) / DISPATCH_LOCAL_DIM, 1);
     }
     rhi_end_render_pass(cmd_buff, scene_draw_pass);
 }
