@@ -2030,26 +2030,6 @@ gfx_resource_view vulkan_device_create_texture_resource_view(const gfx_resource_
     return view;
 }
 
-void vulkan_device_destroy_texture_resource_view(gfx_resource_view* view)
-{
-    vkDestroyImageView(VKDEVICE, ((tex_resource_view_backend*) (view->backend))->view, NULL);
-    BACKEND_SAFE_FREE(view);
-}
-
-gfx_resource_view vulkan_backend_create_sampler_resource_view(gfx_resource_view_desc desc)
-{
-    gfx_resource_view view = {0};
-    uuid_generate(&view.uuid);
-    view.type = desc.res_type;
-
-    return view;
-}
-
-void vulkan_backend_destroy_sampler_resource_view(gfx_resource_view* view)
-{
-    BACKEND_SAFE_FREE(view);
-}
-
 gfx_resource vulkan_device_create_sampler(gfx_sampler_create_desc desc)
 {
     gfx_resource resource = {0};
@@ -2095,6 +2075,82 @@ void vulkan_device_destroy_sampler(gfx_resource* resource)
     if (resource->sampler)
         free(resource->sampler);
     resource->sampler = NULL;
+}
+
+typedef struct uniform_buffer_backend
+{
+    VkBuffer buffer;
+    VkDeviceMemory memory;  
+} uniform_buffer_backend;
+
+gfx_resource vulkan_device_create_uniform_buffer_resource(uint32_t size)
+{
+    gfx_resource resource = {0};
+    resource.ubo      = malloc(sizeof(gfx_uniform_buffer));
+    uuid_generate(&resource.ubo->uuid);
+    gfx_uniform_buffer* ubo = resource.ubo;
+
+    uniform_buffer_backend* backend = malloc(sizeof(uniform_buffer_backend));
+    ubo->backend         = backend;
+
+    VkBufferCreateInfo ubo_ci = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .pNext = NULL,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        .size = size,
+        .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
+    };
+
+    VK_CHECK_RESULT(vkCreateBuffer(VKDEVICE, &ubo_ci, NULL, &backend->buffer), "[Vulkan] cannot create uniform buffer");
+
+    VkMemoryRequirements mem_requirements;
+    vkGetBufferMemoryRequirements(VKDEVICE, backend->buffer, &mem_requirements);
+
+    VkMemoryAllocateInfo alloc_info = {
+        .sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .allocationSize  = mem_requirements.size,
+        .memoryTypeIndex = vulkan_internal_find_memory_type(VKGPU, mem_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)}; // since can be mapped on CPU to udpate it's contents
+
+    VK_CHECK_RESULT(vkAllocateMemory(VKDEVICE, &alloc_info, NULL, &backend->memory), "[Vulkan] cannot allocate memory for uniform buffer");
+    vkBindBufferMemory(VKDEVICE, backend->buffer, backend->memory, 0);
+
+    return resource;
+}
+
+void vulkan_device_destroy_uniform_buffer_resource(gfx_resource* resource)
+{
+    uuid_destroy(&resource->ubo->uuid);
+
+    uniform_buffer_backend* backend = (uniform_buffer_backend*) (resource->ubo->backend);
+    vkFreeMemory(VKDEVICE, backend->memory, NULL);
+    vkDestroyBuffer(VKDEVICE, backend->buffer, NULL);
+    free(backend);
+    backend = NULL;
+
+    // free the resource
+    if (resource->ubo)
+        free(resource->ubo);
+    resource->ubo = NULL;
+}
+
+void vulkan_device_destroy_texture_resource_view(gfx_resource_view* view)
+{
+    vkDestroyImageView(VKDEVICE, ((tex_resource_view_backend*) (view->backend))->view, NULL);
+    BACKEND_SAFE_FREE(view);
+}
+
+gfx_resource_view vulkan_backend_create_sampler_resource_view(gfx_resource_view_desc desc)
+{
+    gfx_resource_view view = {0};
+    uuid_generate(&view.uuid);
+    view.type = desc.res_type;
+
+    return view;
+}
+
+void vulkan_backend_destroy_sampler_resource_view(gfx_resource_view* view)
+{
+    BACKEND_SAFE_FREE(view);
 }
 
 gfx_cmd_buf vulkan_device_create_single_time_command_buffer(void)
