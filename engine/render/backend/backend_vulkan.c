@@ -1841,7 +1841,7 @@ gfx_descriptor_table vulkan_device_create_descriptor_table(const gfx_root_signat
     // TODO: either expose customization options or make it generic enough without affecting perf!
     VkDescriptorPoolSize pool_sizes[] = {
         {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 128},
-        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 128},
+        {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 128},
         {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 32},
         {VK_DESCRIPTOR_TYPE_SAMPLER, 32},
         {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 32},
@@ -1916,7 +1916,7 @@ void vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_tabl
             } break;
             case GFX_RESOURCE_TYPE_SAMPLER: {
                 VkDescriptorImageInfo sampler_info = {
-                    .sampler = (VkSampler) ((sampler_backend*) (res_view->backend))->sampler};
+                    .sampler = (VkSampler) ((sampler_backend*) (res->sampler.backend))->sampler};
                 writes[i].pImageInfo = &sampler_info;
             } break;
             case GFX_RESOURCE_TYPE_STORAGE_IMAGE: {

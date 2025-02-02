@@ -143,7 +143,7 @@ static void renderer_internal_create_pipelines(void)
         .binding     = 0,
         .set         = 0,
         .count       = 1,
-        .type        = GFX_RESOURCE_TYPE_STORAGE_IMAGE,
+        .type        = GFX_RESOURCE_TYPE_SAMPLED_IMAGE,///////////////////
         .stage_flags = GFX_SHADER_STAGE_PS,
     };
 
@@ -228,8 +228,18 @@ static void renderer_internal_create_sdf_pass_resources(void)
         },
     });
 
+    s_RendererSDFInternalState.screen_quad_resources.scene_tex_sampler = gfx_create_sampler((gfx_sampler_create_desc){
+        .min_filter = GFX_FILTER_MODE_LINEAR,
+        .mag_filter = GFX_FILTER_MODE_LINEAR,
+        .min_lod = 0.0f,
+        .max_lod = 1.0f,
+        .max_anisotropy = 1.0f,
+        .wrap_mode= GFX_WRAP_MODE_CLAMP_TO_BORDER,
+    });
+
     s_RendererSDFInternalState.screen_quad_resources.table = gfx_create_descriptor_table(&s_RendererSDFInternalState.screen_quad_resources.root_sig);
-    gfx_descriptor_table_entry screen_table_entries[]      = {(gfx_descriptor_table_entry){&s_RendererSDFInternalState.sdfscene_resources.scene_texture, &s_RendererSDFInternalState.screen_quad_resources.shader_read_view}};
+    gfx_descriptor_table_entry screen_table_entries[]      = {(gfx_descriptor_table_entry){&s_RendererSDFInternalState.sdfscene_resources.scene_texture, &s_RendererSDFInternalState.screen_quad_resources.shader_read_view},
+    (gfx_descriptor_table_entry){&s_RendererSDFInternalState.screen_quad_resources.scene_tex_sampler, NULL}};
     gfx_update_descriptor_table(&s_RendererSDFInternalState.screen_quad_resources.table, screen_table_entries, sizeof(screen_table_entries) / sizeof(gfx_descriptor_table_entry));
 
     gfx_flush_gpu_work();
@@ -332,7 +342,7 @@ static void renderer_internal_scene_draw_pass(gfx_cmd_buf* cmd_buff)
         gfx_push_constant pc = {.stage = GFX_SHADER_STAGE_CS, .size = sizeof(SDFPushConstant), .offset = 0, .data = &s_RendererSDFInternalState.sdfscene_resources.pc_data};
         rhi_bind_push_constant(cmd_buff, &s_RendererSDFInternalState.sdfscene_resources.root_sig, pc);
 
-        rhi_dispatch(cmd_buff, s_RendererSDFInternalState.width / DISPATCH_LOCAL_DIM, s_RendererSDFInternalState.width / DISPATCH_LOCAL_DIM, 1);
+        rhi_dispatch(cmd_buff, s_RendererSDFInternalState.width / DISPATCH_LOCAL_DIM, s_RendererSDFInternalState.height / DISPATCH_LOCAL_DIM, 1);
     }
     rhi_end_render_pass(cmd_buff, scene_draw_pass);
 }
