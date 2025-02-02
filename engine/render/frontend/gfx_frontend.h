@@ -65,6 +65,9 @@ void         (*gfx_destroy_texture_resource)(gfx_resource* resource);
 gfx_resource_view (*gfx_create_texture_resource_view)(gfx_resource_view_desc desc);
 void              (*gfx_destroy_texture_resource_view)(gfx_resource_view* view);
 
+gfx_resource_view (*gfx_create_sampler_resource_view)(gfx_resource_view_desc desc);
+void              (*gfx_destroy_sampler_resource_view)(gfx_resource_view* view);
+
 gfx_resource (*gfx_create_sampler)(gfx_sampler_create_desc desc);
 void         (*gfx_destroy_sampler)(gfx_resource* sampler);
 

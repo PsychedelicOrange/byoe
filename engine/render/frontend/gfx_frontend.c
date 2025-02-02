@@ -50,6 +50,9 @@ int gfx_init(rhi_api api)
         gfx_create_texture_resource_view  = vulkan_device_create_texture_resource_view;
         gfx_destroy_texture_resource_view = vulkan_device_destroy_texture_resource_view;
 
+        gfx_create_sampler_resource_view  = vulkan_backend_create_sampler_resource_view;
+        gfx_destroy_sampler_resource_view = vulkan_backend_destroy_sampler_resource_view;
+
         gfx_create_sampler  = vulkan_device_create_sampler;
         gfx_destroy_sampler = vulkan_device_destroy_sampler;
 

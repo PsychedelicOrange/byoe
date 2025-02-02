@@ -543,18 +543,17 @@ typedef struct gfx_resource
 {
     union
     {
-        gfx_texture        texture;
-        gfx_uniform_buffer ubo;
-        gfx_sampler        sampler;
+        gfx_texture*        texture;
+        gfx_uniform_buffer* ubo;
+        gfx_sampler*        sampler;
     };
-    gfx_resource_type type;
-    uint32_t          set;
-    uint32_t          binding;
 } gfx_resource;
 
 typedef struct gfx_resource_view_desc
 {
     const gfx_resource* resource;
+    gfx_resource_type   res_type;
+    uint32_t            _pad0;
     union
     {
         struct
@@ -575,11 +574,19 @@ typedef struct gfx_resource_view_desc
     };
 } gfx_resource_view_desc;
 
+typedef struct gfx_binding_location
+{
+    uint32_t set;
+    uint32_t binding;
+} gfx_binding_location;
+
 typedef struct gfx_resource_view
 {
-    random_uuid_t       uuid;
-    const gfx_resource* resource;
-    void*               backend;
+    random_uuid_t        uuid;
+    void*                backend;
+    gfx_resource_type    type;
+    gfx_binding_location location;
+    uint32_t             _pad0[3];
 } gfx_resource_view;
 
 typedef struct gfx_cmd_pool
@@ -628,11 +635,10 @@ typedef struct gfx_shader
 
 typedef struct gfx_descriptor_binding
 {
-    uint32_t          binding;
-    uint32_t          set;
-    gfx_resource_type type;    // can we remove this from here?
-    uint32_t          count;
-    gfx_shader_stage  stage_flags;
+    gfx_binding_location location;
+    gfx_resource_type    type;    // can we remove this from here?
+    uint32_t             count;
+    gfx_shader_stage     stage_flags;
 } gfx_descriptor_binding;
 
 typedef struct gfx_descriptor_set_layout
@@ -669,6 +675,7 @@ typedef struct gfx_descriptor_table_entry
 {
     const gfx_resource*      resource;
     const gfx_resource_view* resource_view;
+    gfx_binding_location     location;
 } gfx_descriptor_table_entry;
 
 typedef struct gfx_root_signature

@@ -20,7 +20,7 @@ layout(binding = 0, set = 0, rgba32f) writeonly uniform image2D outColorRenderTa
 layout(local_size_x = 32, local_size_y = 32) in;
 
 void main() {
-    vec2 uv = vec2(gl_GlobalInvocationID.xy) / vec2(pc_data.resolution);
+    vec2 uv = vec2(gl_GlobalInvocationID.xy) / vec2(800, 600); // since we render the scene at a fixed resolution and also we can't resize textures rn lol
     imageStore(outColorRenderTarget, ivec2(gl_GlobalInvocationID.xy), vec4(uv, 1.0f, 1.0f));
     return;
 }
