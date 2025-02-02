@@ -62,7 +62,7 @@ DEFINE_CLAMP(int)
 //      - [x] bind this to the screen_quad pass
 // - [x] Single time command buffers
 // - [x] Transition layout API
-// - [ ] IMPORTANT! Shader Hot reload
+// - [x] IMPORTANT! Shader Hot reload
 // - [ ] Texture resize API
 // - [ ] UBOs + Push constants API + setup descriptor sets for the resources x2
 //      - [x] push constants
