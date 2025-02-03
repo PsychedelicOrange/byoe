@@ -63,15 +63,15 @@ DEFINE_CLAMP(int)
 // - [x] Single time command buffers
 // - [x] Transition layout API
 // - [x] IMPORTANT! Shader Hot reload
-// - [ ] Texture resize API
 // - [ ] UBOs + Push constants API + setup descriptor sets for the resources x2
 //      - [x] push constants
-//      - [ ] UBO resource API
+//      - [x] UBO resource API (create/destroy/update)
 //      - [ ] hook this up with resource views and descriptor table API
 //      - [ ] use above API to bind Push Constant and UBO to upload SDF_NodeGPUData and curr_node_draw_idx
 // - [ ] CS dispatch -> SDF raymarching shader
 //      - [ ] bring descriptors, resource and views and rhi binding APIs together
 //      - [ ] Debug, Test and Fix Issues
+// - [ ] Texture resize API
 // - [ ] IMPORTANT!!! Texture read back for tests
 // ----------------------> renderer_backend Draft-1
 // Draft-2 Goals: resource memory pool RAAI kinda simulation + backend* design consistency using macros + MSAA
@@ -893,7 +893,7 @@ static TypedGrowableArray vulkan_internal_create_queue_family_infos(queue_indice
     static float queuePriority = 1.0f;
 
     VkDeviceQueueCreateInfo* gfxQueueInfo = malloc(sizeof(VkDeviceQueueCreateInfo));
-    *gfxQueueInfo                         = (VkDeviceQueueCreateInfo){
+    *gfxQueueInfo                         = (VkDeviceQueueCreateInfo) {
                                 .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
                                 .queueFamilyIndex = indices.gfx,
                                 .queueCount       = 1,
@@ -902,7 +902,7 @@ static TypedGrowableArray vulkan_internal_create_queue_family_infos(queue_indice
 
     if (indices.gfx != indices.present) {
         VkDeviceQueueCreateInfo* presentQueueInfo = malloc(sizeof(VkDeviceQueueCreateInfo));
-        *presentQueueInfo                         = (VkDeviceQueueCreateInfo){
+        *presentQueueInfo                         = (VkDeviceQueueCreateInfo) {
                                     .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
                                     .queueFamilyIndex = indices.present,
                                     .queueCount       = 1,
@@ -912,7 +912,7 @@ static TypedGrowableArray vulkan_internal_create_queue_family_infos(queue_indice
 
     if (indices.async_compute != indices.gfx) {
         VkDeviceQueueCreateInfo* computeQueueInfo = malloc(sizeof(VkDeviceQueueCreateInfo));
-        *computeQueueInfo                         = (VkDeviceQueueCreateInfo){
+        *computeQueueInfo                         = (VkDeviceQueueCreateInfo) {
                                     .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
                                     .queueFamilyIndex = indices.async_compute,
                                     .queueCount       = 1,
@@ -1407,7 +1407,7 @@ gfx_shader vulkan_device_create_compute_shader(const char* spv_file_path)
 
         backend->modules.CS = vulkan_internal_create_shader_handle(spv_file_path);
 
-        backend->stage_ci = (VkPipelineShaderStageCreateInfo){
+        backend->stage_ci = (VkPipelineShaderStageCreateInfo) {
             .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage  = VK_SHADER_STAGE_COMPUTE_BIT,
             .pName  = "main",
@@ -1428,7 +1428,7 @@ gfx_shader vulkan_device_create_vs_ps_shader(const char* spv_file_path_vs, const
 
         backend_vs->modules.VS = vulkan_internal_create_shader_handle(spv_file_path_vs);
 
-        backend_vs->stage_ci = (VkPipelineShaderStageCreateInfo){
+        backend_vs->stage_ci = (VkPipelineShaderStageCreateInfo) {
             .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage  = VK_SHADER_STAGE_VERTEX_BIT,
             .pName  = "main",
@@ -1442,7 +1442,7 @@ gfx_shader vulkan_device_create_vs_ps_shader(const char* spv_file_path_vs, const
 
         backend_ps->modules.PS = vulkan_internal_create_shader_handle(spv_file_path_ps);
 
-        backend_ps->stage_ci = (VkPipelineShaderStageCreateInfo){
+        backend_ps->stage_ci = (VkPipelineShaderStageCreateInfo) {
             .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage  = VK_SHADER_STAGE_FRAGMENT_BIT,
             .pName  = "main",
@@ -1728,7 +1728,7 @@ gfx_root_signature vulkan_device_create_root_signature(const gfx_descriptor_set_
 
         for (uint32_t j = 0; j < set_layout->binding_count; ++j) {
             const gfx_descriptor_binding binding = set_layout->bindings[j];
-            vk_bindings[j]                       = (VkDescriptorSetLayoutBinding){
+            vk_bindings[j]                       = (VkDescriptorSetLayoutBinding) {
                                       .binding            = binding.location.binding,
                                       .descriptorType     = vulkan_util_descriptor_type_translate(binding.type),
                                       .descriptorCount    = binding.count,
@@ -1755,7 +1755,7 @@ gfx_root_signature vulkan_device_create_root_signature(const gfx_descriptor_set_
 
         for (uint32_t i = 0; i < push_constant_count; ++i) {
             const gfx_push_constant_range push_constant = push_constants[i];
-            vk_push_constants[i]                        = (VkPushConstantRange){
+            vk_push_constants[i]                        = (VkPushConstantRange) {
                                        .offset     = push_constant.offset,
                                        .size       = push_constant.size,
                                        .stageFlags = vulkan_util_shader_stage_bits(push_constant.stage),
@@ -1871,7 +1871,7 @@ void vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_tabl
         const gfx_resource*      res      = entries[i].resource;
         const gfx_resource_view* res_view = entries[i].resource_view;
 
-        writes[i] = (VkWriteDescriptorSet){
+        writes[i] = (VkWriteDescriptorSet) {
             .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
             .dstSet          = sets[entries[i].location.set],
             .dstBinding      = entries[i].location.binding,
@@ -2017,7 +2017,7 @@ gfx_resource_view vulkan_device_create_texture_resource_view(const gfx_resource_
         .image            = tex_backend->image,
         .format           = vulkan_util_format_translate(desc.texture.format),
         .viewType         = vulkan_util_texture_view_type_translate(desc.texture.texture_type),
-        .components       = (VkComponentMapping){VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A},
+        .components       = (VkComponentMapping) {VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A},
         .subresourceRange = {
             .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,    // FIXME: hard coded shit since depth texture should have VK_IMAGE_ASPECT_DEPTH_BIT aspect mask
             .baseArrayLayer = desc.texture.base_layer,
@@ -2077,42 +2077,56 @@ void vulkan_device_destroy_sampler(gfx_resource* resource)
     resource->sampler = NULL;
 }
 
-typedef struct uniform_buffer_backend
+typedef struct buffer_backend
 {
-    VkBuffer buffer;
-    VkDeviceMemory memory;  
-} uniform_buffer_backend;
+    VkBuffer       buffer;
+    VkDeviceMemory memory;
+} buffer_backend;
 
-gfx_resource vulkan_device_create_uniform_buffer_resource(uint32_t size)
+VkBuffer vulkan_internal_create_buffer_backend(uint32_t size)
 {
-    gfx_resource resource = {0};
-    resource.ubo      = malloc(sizeof(gfx_uniform_buffer));
-    uuid_generate(&resource.ubo->uuid);
-    gfx_uniform_buffer* ubo = resource.ubo;
+    VkBuffer buffer = VK_NULL_HANDLE;
 
-    uniform_buffer_backend* backend = malloc(sizeof(uniform_buffer_backend));
-    ubo->backend         = backend;
-
-    VkBufferCreateInfo ubo_ci = {
-        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-        .pNext = NULL,
+    VkBufferCreateInfo buffer_ci = {
+        .sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .pNext       = NULL,
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-        .size = size,
-        .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
-    };
+        .size        = size,
+        .usage       = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT};
 
-    VK_CHECK_RESULT(vkCreateBuffer(VKDEVICE, &ubo_ci, NULL, &backend->buffer), "[Vulkan] cannot create uniform buffer");
+    VK_CHECK_RESULT(vkCreateBuffer(VKDEVICE, &buffer_ci, NULL, &buffer), "[Vulkan] cannot create buffer");
+    return buffer;
+}
+
+VkDeviceMemory vulkan_internal_create_buffer_memory(VkBuffer buffer, uint32_t offset)
+{
+    VkDeviceMemory memory = VK_NULL_HANDLE;
 
     VkMemoryRequirements mem_requirements;
-    vkGetBufferMemoryRequirements(VKDEVICE, backend->buffer, &mem_requirements);
+    vkGetBufferMemoryRequirements(VKDEVICE, buffer, &mem_requirements);
 
     VkMemoryAllocateInfo alloc_info = {
         .sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
         .allocationSize  = mem_requirements.size,
-        .memoryTypeIndex = vulkan_internal_find_memory_type(VKGPU, mem_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)}; // since can be mapped on CPU to udpate it's contents
+        .memoryTypeIndex = vulkan_internal_find_memory_type(VKGPU, mem_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)};    // since can be mapped on CPU to udpate it's contents
 
-    VK_CHECK_RESULT(vkAllocateMemory(VKDEVICE, &alloc_info, NULL, &backend->memory), "[Vulkan] cannot allocate memory for uniform buffer");
-    vkBindBufferMemory(VKDEVICE, backend->buffer, backend->memory, 0);
+    VK_CHECK_RESULT(vkAllocateMemory(VKDEVICE, &alloc_info, NULL, &memory), "[Vulkan] cannot allocate memory for buffer");
+    vkBindBufferMemory(VKDEVICE, buffer, memory, offset);
+    return memory;
+}
+
+gfx_resource vulkan_device_create_uniform_buffer_resource(uint32_t size, uint32_t offset)
+{
+    gfx_resource resource = {0};
+    resource.ubo          = malloc(sizeof(gfx_uniform_buffer));
+    uuid_generate(&resource.ubo->uuid);
+    gfx_uniform_buffer* ubo = resource.ubo;
+
+    buffer_backend* backend = malloc(sizeof(buffer_backend));
+    ubo->backend            = backend;
+
+    backend->buffer = vulkan_internal_create_buffer_backend(size);
+    backend->memory = vulkan_internal_create_buffer_memory(backend->buffer, offset);
 
     return resource;
 }
@@ -2121,7 +2135,7 @@ void vulkan_device_destroy_uniform_buffer_resource(gfx_resource* resource)
 {
     uuid_destroy(&resource->ubo->uuid);
 
-    uniform_buffer_backend* backend = (uniform_buffer_backend*) (resource->ubo->backend);
+    buffer_backend* backend = (buffer_backend*) (resource->ubo->backend);
     vkFreeMemory(VKDEVICE, backend->memory, NULL);
     vkDestroyBuffer(VKDEVICE, backend->buffer, NULL);
     free(backend);
@@ -2131,6 +2145,15 @@ void vulkan_device_destroy_uniform_buffer_resource(gfx_resource* resource)
     if (resource->ubo)
         free(resource->ubo);
     resource->ubo = NULL;
+}
+
+void vulkan_device_update_uniform_buffer(gfx_resource* resource, uint32_t size, uint32_t offset, void* data)
+{
+    buffer_backend* backend = (buffer_backend*)resource->ubo->backend;
+    void* mapped = NULL;
+    VK_CHECK_RESULT(vkMapMemory(VKDEVICE, backend->memory, offset, size, 0, NULL), "[Vulkan] cannot map memory");
+    memcpy(mapped, data, size);
+    vkUnmapMemory(VKDEVICE, backend->memory);
 }
 
 void vulkan_device_destroy_texture_resource_view(gfx_resource_view* view)
