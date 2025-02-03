@@ -1,35 +1,36 @@
+//#include "cglm/struct/vec3.h"
+#include "render/render_utils.h"
+
+#include "glad/glad.h"
+#include <GLFW/glfw3.h>
+
+#include <stdio.h>
+/*
 #include <assert.h>
 #include <limits.h>
 #include <stdarg.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+*/
+#include "logging/log.h"
 
-#include "cglm/struct/vec3.h"
-#include "glad/glad.h"
-#include <GLFW/glfw3.h>
-
-/* use this include which has all the neccessary flags */
-#include "nuklear_include.h"
-
+// use this include which has all the neccessary flags
 #include "add_primitive.h"
 #include "file_browser.h"
+#include "icon.h"
 #include "menu.h"
-#include "render/render_utils.h"
+#include "nuklear_include.h"
+#include "sdf/sdf_format/sdf_file_types.h"
 #include "sidebar.h"
 #include "viewport.h"
-
-#include "sdf/sdf_format/sdf_file_types.h"
-
-#include "icon.h"
-#include "logging/log.h"
 
 #define WINDOW_WIDTH  1920
 #define WINDOW_HEIGHT 1080
 
 /* Global UI elements */
+
 menu_state                 menu;
 sidebar_state              sidebar;
 struct file_browser        browser;
@@ -60,7 +61,7 @@ struct format_sdf_file file_default()
     return def;
 }
 
-/* Mouse update */
+// Mouse update
 struct mouse
 {
     float lastX, lastY;
@@ -69,7 +70,6 @@ struct mouse
     float isMiddleMouseDown;
     float scroll;
 } mouse = {.lastX = WINDOW_WIDTH / 2., .lastY = WINDOW_HEIGHT / 2.};
-
 static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
 {
     (void) window;
@@ -83,8 +83,7 @@ static void cursor_position_callback(GLFWwindow* window, double xpos, double ypo
 
     update_camera_mouse_callback(&viewport, xoffset, yoffset);
 }
-
-/* Keyboard shortcuts */
+// Keyboard shortcuts
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
     // open
@@ -134,45 +133,47 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         viewport.camera.position = glms_vec3_add(glms_vec3_scale_as(viewport.camera.front, 0.01), viewport.camera.position);
     }
 }
+void mouse_scroll_callback(GLFWwindow* win, double xoff, double yoff)
+{
+    nk_gflw3_scroll_callback(win, xoff, yoff);
+    viewport_zoom(&viewport, xoff, yoff);
+}
 
 void drop_callback(GLFWwindow* window, int count, const char** paths)
 {
-    /*int i;*/
-    /*for (i = 0;  i < count;  i++)*/
+    //int i;
+    //for (i = 0;  i < count;  i++)
     //handle_dropped_file(paths[0]);
 }
-
+/*
 static void error_callback(int e, const char* d)
 {
     fprintf(stderr, "Error %d: %s\n", e, d);
 }
 
-void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
-{
-    printf("called back recieved");
-    if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
-        printf("RIGHT CLICK PRESED");
-    }
-}
+*/
 
 void init_glad()
 {
     if (!gladLoadGLLoader((GLADloadproc) glfwGetProcAddress)) {
-        LOG_ERROR("Failed to initialize glad");
+        printf("Failed to initialize glad");
     }
 }
 
-/*void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)*/
-/*{*/
-/*    LOG_INFO("CALLBACK CALLED LMAO");*/
-/*    if (button == GLFW_MOUSE_BUTTON_MIDDLE && action == GLFW_PRESS) {*/
-/*        LOG_INFO("PRESSED MIDDLE MOUSE BUTTON");*/
-/*        viewport.pan_mode = 1;*/
-/*    } else if (button == GLFW_MOUSE_BUTTON_MIDDLE && action == GLFW_RELEASE) {*/
-/*        LOG_INFO("RELEASED MIDDLE MOUSE BUTTON");*/
-/*        viewport.pan_mode = 0;*/
-/*    }*/
-/*}*/
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+{
+    nk_glfw3_mouse_button_callback(window, button, action, mods);
+    if (button == GLFW_MOUSE_BUTTON_MIDDLE && action == GLFW_PRESS) {
+        if (mods & GLFW_MOD_SHIFT) {
+            viewport.pan_mode = 1;
+        } else {
+            viewport.orbit_mode = 1;
+        }
+    } else if (button == GLFW_MOUSE_BUTTON_MIDDLE && action == GLFW_RELEASE) {
+        viewport.orbit_mode = 0;
+        viewport.pan_mode   = 0;
+    }
+}
 
 void window_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -187,15 +188,16 @@ GLFWwindow* create_glfw_window()
 {
     render_utils_init_glfw();
     GLFWwindow* win = render_utils_create_glfw_window("sdf-editor", WINDOW_WIDTH, WINDOW_HEIGHT);
+    glfwMakeContextCurrent(win);
     glfwSetKeyCallback(win, key_callback);
     glfwSetDropCallback(win, drop_callback);
-    glfwSetWindowSizeCallback(win, window_size_callback);
     glfwSetCursorPosCallback(win, cursor_position_callback);
+    glfwSetWindowSizeCallback(win, window_size_callback);
     if (glfwRawMouseMotionSupported())
         glfwSetInputMode(win, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
     glfwSetMouseButtonCallback(win, mouse_button_callback);
-    glfwSetInputMode(win, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    glfwMakeContextCurrent(win);
+    glfwSetScrollCallback(win, mouse_scroll_callback);
+    //    glfwSetInputMode(win, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     return win;
 }
 
@@ -212,7 +214,6 @@ void load_fonts_cursor(struct nk_glfw* glfw, struct nk_context* ctx)
     nk_glfw3_font_stash_end(glfw);
     //nk_style_load_all_cursors(ctx, atlas->cursors);
 }
-
 void load_icons()
 {
     glEnable(GL_TEXTURE_2D);
@@ -254,7 +255,7 @@ int main(void)
     bg.g = 0;
     bg.a = 0;
 
-    /*editor layout state*/
+    //editor layout state
     menu     = menu_default(window);
     sidebar  = sidebar_default(window);
     add_prim = add_primitive_default(window);
@@ -316,7 +317,6 @@ int main(void)
                 browser.action = 0;
                 break;
         }
-
         /* Determine viewport size */
         if (sidebar.show) {
             viewport.x = sidebar.width;
@@ -327,18 +327,17 @@ int main(void)
             viewport.w = window[0];
             viewport_window_resize_callback(&viewport, viewport.w, viewport.h);
         }
-
-        /* Draw viewport */
+        // Draw viewport
         viewport_draw(&viewport, file);
 
-        /* Draw GUI */
+        //Draw GUI
         nk_glfw3_new_frame(&glfw);
         draw_add_primitive(ctx, &add_prim);
         sidebar_draw(ctx, &sidebar);
         menu_draw(ctx, &menu);
         file_browser_run(&browser, ctx);
 
-        /* Draw */
+        // Draw
         glfwGetWindowSize(win, &window[0], &window[1]);
         glViewport(0, 0, window[0], window[1]);
         /* IMPORTANT: `nk_glfw_render` modifies some global OpenGL state

@@ -6,6 +6,7 @@
 #include "shader.h"
 
 #include <GLFW/glfw3.h>
+#include <stdio.h>
 
 void viewport_window_resize_callback(viewport_state* state, int w, int h)
 {
@@ -15,18 +16,17 @@ void viewport_window_resize_callback(viewport_state* state, int w, int h)
 }
 void update_third_person_camera(Camera* camera)
 {
-    vec3s        position = {0, 0, 0};
-    static vec3s up       = {0, 1, 0};
-    camera->position.x    = cos(glm_rad(camera->pitch)) * (sqrt(75)) *cos(glm_rad(camera->yaw)) + position.x;
-    camera->position.y    = sin(glm_rad(camera->pitch)) * (sqrt(75)) + position.y;
-    camera->position.z    = cos(glm_rad(camera->pitch)) * (sqrt(75)) *sin(glm_rad(camera->yaw)) + position.z;
+    static vec3s up    = {0, 1, 0};
+    camera->position.x = cos(glm_rad(camera->pitch)) * (sqrt(75)) *cos(glm_rad(camera->yaw)) + camera->center.x;
+    camera->position.y = sin(glm_rad(camera->pitch)) * (sqrt(75)) + camera->center.y;
+    camera->position.z = cos(glm_rad(camera->pitch)) * (sqrt(75)) *sin(glm_rad(camera->yaw)) + camera->center.z;
     //LOG_INFO("%f", camera->pitch);
     //LOG_INFO("%f, %f, %f", camera->position.x, camera->position.y, camera->position.z);
-    camera->front = glms_normalize(glms_vec3_sub(camera->position, position));
+    camera->front = glms_normalize(glms_vec3_sub(camera->position, camera->center));
     camera->right = glms_normalize(glms_cross(camera->front, up));    // normalize the vectors, because their length gets closer to 0 the more you look up or down which results in slower movement.
     camera->up    = glms_normalize(glms_cross(camera->right, camera->front));
 
-    glm_lookat(camera->position.raw, position.raw, camera->up.raw, camera->lookAt.raw);
+    glm_lookat(camera->position.raw, camera->center.raw, camera->up.raw, camera->lookAt.raw);
 }
 void update_first_person_camera(Camera* camera)
 {
@@ -49,7 +49,7 @@ void update_first_person_camera(Camera* camera)
 
 void update_camera_mouse_callback(viewport_state* viewport, float xoffset, float yoffset)
 {
-    if (viewport->pan_mode) {
+    if (viewport->orbit_mode) {
         viewport->camera.yaw += xoffset;
         viewport->camera.pitch -= yoffset;
         float pitch = viewport->camera.pitch;
@@ -58,7 +58,17 @@ void update_camera_mouse_callback(viewport_state* viewport, float xoffset, float
         if (pitch < -89.0f)
             pitch = -89.0f;
         viewport->camera.pitch = pitch;
+    } else if (viewport->pan_mode) {
+        // move the camera in camera-front plane, according to offset
+        vec3s CameraMovement    = {GLM_VEC3_ZERO_INIT};
+        viewport->camera.center = glms_vec3_add(viewport->camera.center, glms_vec3_scale(viewport->camera.right, 0.1 * xoffset));
+        viewport->camera.center = glms_vec3_add(viewport->camera.center, glms_vec3_scale(viewport->camera.up, -0.1 * yoffset));
     }
+}
+void viewport_zoom(viewport_state* v, double xoff, double yoff)
+{
+    v->camera.center = glms_vec3_add(v->camera.center, glms_vec3_scale(v->camera.front, xoff));
+    LOG_INFO("%f", v->camera.center.z);
 }
 
 void draw_grid(viewport_state* v)
@@ -112,6 +122,10 @@ Camera camera_init()
     camera.position.x = 0;
     camera.position.y = 1;
     camera.position.z = 5;
+
+    camera.center.x = 0;
+    camera.center.y = 0;
+    camera.center.z = 0;
 
     camera.front.x = 0;
     camera.front.y = 0;
@@ -202,7 +216,8 @@ viewport_state viewport_default(int window[2])
         .grid            = {upload_lines(10, 2), create_shader("resources/gridvert", "resources/gridfrag")},
         .selected_object = -1,
         .camera          = camera_init(),
-        .pan_mode        = 0};
+        .pan_mode        = 0,
+        .orbit_mode      = 0};
     v.projection = glms_perspective(v.camera.fov, (float) window[0] / (float) window[1], v.camera.near_plane, v.camera.far_plane);
 
     //LOG_INFO("Viewport Initialized");

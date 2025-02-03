@@ -7,6 +7,7 @@ typedef struct Camera
 {
     mat4s lookAt;
     vec3s position;
+    vec3s center;
     float near_plane;
     vec3s right;
     float far_plane;

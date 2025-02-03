@@ -20,11 +20,14 @@ typedef struct viewport_state
     Camera       camera;
     int          selected_object;
     int          pan_mode;
+    int          orbit_mode;
 } viewport_state;
 void           viewport_draw(viewport_state* state, struct format_sdf_file file);
 viewport_state viewport_default(int window[2]);
 
 void viewport_window_resize_callback(viewport_state* state, int w, int h);
 void update_camera_mouse_callback(viewport_state* viewport, float xoffset, float yoffset);
+
+void viewport_zoom(viewport_state* v, double xoff, double yoff);
 
 #endif    // INCLUDE_VIEWPORT_BYOE_H
