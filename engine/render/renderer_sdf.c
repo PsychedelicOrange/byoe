@@ -16,8 +16,11 @@
 // Image transition TODO:
 // - [P] swapchain to present src before presentation
 // - [P] swapchain to color attachment after presentation
-// - [ ] sdf_storage_image to transfer dst before sdf_scene pass
-// - [ ] sdf_storage_image to shader read after sdf_scene pass
+// - [x] sdf_storage_image to general before sdf_scene pass
+// - [x] sdf_storage_image to shader read after sdf_scene pass
+
+// Image memory barrier
+// - [ ] sdf_scene_texture image memory pipeline barrier before screen quad pass
 
 typedef struct SDFPushConstant
 {
@@ -28,6 +31,11 @@ typedef struct SDFPushConstant
     int   curr_draw_node_idx;
 } SDFPushConstant;
 
+typedef struct CSTestUBOData
+{
+    vec4 color;
+} CSTestUBOData;
+
 typedef struct sdf_resources
 {
     gfx_resource         scene_texture;
@@ -37,6 +45,8 @@ typedef struct sdf_resources
     gfx_pipeline         pipeline;
     gfx_shader           shader;
     SDFPushConstant      pc_data;
+    gfx_resource         scene_nodes_uniform_buffer;
+    gfx_resource_view    scene_nodes_ubo_view;
 } sdf_resources;
 
 typedef struct screen_quad_resoruces
@@ -111,9 +121,21 @@ static void renderer_internal_create_root_sigs(void)
         .stage_flags = GFX_SHADER_STAGE_CS,
     };
 
+    gfx_descriptor_binding sdf_scene_ubo_binding = {
+        .location = {
+            .binding = 1,
+            .set     = 0,
+        },
+        .count       = 1,
+        .type        = GFX_RESOURCE_TYPE_UNIFORM_BUFFER,
+        .stage_flags = GFX_SHADER_STAGE_CS,
+    };
+
+    gfx_descriptor_binding sdf_bindings[] = {sdf_scene_tex_binding, sdf_scene_ubo_binding};
+
     gfx_descriptor_set_layout set_layout_0 = {
-        .bindings      = &sdf_scene_tex_binding,
-        .binding_count = 1,
+        .bindings      = sdf_bindings,
+        .binding_count = ARRAY_SIZE(sdf_bindings),
     };
 
     gfx_push_constant_range pc_range = {
@@ -222,9 +244,15 @@ static void renderer_internal_create_scene_pass_descriptor_table(void)
         },
         .res_type = GFX_RESOURCE_TYPE_STORAGE_IMAGE});
 
+    s_RendererSDFInternalState.sdfscene_resources.scene_nodes_uniform_buffer = gfx_create_uniform_buffer_resource(sizeof(CSTestUBOData));
+
+    s_RendererSDFInternalState.sdfscene_resources.scene_nodes_ubo_view = gfx_create_uniform_buffer_resource_view(&s_RendererSDFInternalState.sdfscene_resources.scene_nodes_uniform_buffer, sizeof(CSTestUBOData), 0);
+
     s_RendererSDFInternalState.sdfscene_resources.table = gfx_create_descriptor_table(&s_RendererSDFInternalState.sdfscene_resources.root_sig);
-    gfx_descriptor_table_entry table_entries[]          = {(gfx_descriptor_table_entry) {&s_RendererSDFInternalState.sdfscene_resources.scene_texture, &s_RendererSDFInternalState.sdfscene_resources.scene_cs_write_view, {0, 0}}};
-    gfx_update_descriptor_table(&s_RendererSDFInternalState.sdfscene_resources.table, table_entries, sizeof(table_entries) / sizeof(gfx_descriptor_table_entry));
+    gfx_descriptor_table_entry table_entries[]          = {
+        (gfx_descriptor_table_entry) {&s_RendererSDFInternalState.sdfscene_resources.scene_texture, &s_RendererSDFInternalState.sdfscene_resources.scene_cs_write_view, {0, 0}},
+        (gfx_descriptor_table_entry) {&s_RendererSDFInternalState.sdfscene_resources.scene_nodes_uniform_buffer, &s_RendererSDFInternalState.sdfscene_resources.scene_nodes_ubo_view, {0, 1}}};
+    gfx_update_descriptor_table(&s_RendererSDFInternalState.sdfscene_resources.table, table_entries, ARRAY_SIZE(table_entries));
 }
 
 static void renderer_internal_create_screen_pass_descriptor_table(void)
@@ -319,6 +347,8 @@ static void renderer_internal_destroy_sdf_pass_resources(void)
     gfx_destroy_texture_resource(&s_RendererSDFInternalState.sdfscene_resources.scene_texture);
     gfx_destroy_texture_resource_view(&s_RendererSDFInternalState.sdfscene_resources.scene_cs_write_view);
     gfx_destroy_descriptor_table(&s_RendererSDFInternalState.sdfscene_resources.table);
+    gfx_destroy_uniform_buffer_resource(&s_RendererSDFInternalState.sdfscene_resources.scene_nodes_uniform_buffer);
+    gfx_destroy_uniform_buffer_resource_view(&s_RendererSDFInternalState.sdfscene_resources.scene_nodes_ubo_view);
 
     gfx_destroy_texture_resource_view(&s_RendererSDFInternalState.screen_quad_resources.shader_read_view);
     gfx_destroy_sampler_resource_view(&s_RendererSDFInternalState.screen_quad_resources.sampler_view);
@@ -390,6 +420,11 @@ static void renderer_internal_scene_draw_pass(gfx_cmd_buf* cmd_buff)
 
         gfx_push_constant pc = {.stage = GFX_SHADER_STAGE_CS, .size = sizeof(SDFPushConstant), .offset = 0, .data = &s_RendererSDFInternalState.sdfscene_resources.pc_data};
         rhi_bind_push_constant(cmd_buff, &s_RendererSDFInternalState.sdfscene_resources.root_sig, pc);
+
+        CSTestUBOData ubo_data = {0};
+        vec4 target_color = {1.0f, 0.5f, 0.0f, 1.0f};
+        memcpy(&ubo_data.color, target_color, sizeof(vec4));
+        gfx_update_uniform_buffer(&s_RendererSDFInternalState.sdfscene_resources.scene_nodes_uniform_buffer, sizeof(CSTestUBOData), 0, &ubo_data);
 
         rhi_dispatch(cmd_buff, (s_RendererSDFInternalState.width + DISPATCH_LOCAL_DIM) / DISPATCH_LOCAL_DIM, (s_RendererSDFInternalState.height + DISPATCH_LOCAL_DIM) / DISPATCH_LOCAL_DIM, 1);
     }

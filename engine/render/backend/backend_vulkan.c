@@ -63,11 +63,10 @@ DEFINE_CLAMP(int)
 // - [x] Single time command buffers
 // - [x] Transition layout API
 // - [x] IMPORTANT! Shader Hot reload
-// - [ ] UBOs + Push constants API + setup descriptor sets for the resources x2
+// - [x] UBOs + Push constants API + setup descriptor sets for the resources x2
 //      - [x] push constants
 //      - [x] UBO resource API (create/destroy/update)
-//      - [ ] hook this up with resource views and descriptor table API
-//      - [ ] use above API to bind Push Constant and UBO to upload SDF_NodeGPUData and curr_node_draw_idx
+//      - [x] hook this up with resource views and descriptor table API (simple UBO upload test)
 // - [ ] CS dispatch -> SDF raymarching shader
 //      - [ ] bring descriptors, resource and views and rhi binding APIs together
 //      - [ ] Debug, Test and Fix Issues
@@ -98,6 +97,13 @@ typedef struct tex_resource_view_backend
 {
     VkImageView view;
 } tex_resource_view_backend;
+
+typedef struct buffer_view_backend
+{
+    VkBufferView view; // only for texel buffer
+    uint32_t range;
+    uint32_t offset;
+}buffer_view_backend;
 
 typedef struct shader_backend
 {
@@ -132,6 +138,12 @@ typedef struct texture_backend
     VkImage        image;
     VkDeviceMemory memory;
 } texture_backend;
+
+typedef struct buffer_backend
+{
+    VkBuffer       buffer;
+    VkDeviceMemory memory;
+} buffer_backend;
 
 typedef struct root_signature_backend
 {
@@ -1883,9 +1895,9 @@ void vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_tabl
             case GFX_RESOURCE_TYPE_UNIFORM_BUFFER:
             case GFX_RESOURCE_TYPE_STORAGE_BUFFER: {
                 VkDescriptorBufferInfo buffer_info = {
-                    .buffer = (VkBuffer) (res->ubo->backend),
-                    .offset = 0,
-                    .range  = VK_WHOLE_SIZE};
+                    .buffer = (VkBuffer) ((buffer_backend*)(res->ubo->backend))->buffer,
+                    .offset = ((buffer_view_backend*)(res_view->backend))->offset,
+                    .range  = ((buffer_view_backend*)(res_view->backend))->range};
                 writes[i].pBufferInfo = &buffer_info;
             } break;
             case GFX_RESOURCE_TYPE_SAMPLER: {
@@ -2077,12 +2089,6 @@ void vulkan_device_destroy_sampler(gfx_resource* resource)
     resource->sampler = NULL;
 }
 
-typedef struct buffer_backend
-{
-    VkBuffer       buffer;
-    VkDeviceMemory memory;
-} buffer_backend;
-
 VkBuffer vulkan_internal_create_buffer_backend(uint32_t size)
 {
     VkBuffer buffer = VK_NULL_HANDLE;
@@ -2115,7 +2121,7 @@ VkDeviceMemory vulkan_internal_create_buffer_memory(VkBuffer buffer, uint32_t of
     return memory;
 }
 
-gfx_resource vulkan_device_create_uniform_buffer_resource(uint32_t size, uint32_t offset)
+gfx_resource vulkan_device_create_uniform_buffer_resource(uint32_t size)
 {
     gfx_resource resource = {0};
     resource.ubo          = malloc(sizeof(gfx_uniform_buffer));
@@ -2126,7 +2132,7 @@ gfx_resource vulkan_device_create_uniform_buffer_resource(uint32_t size, uint32_
     ubo->backend            = backend;
 
     backend->buffer = vulkan_internal_create_buffer_backend(size);
-    backend->memory = vulkan_internal_create_buffer_memory(backend->buffer, offset);
+    backend->memory = vulkan_internal_create_buffer_memory(backend->buffer, 0);
 
     return resource;
 }
@@ -2149,9 +2155,9 @@ void vulkan_device_destroy_uniform_buffer_resource(gfx_resource* resource)
 
 void vulkan_device_update_uniform_buffer(gfx_resource* resource, uint32_t size, uint32_t offset, void* data)
 {
-    buffer_backend* backend = (buffer_backend*)resource->ubo->backend;
-    void* mapped = NULL;
-    VK_CHECK_RESULT(vkMapMemory(VKDEVICE, backend->memory, offset, size, 0, NULL), "[Vulkan] cannot map memory");
+    buffer_backend* backend = (buffer_backend*) resource->ubo->backend;
+    void*           mapped  = NULL;
+    VK_CHECK_RESULT(vkMapMemory(VKDEVICE, backend->memory, offset, size, 0, &mapped), "[Vulkan] cannot map memory");
     memcpy(mapped, data, size);
     vkUnmapMemory(VKDEVICE, backend->memory);
 }
@@ -2172,6 +2178,28 @@ gfx_resource_view vulkan_backend_create_sampler_resource_view(gfx_resource_view_
 }
 
 void vulkan_backend_destroy_sampler_resource_view(gfx_resource_view* view)
+{
+    BACKEND_SAFE_FREE(view);
+}
+
+gfx_resource_view vulkan_device_create_uniform_buffer_resource_view(gfx_resource* resource, uint32_t size, uint32_t offset)
+{
+    (void) resource;
+    (void) size;
+    (void) offset;
+    gfx_resource_view view = {0};
+    uuid_generate(&view.uuid);
+    view.type = GFX_RESOURCE_TYPE_UNIFORM_BUFFER;
+    
+    buffer_view_backend* backend = malloc(sizeof(buffer_backend));
+    backend->range = size;
+    backend->offset = offset;
+
+    view.backend = backend;
+    return view;
+}
+
+void vulkan_device_destroy_uniform_buffer_resource_view(gfx_resource_view* view)
 {
     BACKEND_SAFE_FREE(view);
 }
