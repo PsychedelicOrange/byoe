@@ -70,6 +70,7 @@ DEFINE_CLAMP(int)
 // - [ ] CS dispatch -> SDF raymarching shader
 //      - [ ] bring descriptors, resource and views and rhi binding APIs together
 //      - [ ] Debug, Test and Fix Issues
+// - [ ] image and buffer memory barriers API
 // - [ ] Texture resize API
 // - [ ] IMPORTANT!!! Texture read back for tests
 // ----------------------> renderer_backend Draft-1
