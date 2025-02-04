@@ -421,8 +421,8 @@ static void renderer_internal_scene_draw_pass(gfx_cmd_buf* cmd_buff)
         gfx_push_constant pc = {.stage = GFX_SHADER_STAGE_CS, .size = sizeof(SDFPushConstant), .offset = 0, .data = &s_RendererSDFInternalState.sdfscene_resources.pc_data};
         rhi_bind_push_constant(cmd_buff, &s_RendererSDFInternalState.sdfscene_resources.root_sig, pc);
 
-        CSTestUBOData ubo_data = {0};
-        vec4 target_color = {1.0f, 0.5f, 0.0f, 1.0f};
+        CSTestUBOData ubo_data     = {0};
+        vec4          target_color = {1.0f, 0.5f, 0.0f, 1.0f};
         memcpy(&ubo_data.color, target_color, sizeof(vec4));
         gfx_update_uniform_buffer(&s_RendererSDFInternalState.sdfscene_resources.scene_nodes_uniform_buffer, sizeof(CSTestUBOData), 0, &ubo_data);
 

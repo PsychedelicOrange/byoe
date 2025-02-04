@@ -100,10 +100,10 @@ typedef struct tex_resource_view_backend
 
 typedef struct buffer_view_backend
 {
-    VkBufferView view; // only for texel buffer
-    uint32_t range;
-    uint32_t offset;
-}buffer_view_backend;
+    VkBufferView view;    // only for texel buffer
+    uint32_t     range;
+    uint32_t     offset;
+} buffer_view_backend;
 
 typedef struct shader_backend
 {
@@ -1895,9 +1895,9 @@ void vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_tabl
             case GFX_RESOURCE_TYPE_UNIFORM_BUFFER:
             case GFX_RESOURCE_TYPE_STORAGE_BUFFER: {
                 VkDescriptorBufferInfo buffer_info = {
-                    .buffer = (VkBuffer) ((buffer_backend*)(res->ubo->backend))->buffer,
-                    .offset = ((buffer_view_backend*)(res_view->backend))->offset,
-                    .range  = ((buffer_view_backend*)(res_view->backend))->range};
+                    .buffer = (VkBuffer) ((buffer_backend*) (res->ubo->backend))->buffer,
+                    .offset = ((buffer_view_backend*) (res_view->backend))->offset,
+                    .range  = ((buffer_view_backend*) (res_view->backend))->range};
                 writes[i].pBufferInfo = &buffer_info;
             } break;
             case GFX_RESOURCE_TYPE_SAMPLER: {
@@ -2190,10 +2190,10 @@ gfx_resource_view vulkan_device_create_uniform_buffer_resource_view(gfx_resource
     gfx_resource_view view = {0};
     uuid_generate(&view.uuid);
     view.type = GFX_RESOURCE_TYPE_UNIFORM_BUFFER;
-    
+
     buffer_view_backend* backend = malloc(sizeof(buffer_backend));
-    backend->range = size;
-    backend->offset = offset;
+    backend->range               = size;
+    backend->offset              = offset;
 
     view.backend = backend;
     return view;

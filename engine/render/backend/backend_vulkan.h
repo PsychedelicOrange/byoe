@@ -69,7 +69,7 @@ gfx_resource_view vulkan_backend_create_sampler_resource_view(gfx_resource_view_
 void              vulkan_backend_destroy_sampler_resource_view(gfx_resource_view* view);
 
 gfx_resource_view vulkan_device_create_uniform_buffer_resource_view(gfx_resource* resource, uint32_t size, uint32_t offset);
-void vulkan_device_destroy_uniform_buffer_resource_view(gfx_resource_view* view);
+void              vulkan_device_destroy_uniform_buffer_resource_view(gfx_resource_view* view);
 
 gfx_cmd_buf vulkan_device_create_single_time_command_buffer(void);
 void        vulkan_device_destroy_single_time_command_buffer(gfx_cmd_buf* cmd_buf);
