@@ -1940,7 +1940,7 @@ static uint32_t vulkan_internal_find_memory_type(VkPhysicalDevice physical_devic
     return UINT32_MAX;
 }
 
-gfx_resource vulkan_device_create_texture_resource(gfx_texture_create_desc desc)
+gfx_resource vulkan_device_create_texture_resource(gfx_texture_create_info desc)
 {
     gfx_resource resource = {0};
     resource.texture      = malloc(sizeof(gfx_texture));
@@ -2011,7 +2011,7 @@ void vulkan_device_destroy_texture_resource(gfx_resource* resource)
     resource->texture = NULL;
 }
 
-gfx_resource_view vulkan_device_create_texture_resource_view(const gfx_resource_view_desc desc)
+gfx_resource_view vulkan_device_create_texture_resource_view(const gfx_resource_view_create_info desc)
 {
     gfx_resource_view view = {0};
     uuid_generate(&view.uuid);
@@ -2043,7 +2043,7 @@ gfx_resource_view vulkan_device_create_texture_resource_view(const gfx_resource_
     return view;
 }
 
-gfx_resource vulkan_device_create_sampler(gfx_sampler_create_desc desc)
+gfx_resource vulkan_device_create_sampler(gfx_sampler_create_info desc)
 {
     gfx_resource resource = {0};
     resource.sampler      = malloc(sizeof(gfx_sampler));
@@ -2169,7 +2169,7 @@ void vulkan_device_destroy_texture_resource_view(gfx_resource_view* view)
     BACKEND_SAFE_FREE(view);
 }
 
-gfx_resource_view vulkan_backend_create_sampler_resource_view(gfx_resource_view_desc desc)
+gfx_resource_view vulkan_backend_create_sampler_resource_view(gfx_resource_view_create_info desc)
 {
     gfx_resource_view view = {0};
     uuid_generate(&view.uuid);

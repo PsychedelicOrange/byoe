@@ -224,7 +224,7 @@ static void renderer_internal_create_scene_pass_descriptor_table(void)
     //--------------------------------------------------
     // create the root signature and table to hold the resources/
     // in this pass it's an RW texture2d and it's view
-    s_RendererSDFInternalState.sdfscene_resources.scene_texture = gfx_create_texture_resource((gfx_texture_create_desc) {
+    s_RendererSDFInternalState.sdfscene_resources.scene_texture = gfx_create_texture_resource((gfx_texture_create_info) {
         .tex_type = GFX_TEXTURE_TYPE_2D,
         .res_type = GFX_RESOURCE_TYPE_STORAGE_IMAGE,
         .width    = 800,
@@ -232,7 +232,7 @@ static void renderer_internal_create_scene_pass_descriptor_table(void)
         .format   = GFX_FORMAT_RGBA32F,
         .depth    = 1});
 
-    s_RendererSDFInternalState.sdfscene_resources.scene_cs_write_view = gfx_create_texture_resource_view((gfx_resource_view_desc) {
+    s_RendererSDFInternalState.sdfscene_resources.scene_cs_write_view = gfx_create_texture_resource_view((gfx_resource_view_create_info) {
         .resource = &s_RendererSDFInternalState.sdfscene_resources.scene_texture,
         .texture  = {
              .layer_count  = 1,
@@ -257,7 +257,7 @@ static void renderer_internal_create_scene_pass_descriptor_table(void)
 
 static void renderer_internal_create_screen_pass_descriptor_table(void)
 {
-    s_RendererSDFInternalState.screen_quad_resources.shader_read_view = gfx_create_texture_resource_view((gfx_resource_view_desc) {
+    s_RendererSDFInternalState.screen_quad_resources.shader_read_view = gfx_create_texture_resource_view((gfx_resource_view_create_info) {
         .resource = &s_RendererSDFInternalState.sdfscene_resources.scene_texture,
         .texture  = {
              .layer_count  = 1,
@@ -269,7 +269,7 @@ static void renderer_internal_create_screen_pass_descriptor_table(void)
         },
         .res_type = GFX_RESOURCE_TYPE_SAMPLED_IMAGE});
 
-    s_RendererSDFInternalState.screen_quad_resources.scene_tex_sampler = gfx_create_sampler((gfx_sampler_create_desc) {
+    s_RendererSDFInternalState.screen_quad_resources.scene_tex_sampler = gfx_create_sampler((gfx_sampler_create_info) {
         .min_filter     = GFX_FILTER_MODE_LINEAR,
         .mag_filter     = GFX_FILTER_MODE_LINEAR,
         .min_lod        = 0.0f,
@@ -278,7 +278,7 @@ static void renderer_internal_create_screen_pass_descriptor_table(void)
         .wrap_mode      = GFX_WRAP_MODE_CLAMP_TO_BORDER,
     });
 
-    s_RendererSDFInternalState.screen_quad_resources.sampler_view = gfx_create_sampler_resource_view((gfx_resource_view_desc) {
+    s_RendererSDFInternalState.screen_quad_resources.sampler_view = gfx_create_sampler_resource_view((gfx_resource_view_create_info) {
         .resource = &s_RendererSDFInternalState.screen_quad_resources.scene_tex_sampler,
         .res_type = GFX_RESOURCE_TYPE_SAMPLER});
 

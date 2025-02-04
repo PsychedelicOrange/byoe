@@ -59,20 +59,20 @@ gfx_descriptor_table (*gfx_create_descriptor_table)(const gfx_root_signature* ro
 void (*gfx_destroy_descriptor_table)(gfx_descriptor_table* descriptor_table);
 void (*gfx_update_descriptor_table)(gfx_descriptor_table* descriptor_table, gfx_descriptor_table_entry* entires, uint32_t num_entries);
 
-gfx_resource (*gfx_create_texture_resource)(gfx_texture_create_desc desc);
+gfx_resource (*gfx_create_texture_resource)(gfx_texture_create_info desc);
 void (*gfx_destroy_texture_resource)(gfx_resource* resource);
 
-gfx_resource (*gfx_create_sampler)(gfx_sampler_create_desc desc);
+gfx_resource (*gfx_create_sampler)(gfx_sampler_create_info desc);
 void (*gfx_destroy_sampler)(gfx_resource* sampler);
 
 gfx_resource (*gfx_create_uniform_buffer_resource)(uint32_t size);
 void (*gfx_destroy_uniform_buffer_resource)(gfx_resource* resource);
 void (*gfx_update_uniform_buffer)(gfx_resource* resource, uint32_t size, uint32_t offset, void* data);
 
-gfx_resource_view (*gfx_create_texture_resource_view)(gfx_resource_view_desc desc);
+gfx_resource_view (*gfx_create_texture_resource_view)(gfx_resource_view_create_info desc);
 void (*gfx_destroy_texture_resource_view)(gfx_resource_view* view);
 
-gfx_resource_view (*gfx_create_sampler_resource_view)(gfx_resource_view_desc desc);
+gfx_resource_view (*gfx_create_sampler_resource_view)(gfx_resource_view_create_info desc);
 void (*gfx_destroy_sampler_resource_view)(gfx_resource_view* view);
 
 gfx_resource_view (*gfx_create_uniform_buffer_resource_view)(gfx_resource* resource, uint32_t size, uint32_t offset);
