@@ -507,7 +507,7 @@ typedef struct gfx_uniform_buffer
     void*         backend;
 } gfx_uniform_buffer;
 
-typedef struct gfx_texture_create_info
+typedef struct gfx_texture_create_desc
 {
     uint32_t          width;
     uint32_t          height;
@@ -515,7 +515,7 @@ typedef struct gfx_texture_create_info
     gfx_format        format;
     gfx_texture_type  tex_type;
     gfx_resource_type res_type;
-} gfx_texture_create_info;
+} gfx_texture_create_desc;
 
 typedef struct gfx_texture
 {
@@ -523,7 +523,7 @@ typedef struct gfx_texture
     void*         backend;
 } gfx_texture;
 
-typedef struct gfx_sampler_create_info
+typedef struct gfx_sampler_create_desc
 {
     gfx_filter_mode min_filter;
     gfx_filter_mode mag_filter;
@@ -531,7 +531,7 @@ typedef struct gfx_sampler_create_info
     float           min_lod;
     float           max_lod;
     float           max_anisotropy;
-} gfx_sampler_create_info;
+} gfx_sampler_create_desc;
 
 typedef struct gfx_sampler
 {
@@ -549,7 +549,7 @@ typedef struct gfx_resource
     };
 } gfx_resource;
 
-typedef struct gfx_resource_view_create_info
+typedef struct gfx_resource_view_desc
 {
     const gfx_resource* resource;
     gfx_resource_type   res_type;
@@ -572,7 +572,7 @@ typedef struct gfx_resource_view_create_info
             uint32_t size;
         } buffer;
     };
-} gfx_resource_view_create_info;
+} gfx_resource_view_desc;
 
 typedef struct gfx_binding_location
 {

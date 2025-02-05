@@ -68,6 +68,7 @@ DEFINE_CLAMP(int)
 //      - [x] UBO resource API (create/destroy/update)
 //      - [x] hook this up with resource views and descriptor table API (simple UBO upload test)
 // - [ ] CS dispatch -> SDF raymarching shader
+//      - [ ] create and bind SDF_GOUNodeData UBO and update it from with sdf_scene.h and move gfx_resource to sdf_scene.h
 //      - [ ] bring descriptors, resource and views and rhi binding APIs together
 //      - [ ] Debug, Test and Fix Issues
 // - [ ] image and buffer memory barriers API

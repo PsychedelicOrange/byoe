@@ -52,20 +52,20 @@ gfx_descriptor_table vulkan_device_create_descriptor_table(const gfx_root_signat
 void                 vulkan_device_destroy_descriptor_table(gfx_descriptor_table* descriptor_table);
 void                 vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_table, gfx_descriptor_table_entry* entried, uint32_t num_entries);
 
-gfx_resource vulkan_device_create_texture_resource(gfx_texture_create_info desc);
+gfx_resource vulkan_device_create_texture_resource(gfx_texture_create_desc desc);
 void         vulkan_device_destroy_texture_resource(gfx_resource* resource);
 
-gfx_resource vulkan_device_create_sampler(gfx_sampler_create_info desc);
+gfx_resource vulkan_device_create_sampler(gfx_sampler_create_desc desc);
 void         vulkan_device_destroy_sampler(gfx_resource* resource);
 
 gfx_resource vulkan_device_create_uniform_buffer_resource(uint32_t size);
 void         vulkan_device_destroy_uniform_buffer_resource(gfx_resource* resource);
 void         vulkan_device_update_uniform_buffer(gfx_resource* resource, uint32_t size, uint32_t offset, void* data);
 
-gfx_resource_view vulkan_device_create_texture_resource_view(const gfx_resource_view_create_info desc);
+gfx_resource_view vulkan_device_create_texture_resource_view(const gfx_resource_view_desc desc);
 void              vulkan_device_destroy_texture_resource_view(gfx_resource_view* view);
 
-gfx_resource_view vulkan_backend_create_sampler_resource_view(gfx_resource_view_create_info desc);
+gfx_resource_view vulkan_backend_create_sampler_resource_view(gfx_resource_view_desc desc);
 void              vulkan_backend_destroy_sampler_resource_view(gfx_resource_view* view);
 
 gfx_resource_view vulkan_device_create_uniform_buffer_resource_view(gfx_resource* resource, uint32_t size, uint32_t offset);
