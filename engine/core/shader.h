@@ -12,6 +12,7 @@ unsigned int create_program_compute(unsigned int computeShader);
 unsigned int create_program(unsigned int vertexShader, unsigned int fragmentShader);
 
 void setUniformInt(unsigned int shaderProgram, int value, char* location);
+void setUniformFloat(unsigned int shaderProgram, float value, char* location);
 void setUniformVec2Int(unsigned int shaderProgram, int vector[2], char* location);
 void setUniformMat4(unsigned int shaderProgram, mat4s matrix, char* location);
 
