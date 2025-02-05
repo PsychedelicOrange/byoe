@@ -17,9 +17,9 @@ void viewport_window_resize_callback(viewport_state* state, int w, int h)
 void update_third_person_camera(Camera* camera)
 {
     static vec3s up    = {0, 1, 0};
-    camera->position.x = cos(glm_rad(camera->pitch)) * (sqrt(75)) *cos(glm_rad(camera->yaw)) + camera->center.x;
-    camera->position.y = sin(glm_rad(camera->pitch)) * (sqrt(75)) + camera->center.y;
-    camera->position.z = cos(glm_rad(camera->pitch)) * (sqrt(75)) *sin(glm_rad(camera->yaw)) + camera->center.z;
+    camera->position.x = camera->third_person_distance * cos(glm_rad(camera->pitch)) * (sqrt(75)) *cos(glm_rad(camera->yaw)) + camera->center.x;
+    camera->position.y = camera->third_person_distance * sin(glm_rad(camera->pitch)) * (sqrt(75)) + camera->center.y;
+    camera->position.z = camera->third_person_distance * cos(glm_rad(camera->pitch)) * (sqrt(75)) *sin(glm_rad(camera->yaw)) + camera->center.z;
     //LOG_INFO("%f", camera->pitch);
     //LOG_INFO("%f, %f, %f", camera->position.x, camera->position.y, camera->position.z);
     camera->front = glms_normalize(glms_vec3_sub(camera->position, camera->center));
@@ -67,8 +67,7 @@ void update_camera_mouse_callback(viewport_state* viewport, float xoffset, float
 }
 void viewport_zoom(viewport_state* v, double xoff, double yoff)
 {
-    v->camera.center = glms_vec3_add(v->camera.center, glms_vec3_scale(v->camera.front, xoff));
-    LOG_INFO("%f", v->camera.center.z);
+    v->camera.third_person_distance -= 0.1 * yoff;
 }
 
 void draw_grid(viewport_state* v)
@@ -138,9 +137,10 @@ Camera camera_init()
     camera.yaw   = -90.;
     camera.pitch = 0;
 
-    camera.near_plane = 0.01f;
-    camera.far_plane  = 1000.0f;
-    camera.fov        = 20.0f;
+    camera.near_plane            = 0.01f;
+    camera.far_plane             = 1000.0f;
+    camera.fov                   = 20.0f;
+    camera.third_person_distance = 1;
 
     vec3s origin = {0, 0, 0};
 
@@ -218,6 +218,7 @@ viewport_state viewport_default(int window[2])
         .camera          = camera_init(),
         .pan_mode        = 0,
         .orbit_mode      = 0};
+
     v.projection = glms_perspective(v.camera.fov, (float) window[0] / (float) window[1], v.camera.near_plane, v.camera.far_plane);
 
     //LOG_INFO("Viewport Initialized");
