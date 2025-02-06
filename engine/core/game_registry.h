@@ -45,10 +45,10 @@ uint32_t game_registry_get_num_objects(void);
     game_registry_register_gameobject_type(sizeof(DataType), StartFn, UpdateFn);
 
 #define REGISTER_GAME_OBJECT_WITH_NODE_IDX(DataType, StartFn, UpdateFn, NodeIdx)                            \
-                                                                                                                      \
-    {                                                                                                                 \
+                                                                                                            \
+    {                                                                                                       \
         random_uuid_t goUUID = game_registry_register_gameobject_type(sizeof(DataType), StartFn, UpdateFn); \
-        gameobject_set_sdf_node_idx(goUUID, NodeIdx);                                                                 \
+        gameobject_set_sdf_node_idx(goUUID, NodeIdx);                                                       \
     }
 
 #define UNREGISTER_GAME_OBJECT(uuid) \

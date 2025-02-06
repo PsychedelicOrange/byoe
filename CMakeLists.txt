@@ -27,6 +27,10 @@ add_subdirectory(benchmarks)
 # Fetch dependencies
 include(FetchContent)
 
+## External stuff
+find_package(Vulkan REQUIRED)
+set(VULKAN_SDK $ENV{VULKAN_SDK})
+
 # Fetch cglm
 FetchContent_Declare(
     cglm
@@ -42,12 +46,19 @@ FetchContent_Declare(
     glfw
     GIT_REPOSITORY https://github.com/glfw/glfw.git
     GIT_TAG 3.3.8 # Latest stable release
-    
 )
 # Disable building GLFW tests and examples
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(glfw)
+
+FetchContent_Declare(
+    volk
+    GIT_REPOSITORY https://github.com/zeux/volk.git
+    GIT_TAG vulkan-sdk-1.3.275.0
+)
+FetchContent_MakeAvailable(volk)
+
 ####################################################################
 # Custom target to run the executable
 add_custom_target(run
