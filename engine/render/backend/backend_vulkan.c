@@ -2253,8 +2253,6 @@ void vulkan_device_destroy_single_time_command_buffer(gfx_cmd_buf* cmd_buf)
 
 gfx_frame_sync* vulkan_frame_begin(gfx_context* context)
 {
-    LOG_INFO("curr_in-flight_frame_idx: %d", context->frame_idx);
-
     gfx_frame_sync* curr_frame_sync = &context->frame_sync[context->frame_idx];
 
     vulkan_wait_on_previous_cmds(curr_frame_sync);

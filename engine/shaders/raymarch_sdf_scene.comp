@@ -651,39 +651,36 @@ void main() {
     ray.ro = nearp.xyz / nearp.w; 
     ray.rd = normalize(farp.xyz / farp.w - ray.ro);
 
-    imageStore(outColorRenderTarget, ivec2(gl_GlobalInvocationID.xy), nodes[0].material.diffuse + vec4(ray.rd, 1.0f));
+    vec4 FragColor = vec4(0.0f, 0.0f, 0.0f, 0.0f);
 
-    //Ray ray;
-    //ray.ro = nearp.xyz / nearp.w; // Ray origin in world space
-    //ray.rd = normalize((farp.xyz / farp.w) - ray.ro); // Ray direction
-    //
-    //hit_info hit  = raymarch(ray);
-    //
-    //if(hit.d < RAY_MAX_STEP)
-    //{
-    //    vec3 lightPos = vec3(2, 5, 5);
-    //
-    //    vec3 p = ray.ro + ray.rd * hit.d;
-    //
-    //    vec3 l = normalize(lightPos - p);
-    //    vec3 n = normalize(estimateNormal(p));
-    //    vec3 r = reflect(-l, n);
-    //    vec3 v = normalize(ray.ro - p);
-    //
-    //    vec3 h = normalize(l + v); 
-    //
-    //    float diffuse  = clamp(dot(l, n), 0., 1.);
-    //    float spec = pow(max(dot(v, r), 0.0), 32);
-    //
-    //    vec3 specular = hit.material.diffuse.xyz * spec;
-    //    vec3 diffuseColor = diffuse * hit.material.diffuse.xyz;
-    //
-    //    outDepthRenderTarget = hit.d / RAY_MAX_STEP;
-    //
-    //    FragColor = vec4(diffuseColor + specular * 10, 1.0f);  
-    //
-    //    // FragColor = vec4(hit.d, hit.d, hit.d, 1.0f); 
-    //}
+    hit_info hit  = raymarch(ray);
+    if(hit.d < RAY_MAX_STEP)
+    {
+        vec3 lightPos = vec3(2, 5, 5);
+    
+        vec3 p = ray.ro + ray.rd * hit.d;
+    
+        vec3 l = normalize(lightPos - p);
+        vec3 n = normalize(estimateNormal(p));
+        vec3 r = reflect(-l, n);
+        vec3 v = normalize(ray.ro - p);
+    
+        vec3 h = normalize(l + v); 
+    
+        float diffuse  = clamp(dot(l, n), 0., 1.);
+        float spec = pow(max(dot(v, r), 0.0), 32);
+    
+        vec3 specular = hit.material.diffuse.xyz * spec;
+        vec3 diffuseColor = diffuse * hit.material.diffuse.xyz;
+    
+        //outDepthRenderTarget = hit.d / RAY_MAX_STEP;
+    
+        FragColor = vec4(diffuseColor + specular * 10, 1.0f);  
+        imageStore(outColorRenderTarget, ivec2(gl_GlobalInvocationID.xy), FragColor);
+        return;
+    
+        //FragColor = vec4(hit.d, hit.d, hit.d, 1.0f); 
+    }
     //else {
     //    gl_FragDepth = 1;
     //}
