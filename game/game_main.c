@@ -33,7 +33,6 @@ int game_main(void)
     REGISTER_GAME_OBJECT_WITH_NODE_IDX(PlayerData, Player_Start, Player_Update, player_prim_idx);
 #else
     REGISTER_GAME_OBJECT(0, Camera_Start, Camera_Update);
-    Camera_set_camera_mode(FPS);
 
     // Define Test Scene
     SDF_Scene* scene = malloc(sizeof(SDF_Scene));

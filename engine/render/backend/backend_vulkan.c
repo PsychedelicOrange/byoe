@@ -659,9 +659,6 @@ static void vulkan_internal_insert_image_memory_barrier(VkCommandBuffer cmdBuffe
         barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
         sourceStage           = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
         destinationStage      = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    } else {
-        LOG_ERROR("Unsupported image layout transition!");
-        return;
     }
 
     vkCmdPipelineBarrier(
@@ -2544,3 +2541,9 @@ rhi_error_codes vulkan_transition_image_layout(const gfx_cmd_buf* cmd_buffer, co
 
     return Success;
 }
+
+//rhi_error_codes vulkan_image_memory_barrier(const gfx_cmd_buf* cmd_buffer, const gfx_resource* image)
+//{
+//    VkCommandBuffer  vkCmdBuffer = *(VkCommandBuffer*) cmd_buffer->backend;
+//    texture_backend* backend     = image->texture->backend;
+//}

@@ -499,6 +499,8 @@ static void renderer_internal_scene_draw_pass(gfx_cmd_buf* cmd_buff)
     if (!scene)
         return;
 
+    rhi_insert_image_layout_barrier(cmd_buff, &s_RendererSDFInternalState.sdfscene_resources.scene_texture, GFX_IMAGE_LAYOUT_GENERAL, GFX_IMAGE_LAYOUT_GENERAL);
+
     gfx_render_pass scene_draw_pass = {.is_compute_pass = true};
     rhi_begin_render_pass(cmd_buff, scene_draw_pass, s_RendererSDFInternalState.gfxcontext.swapchain.current_backbuffer_idx);
     {
