@@ -419,7 +419,7 @@ static void renderer_internal_scene_draw_pass(gfx_cmd_buf* cmd_buff)
         s_RendererSDFInternalState.sdfscene_resources.pc_data.view_proj     = glms_mul(projection, camera.lookAt);
         s_RendererSDFInternalState.sdfscene_resources.pc_data.resolution[0] = s_RendererSDFInternalState.width;
         s_RendererSDFInternalState.sdfscene_resources.pc_data.resolution[1] = s_RendererSDFInternalState.height;
-        s_RendererSDFInternalState.sdfscene_resources.pc_data.dir_light_pos = (vec3s){1.0f, 1.0f, 1.0f};
+        s_RendererSDFInternalState.sdfscene_resources.pc_data.dir_light_pos = (vec3s){{1.0f, 1.0f, 1.0f}};
 
         void* scene_node_update_data = sdf_scene_get_scene_nodes_gpu_data(scene);
         gfx_update_uniform_buffer(&s_RendererSDFInternalState.sdfscene_resources.scene_nodes_uniform_buffer, MAX_GPU_NODES_SIZE, 0, scene_node_update_data);
