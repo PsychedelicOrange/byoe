@@ -10,7 +10,7 @@
 
 #include <string.h>    // memset
 
-static uint32_t s_GPUSceneNodesUBO;
+static SDF_NodeGPUData* s_SceneGPUData = NULL; 
 
 void sdf_scene_init(SDF_Scene* scene)
 {
@@ -21,7 +21,6 @@ void sdf_scene_init(SDF_Scene* scene)
 
 void sdf_scene_destroy(SDF_Scene* scene)
 {
-    glDeleteBuffers(1, &s_GPUSceneNodesUBO);
     free(scene);
     scene = NULL;
 }
@@ -71,8 +70,19 @@ int sdf_scene_add_object(SDF_Scene* scene, SDF_Object operation)
     return idx;
 }
 
-void sdf_scene_upload_scene_nodes_to_gpu(const SDF_Scene* scene)
+void sdf_scene_update_scene_node_gpu_data(const SDF_Scene* scene) 
 {
     if (!scene)
         return;
+
+}
+
+void* sdf_scene_get_scene_nodes_gpu_data(const SDF_Scene* scene)
+{
+    if (!scene)
+        return NULL;
+
+    // parse throught scene and pack the SDF_NodeGPUData into a large buffer and return it
+    return (void*) s_SceneGPUData;
+
 }

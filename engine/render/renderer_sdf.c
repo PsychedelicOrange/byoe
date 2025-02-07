@@ -31,33 +31,33 @@ typedef struct SDFPushConstant
     int   curr_draw_node_idx;
 } SDFPushConstant;
 
+typedef struct sdf_resources
+{
+    gfx_resource         scene_texture;
+    gfx_resource_view    scene_cs_write_view;
+    gfx_resource         scene_nodes_uniform_buffer;
+    gfx_resource_view    scene_nodes_ubo_view;
+    gfx_shader           shader;
+    gfx_pipeline         pipeline;
+    gfx_root_signature   root_sig;
+    gfx_descriptor_table table;
+    SDFPushConstant      pc_data;
+} sdf_resources;
+
 typedef struct CSTestUBOData
 {
     vec4 color;
 } CSTestUBOData;
 
-typedef struct sdf_resources
-{
-    gfx_resource         scene_texture;
-    gfx_resource_view    scene_cs_write_view;
-    gfx_descriptor_table table;
-    gfx_root_signature   root_sig;
-    gfx_pipeline         pipeline;
-    gfx_shader           shader;
-    SDFPushConstant      pc_data;
-    gfx_resource         scene_nodes_uniform_buffer;
-    gfx_resource_view    scene_nodes_ubo_view;
-} sdf_resources;
-
 typedef struct screen_quad_resoruces
 {
+    gfx_resource         scene_tex_sampler;
+    gfx_resource_view    sampler_view;
+    gfx_resource_view    shader_read_view;
     gfx_shader           shader;
     gfx_pipeline         pipeline;
     gfx_root_signature   root_sig;
     gfx_descriptor_table table;
-    gfx_resource_view    shader_read_view;
-    gfx_resource         scene_tex_sampler;
-    gfx_resource_view    sampler_view;
 } screen_quad_resoruces;
 
 typedef struct renderer_internal_state
@@ -494,8 +494,6 @@ void renderer_sdf_draw_scene(const SDF_Scene* scene)
 {
     if (!scene)
         return;
-
-    sdf_scene_upload_scene_nodes_to_gpu(s_RendererSDFInternalState.scene);
 
     gfx_frame_sync* frame_sync = rhi_frame_begin(&s_RendererSDFInternalState.gfxcontext);
     {

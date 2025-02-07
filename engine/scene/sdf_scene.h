@@ -60,6 +60,6 @@ int sdf_scene_add_primitive(SDF_Scene* scene, SDF_Primitive primitive);
 int sdf_scene_add_object(SDF_Scene* scene, SDF_Object object);
 
 // Uploads the scene nodes to GPU by flattening them using SDF_NodeGPUData struct
-void sdf_scene_upload_scene_nodes_to_gpu(const SDF_Scene* scene);
+void* sdf_scene_get_scene_nodes_gpu_data(const SDF_Scene* scene);
 
 #endif
