@@ -67,10 +67,11 @@ DEFINE_CLAMP(int)
 //      - [x] push constants
 //      - [x] UBO resource API (create/destroy/update)
 //      - [x] hook this up with resource views and descriptor table API (simple UBO upload test)
-// - [ ] CS dispatch -> SDF raymarching shader
-//      - [ ] create and bind SDF_GOUNodeData UBO and update it from with sdf_scene.h and move gfx_resource to sdf_scene.h
-//      - [ ] bring descriptors, resource and views and rhi binding APIs together
-//      - [ ] Debug, Test and Fix Issues
+// - [x] CS dispatch -> SDF raymarching shader
+//      - [x] create and bind SDF_GPUNodeData UBO and update it from with sdf_scene.h and move gfx_resource to sdf_scene.h
+//      - [x] bring descriptors, resource and views and rhi binding APIs together
+//      - [x] Debug, Test and Fix Issues
+// - [ ] Fix CS perf issues
 // - [ ] image and buffer memory barriers API
 // - [ ] Texture resize API
 // - [ ] IMPORTANT!!! Texture read back for tests
