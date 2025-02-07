@@ -642,16 +642,12 @@ layout(local_size_x = 32, local_size_y = 32) in;
 
 void main() {
     vec2 uv = vec2(gl_GlobalInvocationID.xy) / vec2(pc_data.resolution);
-    vec2 ndcPos = (uv * 2.0f) - 1.0f;
+    vec2 ndcPos = ((uv * 2.0f) - 1.0f) * vec2(1, -1);
 
     // convert UV to -1, +1 NDC
-    vec4 position = vec4(ndcPos, 0.0, 1.0);
-    vec4 clipPos = pc_data.view_proj * position;  
-    
-    vec2 pos = clipPos.xy / clipPos.w;
-    
-    vec4 nearp = inverse(pc_data.view_proj) * vec4(pos, -1.0, 1.0);
-    vec4 farp = inverse(pc_data.view_proj) * vec4(pos, 1.0, 1.0);  
+    vec4 position = vec4(ndcPos, 0.0, 1.0);    
+    vec4 nearp = inverse(pc_data.view_proj) * vec4(position.xy, -1.0, 1.0);
+    vec4 farp = inverse(pc_data.view_proj) * vec4(position.xy, 1.0, 1.0);  
     
     Ray ray;
     ray.ro = nearp.xyz / nearp.w; 
