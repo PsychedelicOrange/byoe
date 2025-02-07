@@ -1,13 +1,18 @@
 #ifndef SDF_SCENE_H
 #define SDF_SCENE_H
 
+#include "../core/common.h"
+
 #include "../render/render_structs.h"
 #include "game_state.h"    // camera
 
 // Docs: https://github.com/PsychedelicOrange/byoe/pull/10
 
-#define MAX_SDF_NODES 1024    // same as max game objects
-#define MAX_SDF_OPS   32      // Max no of SDF operations that can be done to combine complex shapes
+#define MAX_SDF_NODES MAX_OBJECTS    // same as max game objects
+#define MAX_SDF_OPS   32             // Max no of SDF operations that can be done to combine complex shapes
+
+#define MAX_SCENE_NODES_SIZE MAX_SDF_NODES * sizeof(SDF_Node)
+#define MAX_GPU_NODES_SIZE   MAX_SDF_NODES * sizeof(SDF_NodeGPUData)
 
 // Wen need to flatten the SDF_Node to pass it to GPU, this structs helps with that
 // aligned at 16 bytes | total = 160 bytes
@@ -60,6 +65,9 @@ int sdf_scene_add_primitive(SDF_Scene* scene, SDF_Primitive primitive);
 int sdf_scene_add_object(SDF_Scene* scene, SDF_Object object);
 
 // Uploads the scene nodes to GPU by flattening them using SDF_NodeGPUData struct
+void sdf_scene_update_scene_node_gpu_data(const SDF_Scene* scene);
+
+// returns the packed scene nodes flattened data pointer
 void* sdf_scene_get_scene_nodes_gpu_data(const SDF_Scene* scene);
 
 #endif

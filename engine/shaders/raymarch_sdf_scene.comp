@@ -253,8 +253,8 @@ layout (push_constant) uniform PushConstant {
 }pc_data;
 ////////////////////////////////////////////////////////////////////////////////////////
 // RW Resources
-layout(binding = 0, set = 0, rgba16f) writeonly uniform image2D outColorRenderTarget;
-layout(binding = 1, set = 0, r32f) writeonly uniform image2D outDepthRenderTarget;
+layout(binding = 1, set = 0, rgba32f) writeonly uniform image2D outColorRenderTarget;
+//layout(binding = 1, set = 0, r32f) writeonly uniform image2D outDepthRenderTarget;
 ////////////////////////////////////////////////////////////////////////////////////////
 // Helper 
 float dot2( in vec2 v ) { return dot(v,v); }
@@ -641,23 +641,23 @@ hit_info raymarch(Ray ray) {
 layout(local_size_x = 32, local_size_y = 32) in;
 
 void main() {
-    ivec2 uv = ivec2(gl_GlobalInvocationID.xy) / ivec2(800, 600);
-    imageStore(outColorRenderTarget, ivec2(gl_GlobalInvocationID.xy), vec4(uv, 0.0f, 1.0f));
-    return;
+    vec2 uv = vec2(gl_GlobalInvocationID.xy) / vec2(pc_data.resolution);
+    vec2 ndcPos = (uv * 2.0f) - 1.0f;
 
     // convert UV to -1, +1 NDC
-    //vec4 position = vec4(aPos, 0.0, 1.0);
-    //vec4 clipPos = viewproj * position;  
-    //
-    //vec2 pos = clipPos.xy / clipPos.w;
-    //
-    //vec4 nearp = inverse(viewproj) * vec4(pos, -1.0, 1.0);
-    //vec4 farp = inverse(viewproj) * vec4(pos, 1.0, 1.0);  
-    //
-    //Ray ray;
-    //ray.ro = nearp.xyz / nearp.w; 
-    //ray.rd = normalize(farp.xyz / farp.w - ray.ro);
+    vec4 position = vec4(ndcPos, 0.0, 1.0);
+    vec4 clipPos = pc_data.view_proj * position;  
+    
+    vec2 pos = clipPos.xy / clipPos.w;
+    
+    vec4 nearp = inverse(pc_data.view_proj) * vec4(pos, -1.0, 1.0);
+    vec4 farp = inverse(pc_data.view_proj) * vec4(pos, 1.0, 1.0);  
+    
+    Ray ray;
+    ray.ro = nearp.xyz / nearp.w; 
+    ray.rd = normalize(farp.xyz / farp.w - ray.ro);
 
+    imageStore(outColorRenderTarget, ivec2(gl_GlobalInvocationID.xy), nodes[0].material.diffuse + vec4(ray.rd, 1.0f));
 
     //Ray ray;
     //ray.ro = nearp.xyz / nearp.w; // Ray origin in world space

@@ -10,19 +10,21 @@
 
 #include <string.h>    // memset
 
-static SDF_NodeGPUData* s_SceneGPUData = NULL; 
+static SDF_NodeGPUData* s_SceneGPUData = NULL;
 
 void sdf_scene_init(SDF_Scene* scene)
 {
     scene->culled_nodes_count = 0;
     scene->current_node_head  = 0;
-    scene->nodes              = calloc(MAX_SDF_NODES, sizeof(SDF_Node));
+    scene->nodes              = calloc(MAX_SDF_NODES, sizeof(SDF_Node));           // 176 bytes x 512 MiB
+    s_SceneGPUData            = calloc(MAX_SDF_NODES, sizeof(SDF_NodeGPUData));    // 160 bytes x 512 MiB
 }
 
 void sdf_scene_destroy(SDF_Scene* scene)
 {
-    free(scene);
-    scene = NULL;
+    SAFE_FREE(s_SceneGPUData);
+    SAFE_FREE(scene->nodes);
+    SAFE_FREE(scene);
 }
 
 int sdf_scene_cull_nodes(SDF_Scene* scene)
@@ -70,11 +72,38 @@ int sdf_scene_add_object(SDF_Scene* scene, SDF_Object operation)
     return idx;
 }
 
-void sdf_scene_update_scene_node_gpu_data(const SDF_Scene* scene) 
+void sdf_scene_update_scene_node_gpu_data(const SDF_Scene* scene)
 {
     if (!scene)
         return;
 
+    for (uint32_t i = 0; i < scene->current_node_head; i++) {
+        SDF_NodeGPUData* gpuNode = &s_SceneGPUData[i];
+        SDF_Node         node    = scene->nodes[i];
+
+        gpuNode->nodeType = node.type;
+
+        if (node.type == SDF_NODE_PRIMITIVE) {
+            gpuNode->primType = node.primitive.type;
+            gpuNode->material = node.primitive.material;
+
+            mat4s transform    = create_transform_matrix(node.primitive.transform.position.raw, node.primitive.transform.rotation, (vec3){1.0f, 1.0f, 1.0f});
+            gpuNode->transform = transform;
+            gpuNode->scale     = node.primitive.transform.scale;
+
+            glm_vec4_copy(node.primitive.props.packed_data[0].raw, gpuNode->packed_params[0].raw);
+            glm_vec4_copy(node.primitive.props.packed_data[1].raw, gpuNode->packed_params[1].raw);
+
+        } else {
+            gpuNode->blend  = node.object.type;
+            gpuNode->prim_a = node.object.prim_a;
+            gpuNode->prim_b = node.object.prim_b;
+
+            mat4s transform    = create_transform_matrix(node.object.transform.position.raw, node.object.transform.rotation, (vec3){1.0f, 1.0f, 1.0f});
+            gpuNode->transform = transform;
+            gpuNode->scale     = node.primitive.transform.scale;
+        }
+    }
 }
 
 void* sdf_scene_get_scene_nodes_gpu_data(const SDF_Scene* scene)
@@ -82,7 +111,6 @@ void* sdf_scene_get_scene_nodes_gpu_data(const SDF_Scene* scene)
     if (!scene)
         return NULL;
 
-    // parse throught scene and pack the SDF_NodeGPUData into a large buffer and return it
+    // parse thought scene and pack the SDF_NodeGPUData into a large buffer and return it
     return (void*) s_SceneGPUData;
-
 }

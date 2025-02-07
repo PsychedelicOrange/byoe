@@ -9,8 +9,6 @@
 
 struct GLFWwindow;
 
-#define MAX_ROCKS_COUNT 100
-
 // TODO: Combine mousePos and lastMousePos into vec4 before and after perf-sweep for cache misses
 typedef struct GameState
 {
