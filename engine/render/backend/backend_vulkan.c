@@ -12,7 +12,6 @@
 
 #ifdef _WIN32
     #include <windows.h>
-
     #include <vulkan/vulkan_win32.h>
 #endif
 
@@ -71,9 +70,9 @@ DEFINE_CLAMP(int)
 //      - [x] create and bind SDF_GPUNodeData UBO and update it from with sdf_scene.h and move gfx_resource to sdf_scene.h
 //      - [x] bring descriptors, resource and views and rhi binding APIs together
 //      - [x] Debug, Test and Fix Issues
-// - [ ] Fix CS perf issues
-// - [ ] Texture resize API
+// - [x] Investigate CS perf issues - dispatching at low res than 32x3 such as 8x8 nworks fine for this shader, also the shader has high register pressure!!!
 // - [ ] IMPORTANT!!! Texture read back for tests
+// - [ ] Texture resize API
 // ----------------------> renderer_backend Draft-1
 // Draft-2 Goals: resource memory pool RAAI kinda simulation + backend* design consistency using macros + MSAA
 
@@ -2540,9 +2539,3 @@ rhi_error_codes vulkan_transition_image_layout(const gfx_cmd_buf* cmd_buffer, co
 
     return Success;
 }
-
-//rhi_error_codes vulkan_image_memory_barrier(const gfx_cmd_buf* cmd_buffer, const gfx_resource* image)
-//{
-//    VkCommandBuffer  vkCmdBuffer = *(VkCommandBuffer*) cmd_buffer->backend;
-//    texture_backend* backend     = image->texture->backend;
-//}
