@@ -21,7 +21,7 @@
 
 #define MAX_GPU_STACK_SIZE 32
 
-#define DISPATCH_LOCAL_DIM 16
+#define DISPATCH_LOCAL_DIM 8
 //-----------------------------
 
 // Docs: https://github.com/PsychedelicOrange/byoe/pull/10
