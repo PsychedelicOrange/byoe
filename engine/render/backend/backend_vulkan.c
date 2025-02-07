@@ -72,7 +72,7 @@ DEFINE_CLAMP(int)
 //      - [x] bring descriptors, resource and views and rhi binding APIs together
 //      - [x] Debug, Test and Fix Issues
 // - [ ] Fix CS perf issues
-// - [ ] image and buffer memory barriers API
+// - [x] image and buffer memory barriers API
 // - [ ] Texture resize API
 // - [ ] IMPORTANT!!! Texture read back for tests
 // ----------------------> renderer_backend Draft-1
