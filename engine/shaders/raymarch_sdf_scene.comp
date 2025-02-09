@@ -651,7 +651,7 @@ void main() {
     ray.ro = nearp.xyz / nearp.w; 
     ray.rd = normalize(farp.xyz / farp.w - ray.ro);
 
-    vec4 FragColor = vec4(0.0f, 0.0f, 0.0f, 0.0f);
+    vec4 FragColor = vec4(1.0f, 0.0f, 1.0f, 0.0f);
 
     hit_info hit  = raymarch(ray);
     if(hit.d < RAY_MAX_STEP)

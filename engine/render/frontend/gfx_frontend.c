@@ -66,6 +66,8 @@ int gfx_init(rhi_api api)
         gfx_create_single_time_cmd_buffer  = vulkan_device_create_single_time_command_buffer;
         gfx_destroy_single_time_cmd_buffer = vulkan_device_destroy_single_time_command_buffer;
 
+        gfx_readback_swapchain = vulkan_device_readback_swapchain;
+
         // RHI
         rhi_frame_begin = vulkan_frame_begin;
         rhi_frame_end   = vulkan_frame_end;

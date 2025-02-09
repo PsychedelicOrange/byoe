@@ -283,7 +283,7 @@ typedef struct SDF_Node
 //------------------------
 
 #define MAX_BACKBUFFERS         3
-#define MAX_FRAME_INFLIGHT      2
+#define MAX_FRAME_INFLIGHT      3
 #define MAX_CMD_BUFFS_PER_QUEUE 16
 #define MAX_RT                  8
 
@@ -785,5 +785,15 @@ typedef struct gfx_render_pass
     bool           is_swap_pass;
     bool           _pad1[6];
 } gfx_render_pass;
+
+typedef struct gfx_texture_readback
+{
+    alignas(16) uint32_t width;
+    uint32_t height;
+    uint32_t bits_per_pixel;
+    uint32_t _pad0;
+    char*    pixels;
+    bool     _pad1[8];
+} gfx_texture_readback;
 
 #endif    // RENDER_STRUCTS_H

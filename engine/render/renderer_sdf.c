@@ -77,7 +77,7 @@ typedef struct renderer_internal_state
     bool                    captureSwapchain;
     bool                    _pad0[3];
     mat4s                   viewproj;
-    texture_readback        lastTextureReadback;
+    gfx_texture_readback    lastSwapchainReadback;
     gfx_context             gfxcontext;
     screen_quad_resoruces   screen_quad_resources;
     sdf_resources           sdfscene_resources;
@@ -452,6 +452,8 @@ void renderer_sdf_destroy(void)
 {
     gfx_flush_gpu_work();
 
+    free(s_RendererSDFInternalState.lastSwapchainReadback.pixels);
+
     // clean up
     renderer_internal_destroy_sdf_pass_resources();
 
@@ -463,9 +465,6 @@ void renderer_sdf_destroy(void)
 
     gfx_destroy_swapchain(&s_RendererSDFInternalState.gfxcontext.swapchain);
     gfx_ctx_destroy(&s_RendererSDFInternalState.gfxcontext);
-
-    if (s_RendererSDFInternalState.lastTextureReadback.pixels)
-        free(s_RendererSDFInternalState.lastTextureReadback.pixels);
 
     // glfw: terminate, clearing all previously allocated GLFW resources.
     // ------------------------------------------------------------------
@@ -620,6 +619,11 @@ void renderer_sdf_draw_scene(const SDF_Scene* scene)
 
         rhi_gfx_cmd_enque_submit(&s_RendererSDFInternalState.gfxcontext.cmd_queue, cmd_buff);
         rhi_gfx_cmd_submit_queue(&s_RendererSDFInternalState.gfxcontext.cmd_queue, frame_sync);
+
+        if (s_RendererSDFInternalState.captureSwapchain) {
+            s_RendererSDFInternalState.lastSwapchainReadback = gfx_readback_swapchain(&s_RendererSDFInternalState.gfxcontext.swapchain);
+            s_RendererSDFInternalState.captureSwapchain      = false;
+        }
     }
     rhi_frame_end(&s_RendererSDFInternalState.gfxcontext);
 }
@@ -629,13 +633,7 @@ void renderer_sdf_set_capture_swapchain_ready(void)
     s_RendererSDFInternalState.captureSwapchain = true;
 }
 
-texture_readback renderer_sdf_read_swapchain(void)
+const gfx_texture_readback* renderer_sdf_get_last_swapchain_readback(void)
 {
-    texture_readback result = {0};
-    return result;
-}
-
-texture_readback renderer_sdf_get_last_swapchain_readback(void)
-{
-    return s_RendererSDFInternalState.lastTextureReadback;
+    return &s_RendererSDFInternalState.lastSwapchainReadback;
 }

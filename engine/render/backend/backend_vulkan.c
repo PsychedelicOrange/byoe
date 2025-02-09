@@ -10,10 +10,13 @@
 #include <volk.h>
 #include <vulkan/vulkan.h>
 
-#ifdef _WIN32
+// clang-format off
+#ifdef _WIN32 // careful of the order
     #include <windows.h>
+
     #include <vulkan/vulkan_win32.h>
 #endif
+// clang-format on
 
 #include <GLFW/glfw3.h>
 
@@ -70,9 +73,8 @@ DEFINE_CLAMP(int)
 //      - [x] create and bind SDF_GPUNodeData UBO and update it from with sdf_scene.h and move gfx_resource to sdf_scene.h
 //      - [x] bring descriptors, resource and views and rhi binding APIs together
 //      - [x] Debug, Test and Fix Issues
-// - [x] Investigate CS perf issues - dispatching at low res than 32x3 such as 8x8 nworks fine for this shader, also the shader has high register pressure!!!
-// - [ ] IMPORTANT!!! Texture read back for tests
-// - [ ] Texture resize API
+// - [x] Investigate CS perf issues - dispatching at low res than 32x3 such as 8x8 works fine for this shader, also the shader has high register pressure!!!
+// - [x] IMPORTANT!!! Texture read back for tests
 // ----------------------> renderer_backend Draft-1
 // Draft-2 Goals: resource memory pool RAAI kinda simulation + backend* design consistency using macros + MSAA
 
@@ -930,8 +932,6 @@ static TypedGrowableArray vulkan_internal_create_queue_family_infos(queue_indice
         typed_growable_array_append(&queueFamilyInfos, computeQueueInfo);
     }
 
-    LOG_ERROR("queue create info count: %d", queueFamilyInfos.size);
-
     for (uint32_t i = 0; i < queueFamilyInfos.size; i++) {
         VkDeviceQueueCreateInfo* info = (VkDeviceQueueCreateInfo*) typed_growable_array_get_element(&queueFamilyInfos, i);
         LOG_INFO("%d", info->queueFamilyIndex);
@@ -1213,7 +1213,7 @@ gfx_swapchain vulkan_device_create_swapchain(uint32_t width, uint32_t height)
         .imageColorSpace       = backend->format.colorSpace,
         .imageExtent           = backend->extents,
         .imageArrayLayers      = 1,
-        .imageUsage            = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        .imageUsage            = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
         .imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE,
         .compositeAlpha        = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
         .queueFamilyIndexCount = 0,
@@ -2087,7 +2087,7 @@ void vulkan_device_destroy_sampler(gfx_resource* resource)
     resource->sampler = NULL;
 }
 
-static VkBuffer vulkan_internal_create_buffer_backend(uint32_t size)
+static VkBuffer vulkan_internal_create_buffer_backend(uint32_t size, VkBufferUsageFlags usage)
 {
     VkBuffer buffer = VK_NULL_HANDLE;
 
@@ -2096,7 +2096,7 @@ static VkBuffer vulkan_internal_create_buffer_backend(uint32_t size)
         .pNext       = NULL,
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
         .size        = size,
-        .usage       = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT};
+        .usage       = usage};
 
     VK_CHECK_RESULT(vkCreateBuffer(VKDEVICE, &buffer_ci, NULL, &buffer), "[Vulkan] cannot create buffer");
     return buffer;
@@ -2112,7 +2112,7 @@ static VkDeviceMemory vulkan_internal_create_buffer_memory(VkBuffer buffer, uint
     VkMemoryAllocateInfo alloc_info = {
         .sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
         .allocationSize  = mem_requirements.size,
-        .memoryTypeIndex = vulkan_internal_find_memory_type(VKGPU, mem_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)};    // since can be mapped on CPU to udpate it's contents
+        .memoryTypeIndex = vulkan_internal_find_memory_type(VKGPU, mem_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)};    // since can be mapped on CPU to udpate it's contents
 
     VK_CHECK_RESULT(vkAllocateMemory(VKDEVICE, &alloc_info, NULL, &memory), "[Vulkan] cannot allocate memory for buffer");
     vkBindBufferMemory(VKDEVICE, buffer, memory, offset);
@@ -2129,7 +2129,7 @@ gfx_resource vulkan_device_create_uniform_buffer_resource(uint32_t size)
     buffer_backend* backend = malloc(sizeof(buffer_backend));
     ubo->backend            = backend;
 
-    backend->buffer = vulkan_internal_create_buffer_backend(size);
+    backend->buffer = vulkan_internal_create_buffer_backend(size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
     backend->memory = vulkan_internal_create_buffer_memory(backend->buffer, 0);
 
     return resource;
@@ -2151,11 +2151,17 @@ void vulkan_device_destroy_uniform_buffer_resource(gfx_resource* resource)
     resource->ubo = NULL;
 }
 
+static void* vulkan_internal_get_mapped_buffer_region(VkDeviceMemory memory, uint32_t size, uint32_t offset)
+{
+    void* mapped = NULL;
+    VK_CHECK_RESULT(vkMapMemory(VKDEVICE, memory, offset, size, 0, &mapped), "[Vulkan] cannot map memory");
+    return mapped;
+}
+
 void vulkan_device_update_uniform_buffer(gfx_resource* resource, uint32_t size, uint32_t offset, void* data)
 {
     buffer_backend* backend = (buffer_backend*) resource->ubo->backend;
-    void*           mapped  = NULL;
-    VK_CHECK_RESULT(vkMapMemory(VKDEVICE, backend->memory, offset, size, 0, &mapped), "[Vulkan] cannot map memory");
+    void*           mapped  = vulkan_internal_get_mapped_buffer_region(backend->memory, size, offset);
     memcpy(mapped, data, size);
     vkUnmapMemory(VKDEVICE, backend->memory);
 }
@@ -2241,6 +2247,63 @@ void vulkan_device_destroy_single_time_command_buffer(gfx_cmd_buf* cmd_buf)
 
     uuid_destroy(&cmd_buf->uuid);
     free(cmd_buf->backend);
+}
+
+gfx_texture_readback vulkan_device_readback_swapchain(const gfx_swapchain* swapchain)
+{
+    gfx_texture_readback readback = {0};
+
+    vkDeviceWaitIdle(VKDEVICE);
+
+    // create temporary vulkan buffer for transferring image from GPU to CPU
+    uint32_t       size           = swapchain->width * swapchain->height * 32;    // 4 since RGBA8_UNORM
+    VkBuffer       staging_buffer = vulkan_internal_create_buffer_backend(size, VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+    VkDeviceMemory staging_memory = vulkan_internal_create_buffer_memory(staging_buffer, 0);
+
+    gfx_cmd_buf     cmd_buf    = vulkan_device_create_single_time_command_buffer();
+    VkCommandBuffer vk_cmd_buf = *(VkCommandBuffer*) cmd_buf.backend;
+
+    VkImage swap_vk_image = ((swapchain_backend*) (swapchain->backend))->backbuffers[swapchain->current_backbuffer_idx];
+
+    // Change the image layout from shader read only optimal to transfer source
+    vulkan_internal_insert_image_memory_barrier(vk_cmd_buf, swap_vk_image, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+    {
+        // 1.1 Copy from staging buffer to Image
+
+        VkBufferImageCopy region = {
+            .bufferOffset                    = 0,
+            .bufferRowLength                 = 0,
+            .bufferImageHeight               = 0,
+            .imageSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+            .imageSubresource.mipLevel       = 0,
+            .imageSubresource.baseArrayLayer = 0,
+            .imageSubresource.layerCount     = 1,
+            .imageOffset                     = {0, 0, 0},
+            .imageExtent                     = {swapchain->width, swapchain->height, 1},
+        };
+
+        vkCmdCopyImageToBuffer(vk_cmd_buf, swap_vk_image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, staging_buffer, 1, &region);
+    }
+    vulkan_internal_insert_image_memory_barrier(vk_cmd_buf, swap_vk_image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+
+    vulkan_device_destroy_single_time_command_buffer(&cmd_buf);
+
+    readback.width          = swapchain->width;
+    readback.height         = swapchain->height;
+    readback.bits_per_pixel = 32;
+    readback.pixels         = malloc(size);
+
+    if (readback.pixels) {
+        void* data = vulkan_internal_get_mapped_buffer_region(staging_memory, size, 0);
+        if (data)
+            memcpy(readback.pixels, data, size);
+        vkUnmapMemory(VKDEVICE, staging_memory);
+    }
+
+    vkDestroyBuffer(VKDEVICE, staging_buffer, NULL);
+    vkFreeMemory(VKDEVICE, staging_memory, NULL);
+
+    return readback;
 }
 
 //--------------------------------------------------------

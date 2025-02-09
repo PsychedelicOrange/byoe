@@ -74,6 +74,8 @@ void              vulkan_device_destroy_uniform_buffer_resource_view(gfx_resourc
 gfx_cmd_buf vulkan_device_create_single_time_command_buffer(void);
 void        vulkan_device_destroy_single_time_command_buffer(gfx_cmd_buf* cmd_buf);
 
+gfx_texture_readback vulkan_device_readback_swapchain(const gfx_swapchain* swapchain);
+
 //------------------------------------------
 // RHI
 //------------------------------------------
