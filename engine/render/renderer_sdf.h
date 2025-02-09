@@ -39,6 +39,5 @@ void renderer_sdf_draw_scene(const SDF_Scene* scene);
 
 void             renderer_sdf_set_capture_swapchain_ready(void);
 texture_readback renderer_sdf_read_swapchain(void);
-texture_readback renderer_sdf_get_last_swapchain_readback(void);
 
 #endif
