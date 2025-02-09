@@ -6,7 +6,7 @@
 #include <rng/rng.h>
 #include <scene/sdf_scene.h>
 
-#define TEST_SCENE 0
+#define TEST_SCENE 1
 
 int game_main(void)
 {

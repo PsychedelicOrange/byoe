@@ -221,9 +221,9 @@ static void write_texture_readback_to_ppm(const gfx_texture_readback* texture, c
         for (uint32_t x = 0; x < texture->width; ++x) {
             uint32_t index = (y * texture->width + x) * 4;
             // BGRA8_UNORM format
-            uint8_t b = (uint8_t) ((texture->pixels[index] / 255.0f) * 255);
-            uint8_t g = (uint8_t) ((texture->pixels[index + 1] / 255.0f) * 255);
-            uint8_t r = (uint8_t) ((texture->pixels[index + 2] / 255.0f) * 255);
+            uint8_t b = (uint8_t) ((texture->pixels[index + 0]));
+            uint8_t g = (uint8_t) ((texture->pixels[index + 1]));
+            uint8_t r = (uint8_t) ((texture->pixels[index + 2]));
             //uint8_t  a     = (uint8_t) ((texture->pixels[index + 3] / 255.0f) * 255);
             fwrite(&r, 1, 1, file);
             fwrite(&g, 1, 1, file);
