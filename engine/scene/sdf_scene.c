@@ -6,7 +6,6 @@
 #include "camera.h"
 
 #include <cglm/cglm.h>
-#include <glad/glad.h>
 
 #include <string.h>    // memset
 

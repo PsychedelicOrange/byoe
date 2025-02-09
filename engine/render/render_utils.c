@@ -5,10 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-// clang-format off
-#include <glad/glad.h>
 #include <GLFW/glfw3.h>
-// clang-format on
 
 void render_utils_init_glfw(void)
 {
