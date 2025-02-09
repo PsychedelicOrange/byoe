@@ -16,8 +16,10 @@
     #endif
 #endif
 
+#define MAYBE_UNUSED __attribute__((unused))
+
 // Maximum number of game Object Instances in the game world at any moment
-#define MAX_OBJECTS 1024
+#define MAX_OBJECTS 256
 
 #define COLOR_RESET  "\x1b[0m"
 #define COLOR_RED    "\x1b[31m"
@@ -47,3 +49,26 @@
             __VA_ARGS__       \
         } name;
 #endif
+
+#define DEFINE_CLAMP(type)               \
+    static type clamp_##type(type value, \
+        type                      min,   \
+        type                      max)   \
+    {                                    \
+        if (value < min) {               \
+            return min;                  \
+        } else if (value > max) {        \
+            return max;                  \
+        } else {                         \
+            return value;                \
+        }                                \
+    }
+
+#define ARRAY_SIZE(x) sizeof(x) / sizeof(x[0])
+
+#define SAFE_FREE(x) \
+    if (x) {         \
+        free(x);     \
+        x = NULL;    \
+    }
+// DEFINE_CLAMP(float)

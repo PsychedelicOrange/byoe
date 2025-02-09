@@ -10,27 +10,21 @@
 
 #include <string.h>    // memset
 
-static uint32_t s_GPUSceneNodesUBO;
+static SDF_NodeGPUData* s_SceneGPUData = NULL;
 
 void sdf_scene_init(SDF_Scene* scene)
 {
     scene->culled_nodes_count = 0;
     scene->current_node_head  = 0;
-    scene->nodes              = calloc(MAX_SDF_NODES, sizeof(SDF_Node));
-
-    // create the UBO to upload scene nodes data
-    glGenBuffers(1, &s_GPUSceneNodesUBO);
-    glBindBuffer(GL_UNIFORM_BUFFER, s_GPUSceneNodesUBO);
-    // Initialize with NULL data
-    glBufferData(GL_UNIFORM_BUFFER, sizeof(SDF_NodeGPUData) * MAX_SDF_NODES, NULL, GL_DYNAMIC_DRAW);
-    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+    scene->nodes              = calloc(MAX_SDF_NODES, sizeof(SDF_Node));           // 176 bytes x 512 MiB
+    s_SceneGPUData            = calloc(MAX_SDF_NODES, sizeof(SDF_NodeGPUData));    // 160 bytes x 512 MiB
 }
 
 void sdf_scene_destroy(SDF_Scene* scene)
 {
-    glDeleteBuffers(1, &s_GPUSceneNodesUBO);
-    free(scene);
-    scene = NULL;
+    SAFE_FREE(s_SceneGPUData);
+    SAFE_FREE(scene->nodes);
+    SAFE_FREE(scene);
 }
 
 int sdf_scene_cull_nodes(SDF_Scene* scene)
@@ -78,53 +72,45 @@ int sdf_scene_add_object(SDF_Scene* scene, SDF_Object operation)
     return idx;
 }
 
-void sdf_scene_upload_scene_nodes_to_gpu(const SDF_Scene* scene)
+void sdf_scene_update_scene_node_gpu_data(const SDF_Scene* scene)
 {
     if (!scene)
         return;
 
-    glBindBuffer(GL_UNIFORM_BUFFER, s_GPUSceneNodesUBO);
-    for (uint32_t i = 0; i < scene->current_node_head; ++i) {
-        SDF_Node node = scene->nodes[i];
+    for (uint32_t i = 0; i < scene->current_node_head; i++) {
+        SDF_NodeGPUData* gpuNode = &s_SceneGPUData[i];
+        SDF_Node         node    = scene->nodes[i];
 
-        // if (!node.is_dirty)
-        //     return;
+        gpuNode->nodeType = node.type;
 
-        scene->nodes[i].is_dirty = false;
-
-        SDF_NodeGPUData data;
-        memset(&data, 0, sizeof(SDF_NodeGPUData));
-
-        data.nodeType = node.type;
         if (node.type == SDF_NODE_PRIMITIVE) {
-            data.primType = node.primitive.type;
+            gpuNode->primType = node.primitive.type;
+            gpuNode->material = node.primitive.material;
 
-            mat4s transform = create_transform_matrix(node.primitive.transform.position.raw, node.primitive.transform.rotation, (vec3){1.0f, 1.0f, 1.0f});
-            data.transform  = transform;
-            data.scale      = node.primitive.transform.scale;
+            mat4s transform    = create_transform_matrix(node.primitive.transform.position.raw, node.primitive.transform.rotation, (vec3){1.0f, 1.0f, 1.0f});
+            gpuNode->transform = transform;
+            gpuNode->scale     = node.primitive.transform.scale;
 
-            glm_vec4_copy(node.primitive.props.packed_data[0].raw, data.packed_params[0].raw);
-            glm_vec4_copy(node.primitive.props.packed_data[1].raw, data.packed_params[1].raw);
+            glm_vec4_copy(node.primitive.props.packed_data[0].raw, gpuNode->packed_params[0].raw);
+            glm_vec4_copy(node.primitive.props.packed_data[1].raw, gpuNode->packed_params[1].raw);
 
-            data.material = node.primitive.material;
         } else {
-            data.blend  = node.object.type;
-            data.prim_a = node.object.prim_a;
-            data.prim_b = node.object.prim_b;
+            gpuNode->blend  = node.object.type;
+            gpuNode->prim_a = node.object.prim_a;
+            gpuNode->prim_b = node.object.prim_b;
 
-            mat4s transform = create_transform_matrix(node.object.transform.position.raw, node.object.transform.rotation, (vec3){1.0f, 1.0f, 1.0f});
-            data.transform  = transform;
-            data.scale      = node.object.transform.scale;
+            mat4s transform    = create_transform_matrix(node.object.transform.position.raw, node.object.transform.rotation, (vec3){1.0f, 1.0f, 1.0f});
+            gpuNode->transform = transform;
+            gpuNode->scale     = node.primitive.transform.scale;
         }
-
-        glBufferSubData(GL_UNIFORM_BUFFER, i * sizeof(SDF_NodeGPUData), sizeof(SDF_NodeGPUData), &data);
     }
 }
 
-void sdf_scene_bind_scene_nodes(uint32_t shaderProgramID)
+void* sdf_scene_get_scene_nodes_gpu_data(const SDF_Scene* scene)
 {
-    unsigned int bindingPoint = glGetUniformBlockIndex(shaderProgramID, "SDFScene");
-    glUniformBlockBinding(shaderProgramID, 0, bindingPoint);
-    glBindBufferBase(GL_UNIFORM_BUFFER, bindingPoint, s_GPUSceneNodesUBO);
-    glBindBuffer(GL_UNIFORM_BUFFER, s_GPUSceneNodesUBO);
+    if (!scene)
+        return NULL;
+
+    // parse thought scene and pack the SDF_NodeGPUData into a large buffer and return it
+    return (void*) s_SceneGPUData;
 }

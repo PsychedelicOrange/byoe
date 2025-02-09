@@ -76,7 +76,7 @@ void setup_sdf_test_scene(void)
                 .rotation = {0.0f, 0.0f, 0.0f, 0.0f},
                 .scale    = 1.0f},
             // .props.sphere = {.radius = 0.1f},
-            .props.box    = {.dimensions = {{1.0f, 1.0f, 1.0f}}},
+            .props.box = {.dimensions = {{1.0f, 1.0f, 1.0f}}},
             //.props.round_box        = {.dimensions = {1.0f, 1.0f, 1.0f}, .roundness = 0.5f},                      // TEST
             //.props.box_frame        = {.dimensions = {1.0f, 1.0f, 1.0f}, .thickness = 0.025f},                    // TEST
             //.props.torus            = {.thickness = {1.0f, 0.25f}},                                               // TEST
@@ -201,22 +201,38 @@ int game_main(void)
     return EXIT_SUCCESS;
 }
 
-void write_texture_to_ppm(const char* filename, char* pixelData, uint32_t width, uint32_t height, uint32_t bpp)
+static void write_texture_readback_to_ppm(const gfx_texture_readback* texture, const char* filename)
 {
-    FILE* file = fopen(filename, "wb");
-    if (!file) {
-        LOG_ERROR("Failed to open file: %s\n", filename);
+    if (!texture || !texture->pixels || texture->bits_per_pixel != 32) {
+        LOG_ERROR("Invalid texture data or format");
         return;
     }
 
-    fprintf(file, "P6\n%d %d\n255\n", width, height);
+    FILE* file = fopen(filename, "wb");
+    if (!file) {
+        LOG_ERROR("Failed to open file: %s", filename);
+        return;
+    }
 
-    for (int y = height - 1; y >= 0; y--) {
-        fwrite(pixelData + y * width * bpp, 1, width * bpp, file);
+    // PPM header
+    fprintf(file, "P6\n%u %u\n255\n", texture->width, texture->height);
+
+    for (uint32_t y = 0; y < texture->height; ++y) {
+        for (uint32_t x = 0; x < texture->width; ++x) {
+            uint32_t index = (y * texture->width + x) * 4;
+            // BGRA8_UNORM format
+            uint8_t b = (uint8_t) ((texture->pixels[index + 0]));
+            uint8_t g = (uint8_t) ((texture->pixels[index + 1]));
+            uint8_t r = (uint8_t) ((texture->pixels[index + 2]));
+            //uint8_t  a     = (uint8_t) ((texture->pixels[index + 3] / 255.0f) * 255);
+            fwrite(&r, 1, 1, file);
+            fwrite(&g, 1, 1, file);
+            fwrite(&b, 1, 1, file);
+        }
     }
 
     fclose(file);
-    printf("Texture successfully written to %s\n", filename);
+    LOG_SUCCESS("Successfully wrote texture to %s", filename);
 }
 
 bool read_ppm(const char* filename, int* width, int* height, uint8_t** pixels)
@@ -334,15 +350,15 @@ void test_sdf_scene(void)
 
         renderer_sdf_render();
 
-        texture_readback swapchain_readback = renderer_sdf_get_last_swapchain_readback();
+        const gfx_texture_readback* swapchain_readback = renderer_sdf_get_last_swapchain_readback();
         (void) swapchain_readback;
 
-        write_texture_to_ppm("./tests/test_sdf_scene.ppm", swapchain_readback.pixels, swapchain_readback.width, swapchain_readback.height, swapchain_readback.bits_per_pixel);
+        write_texture_readback_to_ppm(swapchain_readback, "./tests/test_sdf_scene.ppm");
 
         engine_destroy();
 
         TEST_END();
 
-        ASSERT_CON(compare_ppm_similarity("./tests/test_sdf_scene_golden_image.ppm", "./tests/test_sdf_scene.ppm") > 95.0f, test_case, "Testing Engine Start/Render/Close and validating test scene");
+        ASSERT_CON(compare_ppm_similarity("./tests/test_sdf_scene_golden_image.ppm", "./tests/test_sdf_scene.ppm") > 95.0f, test_case, "Screenshot testing SDF test scene + Engine Ignition/Shutdown flow test");
     }
 }

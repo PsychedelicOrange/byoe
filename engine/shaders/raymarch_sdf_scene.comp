@@ -1,4 +1,4 @@
-#version 410 core
+#version 450
 // https://iquilezles.org/articles/distfunctions/
 ////////////////////////////////////////////////////////////////////////////////////////
 // Constants
@@ -240,20 +240,21 @@ float Plane_get_distance(vec4 packed1, vec4 packed2) {
 
 ////////////////////////////////////////////////////////////////////////////////////////
 // Uniforms
-uniform ivec2 resolution;              
-uniform int sdf_node_count;       
-uniform vec3 dir_light_pos;  
-uniform int curr_draw_node_idx;
-layout(std140) uniform SDFScene {
+
+layout(binding = 0, set = 0) uniform SDFScene {
     SDF_Node nodes[100];
-};        
+}; 
+
+layout (push_constant) uniform PushConstant {
+    mat4 view_proj;
+    ivec2 resolution;    
+    vec3 dir_light_pos;  
+    int curr_draw_node_idx;
+}pc_data;
 ////////////////////////////////////////////////////////////////////////////////////////
-// Vertex Input vars
-in vec4 nearp;
-in vec4 farp;
-////////////////////////////////////////////////////////////////////////////////////////
-// Out Render Targets
-out vec4 FragColor;
+// RW Resources
+layout(binding = 1, set = 0, rgba32f) writeonly uniform image2D outColorRenderTarget;
+//layout(binding = 1, set = 0, r32f) writeonly uniform image2D outDepthRenderTarget;
 ////////////////////////////////////////////////////////////////////////////////////////
 // Helper 
 float dot2( in vec2 v ) { return dot(v,v); }
@@ -553,15 +554,15 @@ hit_info sceneSDF(vec3 p) {
     hit_info hit;
     hit.d = RAY_MAX_STEP;
 
-    SDF_Node parent_node = nodes[curr_draw_node_idx];
+    SDF_Node parent_node = nodes[pc_data.curr_draw_node_idx];
 
     // Explicit stack to emulate tree traversal
     blend_node stack[MAX_GPU_STACK_SIZE];
     int sp = 0; // Stack pointer
-    stack[sp++] = blend_node(SDF_BLEND_UNION, curr_draw_node_idx, parent_node.transform);
+    stack[sp++] = blend_node(SDF_BLEND_UNION, pc_data.curr_draw_node_idx, parent_node.transform);
 
     while (sp > 0) {
-        blend_node curr_blend_node = stack[--sp]; // Pop node index
+        blend_node curr_blend_node = stack[--sp];
         if (curr_blend_node.node < 0) continue;
 
         SDF_Node node = nodes[curr_blend_node.node];
@@ -637,41 +638,50 @@ hit_info raymarch(Ray ray) {
 
 ////////////////////////////////////////////////////////////////////////////////////////
 // Main
-void main() {
-    vec2 uv = (gl_FragCoord.xy - 0.5 * resolution.xy) / resolution.y;
+layout(local_size_x = 8, local_size_y = 8) in;
 
+void main() {
+    vec2 uv = vec2(gl_GlobalInvocationID.xy) / vec2(pc_data.resolution);
+    // convert UV to -1, +1 NDC
+    vec2 ndcPos = ((uv * 2.0f) - 1.0f) * vec2(1, -1);
+    vec4 nearp = inverse(pc_data.view_proj) * vec4(ndcPos, -1.0, 1.0);
+    vec4 farp = inverse(pc_data.view_proj) * vec4(ndcPos, 1.0, 1.0);  
+    
     Ray ray;
-    ray.ro = nearp.xyz / nearp.w; // Ray origin in world space
-    ray.rd = normalize((farp.xyz / farp.w) - ray.ro); // Ray direction
+    ray.ro = nearp.xyz / nearp.w; 
+    ray.rd = normalize(farp.xyz / farp.w - ray.ro);
+
+    vec4 FragColor = vec4(1.0f, 0.0f, 1.0f, 0.0f);
 
     hit_info hit  = raymarch(ray);
-    
     if(hit.d < RAY_MAX_STEP)
     {
         vec3 lightPos = vec3(2, 5, 5);
-
+    
         vec3 p = ray.ro + ray.rd * hit.d;
-
+    
         vec3 l = normalize(lightPos - p);
         vec3 n = normalize(estimateNormal(p));
         vec3 r = reflect(-l, n);
         vec3 v = normalize(ray.ro - p);
-
+    
         vec3 h = normalize(l + v); 
-
+    
         float diffuse  = clamp(dot(l, n), 0., 1.);
         float spec = pow(max(dot(v, r), 0.0), 32);
-
+    
         vec3 specular = hit.material.diffuse.xyz * spec;
         vec3 diffuseColor = diffuse * hit.material.diffuse.xyz;
-
-        gl_FragDepth = hit.d / RAY_MAX_STEP;
-
+    
+        //outDepthRenderTarget = hit.d / RAY_MAX_STEP;
+    
         FragColor = vec4(diffuseColor + specular * 10, 1.0f);  
-
-        // FragColor = vec4(hit.d, hit.d, hit.d, 1.0f); 
+        imageStore(outColorRenderTarget, ivec2(gl_GlobalInvocationID.xy), FragColor);
+        return;
+    
+        //FragColor = vec4(hit.d, hit.d, hit.d, 1.0f); 
     }
-    else {
-        gl_FragDepth = 1;
-    }
+    //else {
+    //    gl_FragDepth = 1;
+    //}
 }

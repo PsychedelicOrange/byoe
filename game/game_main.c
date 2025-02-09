@@ -6,7 +6,7 @@
 #include <rng/rng.h>
 #include <scene/sdf_scene.h>
 
-#define TEST_SCENE 0
+#define TEST_SCENE 1
 
 int game_main(void)
 {
@@ -49,7 +49,7 @@ int game_main(void)
                 .position = {{demoStartX, 0.0f, 0.0f}},
                 .rotation = {0.0f, 0.0f, 0.0f, 0.0f},
                 .scale    = 1.0f},
-            .props.sphere = {.radius = 0.1f},
+            .props.sphere = {.radius = 1.0f},
             // .props.box    = {.dimensions = {{1.0f, 1.0f, 1.0f}}},
             //.props.round_box        = {.dimensions = {1.0f, 1.0f, 1.0f}, .roundness = 0.5f},                      // TEST
             //.props.box_frame        = {.dimensions = {1.0f, 1.0f, 1.0f}, .thickness = 0.025f},                    // TEST
