@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.15)
+# PROJECT NAME
 project(byoe_ghost_asteroids C)
-
 ####################################################################
 ## OPTIONS
 # Options to build the engine as DLL or static library
@@ -8,8 +8,18 @@ option(BUILD_SHARED_ENGINE "Build engine as shared library (DLL)" OFF)
 ####################################################################
 ## GLOBAL COMPILATION SETTINGS
 set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
+set(CMAKE_C_STANDARD 11)            # Set C standard (11, 99, 90, etc.)
+set(CMAKE_C_STANDARD_REQUIRED ON)   # Ensure the standard is required
+set(CMAKE_C_EXTENSIONS OFF)         # Disable compiler-specific extensions
+
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-# VS edit and continue for h0to reloading
+####################################################################
+# GLOBAL PER PLATFORM SETTINGS
+
+##### ANDROID #####
+
+##### WINDOWS #####
+# VS edit and continue for hot reloading
 if(MSVC)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /MP") 
     add_compile_options("/ZI")
@@ -26,11 +36,11 @@ add_subdirectory(benchmarks)
 ## VENDOR
 # Fetch dependencies
 include(FetchContent)
-
-## External stuff
+##############################
+## Vulkan
 find_package(Vulkan REQUIRED)
 set(VULKAN_SDK $ENV{VULKAN_SDK})
-
+##############################
 # Fetch cglm
 FetchContent_Declare(
     cglm
@@ -40,7 +50,7 @@ FetchContent_Declare(
 # Set options to build cglm as static
 set(CGLM_STATIC ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(cglm)
-
+##############################
 # Fetch GLFW
 FetchContent_Declare(
     glfw
@@ -51,19 +61,12 @@ FetchContent_Declare(
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(glfw)
-
+##############################
+# Volk header
 FetchContent_Declare(
     volk
     GIT_REPOSITORY https://github.com/zeux/volk.git
     GIT_TAG vulkan-sdk-1.3.275.0
 )
 FetchContent_MakeAvailable(volk)
-
 ####################################################################
-# Custom target to run the executable
-add_custom_target(run
-    COMMAND byoe_ghost_asteroids
-    DEPENDS byoe_ghost_asteroids
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    COMMENT "Running the byoe_ghost_asteroids executable"
-)
