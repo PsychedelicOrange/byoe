@@ -8,15 +8,40 @@ option(BUILD_SHARED_ENGINE "Build engine as shared library (DLL)" OFF)
 ####################################################################
 ## GLOBAL COMPILATION SETTINGS
 set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
-set(CMAKE_C_STANDARD 11)            # Set C standard (11, 99, 90, etc.)
-set(CMAKE_C_STANDARD_REQUIRED ON)   # Ensure the standard is required
-set(CMAKE_C_EXTENSIONS OFF)         # Disable compiler-specific extensions
+set(CMAKE_C_STANDARD 11)   
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS OFF)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 ####################################################################
 # GLOBAL PER PLATFORM SETTINGS
 
 ##### ANDROID #####
+if(ANDROID)
+    message(STATUS "Generating for Android...")
+
+    include("${ANDROID_NDK}/build/cmake/android.toolchain.cmake")
+    include("$ENV{ANDROID_CMAKE_HOME}/android.apk.cmake" REQUIRED)
+    
+    set(CMAKE_SYSTEM_NAME Android)
+    set(CMAKE_ANDROID_ARCH_ABI arm64-v8a)
+    set(CMAKE_ANDROID_NDK $ENV{ANDROID_NDK_HOME})
+    set(CMAKE_ANDROID_STL c++_static)
+
+    # find android libs
+    find_library(log-lib log)
+    find_library(android-lib android)
+    find_library(vulkan-lib vulkan)
+
+     # NativeActivity for Android (replaces GLFW)
+    add_library(native_app_glue STATIC
+        ${CMAKE_ANDROID_NDK}/sources/android/native_app_glue/android_native_app_glue.c
+    )
+    target_include_directories(native_app_glue PRIVATE
+        ${CMAKE_ANDROID_NDK}/sources/android/native_app_glue
+    )
+
+endif()
 
 ##### WINDOWS #####
 # VS edit and continue for hot reloading

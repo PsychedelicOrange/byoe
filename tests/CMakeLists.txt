@@ -29,6 +29,8 @@ elseif(APPLE)
     )
 elseif(UNIX)
     target_link_libraries(tests PRIVATE m X11)
+elseif(ANDROID)
+    target_link_libraries(tests PRIVATE native_app_glue ${log-lib} ${android-lib} ${vulkan-lib} volk cglm)
 endif()
 
 target_include_directories(tests PUBLIC

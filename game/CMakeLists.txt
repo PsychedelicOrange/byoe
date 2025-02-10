@@ -30,6 +30,8 @@ elseif(APPLE)
     )
 elseif(UNIX)
     target_link_libraries(byoe_ghost_asteroids PRIVATE m X11)
+elseif(ANDROID)
+    target_link_libraries(byoe_ghost_asteroids PRIVATE native_app_glue ${log-lib} ${android-lib} ${vulkan-lib} volk cglm)
 endif()
 
 target_include_directories(byoe_ghost_asteroids PUBLIC
