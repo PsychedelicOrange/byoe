@@ -11,7 +11,7 @@ Maanyavar       | [Github: ]() | [Discord: earnestly]()
 Phani Srikar    | [Github: Pikachuxxxx](https://github.com/Pikachuxxxx) | [Discord: pikachuxxx]()
 
 ## Engine 
-The engine is completely made in C and uses SDFs for rendering all it's primitives and uses OpenGL for rendering (will support Vulkan once we have critical mass of engine/gameplay systems done). This engine runs on Windows/Mac/Linux and is tested from time to time. We will add more info on how the SDF renderer works and architecture details in the PRs and link them here as we develop.
+The engine is completely made in C and uses SDFs for rendering all it's primitives and uses Vulkan 1.2 (cause of VK_KHR_Dynamic_rendering extension) for rendering. This engine runs on Windows/Mac/Linux and is tested from time to time. We will add more info on how the SDF renderer works and architecture details in the PRs and link them here as we develop.
 
 ### Scripting
 We have a simple *C-based Scripting system*. Check the PR#2 for details on [Scripting in engine using C](https://github.com/PsychedelicOrange/byoe/pull/2). Check the [game folder and specificaly the camera_controller](https://github.com/PsychedelicOrange/byoe/blob/sdf-renderer-draft-1/game/camera_controller.c) for examples on how scripting can be added to game objects in the game side.
@@ -19,7 +19,7 @@ We have a simple *C-based Scripting system*. Check the PR#2 for details on [Scri
 We are currently building a SDF renderer to render bulles, space ships and planets.
 
 ### Renderer Design
-Doing everything from withing a shader is performance heavy, we cannot have for loops in shader code. Hence the renderer issues a number of drawcalls and intuitively handles SDF combinations using node based scene description. During the early stages the scene and operations will be dynamic and no pre-computation will be done, we will use a Pixel Shader approach (Will be refactored to a CS once we add vulkan support) and handle this using simple data structures.
+Doing everything from withing a shader is performance heavy, we cannot have for loops in shader code. Hence the renderer issues a number of drawcalls and intuitively handles SDF combinations using node based scene description. During the early stages the scene and operations will be dynamic and no pre-computation will be done, we will use a Compute Shader approach  and handle this using simple data structures.
 
 This is the first draft of the preliminary design for the sdf_renderer: #PR10 [SDF Renderer Abstraction Draft - 1](https://github.com/PsychedelicOrange/byoe/pull/10)
 
