@@ -2602,3 +2602,22 @@ rhi_error_codes vulkan_transition_image_layout(const gfx_cmd_buf* cmd_buffer, co
 
     return Success;
 }
+
+rhi_error_codes vulkan_clear_image(const gfx_cmd_buf* cmd_buffer, const gfx_resource* image)
+{
+    VkCommandBuffer  vkCmdBuffer = *(VkCommandBuffer*) cmd_buffer->backend;
+    texture_backend* backend     = image->texture->backend;
+
+    VkClearColorValue clearColor = {{0.0f, 0.0f, 0.0f, 0.0f}};
+    VkImageSubresourceRange range = {
+        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, // TODO: Handle depth images too
+        .baseArrayLayer = 0,
+        .baseMipLevel = 0,
+        .layerCount = 1,
+        .levelCount = 1
+    };
+
+    vkCmdClearColorImage(vkCmdBuffer, backend->image, VK_IMAGE_LAYOUT_GENERAL, &clearColor, 1, &range);
+    
+    return Success;
+}

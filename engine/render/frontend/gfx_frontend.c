@@ -99,6 +99,8 @@ int gfx_init(rhi_api api)
         rhi_dispatch = vulkan_dispatch;
 
         rhi_insert_image_layout_barrier = vulkan_transition_image_layout;
+
+        rhi_clear_image = vulkan_clear_image;
     }
 
     return Success;

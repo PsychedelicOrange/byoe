@@ -131,6 +131,8 @@ rhi_error_codes (*rhi_dispatch)(const gfx_cmd_buf* cmd_buf, uint32_t dimX, uint3
 
 rhi_error_codes (*rhi_insert_image_layout_barrier)(const gfx_cmd_buf* cmd_buf, const gfx_resource* resource, gfx_image_layout old_layout, gfx_image_layout new_layout);
 
+rhi_error_codes (*rhi_clear_image)(const gfx_cmd_buf* cmd_buffer, const gfx_resource* image);
+
 uint32_t rhi_get_back_buffer_idx(const gfx_swapchain* swapchain);
 uint32_t rhi_get_current_frame_idx(const gfx_context* ctx);
 #endif    // RHI_H

@@ -112,4 +112,6 @@ rhi_error_codes vulkan_dispatch(const gfx_cmd_buf* cmd_buf, uint32_t dimX, uint3
 
 rhi_error_codes vulkan_transition_image_layout(const gfx_cmd_buf* cmd_buffer, const gfx_resource* image, gfx_image_layout old_layout, gfx_image_layout new_layout);
 
+rhi_error_codes vulkan_clear_image(const gfx_cmd_buf* cmd_buffer, const gfx_resource* image);
+
 #endif    // BACKEND_VULKAN_N

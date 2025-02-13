@@ -478,17 +478,19 @@ static void renderer_internal_scene_clear_pass(gfx_cmd_buf* cmd_buff)
     if (!scene)
         return;
 
-    gfx_render_pass scene_clear_pass = {.is_compute_pass = true};
-    rhi_begin_render_pass(cmd_buff, scene_clear_pass, s_RendererSDFInternalState.gfxcontext.swapchain.current_backbuffer_idx);
-    {
-        rhi_bind_root_signature(cmd_buff, &s_RendererSDFInternalState.clear_tex_resources.root_sig);
-        rhi_bind_compute_pipeline(cmd_buff, s_RendererSDFInternalState.clear_tex_resources.pipeline);
+    rhi_clear_image(cmd_buff, &s_RendererSDFInternalState.sdfscene_resources.scene_texture);
 
-        rhi_bind_descriptor_table(cmd_buff, &s_RendererSDFInternalState.clear_tex_resources.table, GFX_PIPELINE_TYPE_COMPUTE);
+    // gfx_render_pass scene_clear_pass = {.is_compute_pass = true};
+    // rhi_begin_render_pass(cmd_buff, scene_clear_pass, s_RendererSDFInternalState.gfxcontext.swapchain.current_backbuffer_idx);
+    // {
+    //     rhi_bind_root_signature(cmd_buff, &s_RendererSDFInternalState.clear_tex_resources.root_sig);
+    //     rhi_bind_compute_pipeline(cmd_buff, s_RendererSDFInternalState.clear_tex_resources.pipeline);
 
-        rhi_dispatch(cmd_buff, (s_RendererSDFInternalState.width + DISPATCH_LOCAL_DIM) / DISPATCH_LOCAL_DIM, (s_RendererSDFInternalState.height + DISPATCH_LOCAL_DIM) / DISPATCH_LOCAL_DIM, 1);
-    }
-    rhi_end_render_pass(cmd_buff, scene_clear_pass);
+    //     rhi_bind_descriptor_table(cmd_buff, &s_RendererSDFInternalState.clear_tex_resources.table, GFX_PIPELINE_TYPE_COMPUTE);
+
+    //     rhi_dispatch(cmd_buff, (s_RendererSDFInternalState.width + DISPATCH_LOCAL_DIM) / DISPATCH_LOCAL_DIM, (s_RendererSDFInternalState.height + DISPATCH_LOCAL_DIM) / DISPATCH_LOCAL_DIM, 1);
+    // }
+    // rhi_end_render_pass(cmd_buff, scene_clear_pass);
 }
 
 static void renderer_internal_scene_draw_pass(gfx_cmd_buf* cmd_buff)
