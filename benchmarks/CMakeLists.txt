@@ -1,22 +1,19 @@
 # benchmarks/CMakeLists.txt
-
+####################################################################
+# PROJECT FILES
 file(GLOB_RECURSE benchmark_sources 
     "*.c"
     "*.h"
 )
-
-# Set the C standard for this project
-set(CMAKE_C_STANDARD 11)   # Set C standard (11, 99, 90, etc.)
-set(CMAKE_C_STANDARD_REQUIRED ON)  # Ensure the standard is required
-set(CMAKE_C_EXTENSIONS OFF)  # Disable compiler-specific extensions
-
 ####################################################################
 # Add executable
 add_executable(benchmarks ${benchmark_sources})
 ####################################################################
+# PROJECT SETTINGS
+####################################################################
 # Link the engine library (either shared or static)
 target_link_libraries(benchmarks PRIVATE engine)
-####################################################################
+
 # Platform-specific configuration
 if(WIN32)
     set_target_properties(benchmarks PROPERTIES
@@ -41,15 +38,19 @@ target_include_directories(benchmarks PUBLIC
     $<TARGET_PROPERTY:glfw,INTERFACE_INCLUDE_DIRECTORIES>   # Automatically includes GLFW headers
 )
 
+# compile options
 if(MSVC)
   target_compile_options(benchmarks PRIVATE /W4 /WX /wd4996)
 else()
   target_compile_options(benchmarks PRIVATE -Wall -Wextra -Wpedantic -Werror -Wno-newline-eof)
 endif()
 
+####################################################################
+# Custom target to run the benchmarks
 add_custom_target(run.benchmarks
     COMMAND benchmarks
     DEPENDS benchmarks
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     COMMENT "Running engine benchmarks"
 )
+####################################################################

@@ -1,10 +1,9 @@
 # engine/CMakeLists.txt
-
-
+####################################################################
+# PROJECT FILES
 file(GLOB_RECURSE engine_sources
     ${CMAKE_SOURCE_DIR}/engine/**
 )
-
 file(GLOB_RECURSE shaders 
     ${CMAKE_SOURCE_DIR}/engine/shaders/*
 )
@@ -16,6 +15,32 @@ set_source_files_properties(
   COMPILE_FLAGS "-w"
 )
 
+# [Source]: https://stackoverflow.com/questions/31966135/cmake-source-group-not-working-correctly-with-hierarchical-project-setup
+foreach(FILE ${engine_sources}) 
+    get_filename_component(PARENT_DIR "${FILE}" DIRECTORY)
+
+    string(REPLACE "${CMAKE_CURRENT_SOURCE_DIR}" "" GROUP "${PARENT_DIR}")
+
+    string(REPLACE "/" "\\" GROUP "${GROUP}")
+
+    set(GROUP "engine${GROUP}")
+
+    source_group("${GROUP}" FILES "${FILE}")
+endforeach()      
+####################################################################
+# Add Target
+# Create the engine library (DLL or static)
+if(BUILD_SHARED_ENGINE)
+	add_library(engine SHARED ${engine_sources})
+    target_compile_definitions(engine PRIVATE BUILD_SHARED_ENGINE)
+else()
+    add_library(engine STATIC ${engine_sources})
+endif()
+####################################################################
+# PROJECT SETTINGS
+set_target_properties(engine PROPERTIES OUTPUT_NAME "engine")
+####################################################################
+# BUILDING SHADERS
 find_program(GLSLC_EXECUTABLE glslc HINTS $ENV{VULKAN_SDK}/Bin $ENV{VULKAN_SDK}/bin)
 
 if(NOT GLSLC_EXECUTABLE)
@@ -42,7 +67,9 @@ foreach(SHADER ${shaders})
 endforeach()
 
 add_custom_target(compile_shaders ALL DEPENDS ${COMPILED_SHADERS})
-
+####################################################################
+# COMPILATION AND LINKING
+# Platform-specific configuration
 # Vulkan paths
 if(WIN32)
     set(VULKAN_SDK $ENV{VULKAN_SDK})
@@ -59,34 +86,6 @@ else()
     message(FATAL_ERROR "Unsupported platform")
 endif()
 
-# [Source]: https://stackoverflow.com/questions/31966135/cmake-source-group-not-working-correctly-with-hierarchical-project-setup
-foreach(FILE ${engine_sources}) 
-    get_filename_component(PARENT_DIR "${FILE}" DIRECTORY)
-
-    string(REPLACE "${CMAKE_CURRENT_SOURCE_DIR}" "" GROUP "${PARENT_DIR}")
-
-    string(REPLACE "/" "\\" GROUP "${GROUP}")
-
-    set(GROUP "engine${GROUP}")
-
-    source_group("${GROUP}" FILES "${FILE}")
-endforeach()
-
-set(CMAKE_C_STANDARD 11)          
-set(CMAKE_C_STANDARD_REQUIRED ON) 
-set(CMAKE_C_EXTENSIONS OFF)       
-
-if(BUILD_SHARED_ENGINE)
-	add_library(engine SHARED ${engine_sources})
-    target_compile_definitions(engine PRIVATE BUILD_SHARED_ENGINE)
-else()
-    add_library(engine STATIC ${engine_sources})
-endif()
-
-target_link_libraries(engine PRIVATE glfw cglm volk)
-set_target_properties(engine PROPERTIES OUTPUT_NAME "engine")
-set_target_properties(engine PROPERTIES C_STANDARD 11)
-
 target_include_directories(engine PUBLIC
     core
     scripting
@@ -96,15 +95,20 @@ target_include_directories(engine PUBLIC
     $<TARGET_PROPERTY:volk,INTERFACE_INCLUDE_DIRECTORIES> 
 )
 
+# Engine linking
+target_link_libraries(engine PRIVATE glfw cglm volk)
 
+# export DLL symbols
 if(WIN32 AND BUILD_SHARED_ENGINE)
     set_target_properties(engine PROPERTIES
         WINDOWS_EXPORT_ALL_SYMBOLS ON
     )
 endif()
 
+# engine compile options
 if(MSVC)
   target_compile_options(engine PRIVATE /W4 /WX /wd4996)
 else()
   target_compile_options(engine PRIVATE -Wall -Wextra -Wpedantic -Werror -Wno-newline-eof)
 endif()
+####################################################################
