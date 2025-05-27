@@ -22,6 +22,7 @@
 
 #include <stdlib.h>
 #include <string.h>    // memset
+#include <inttypes.h>
 
 DEFINE_CLAMP(int)
 
@@ -566,7 +567,7 @@ static VkBool32 vulkan_backend_debug_callback(
     if (pCallbackData->objectCount > 0) {
         printf("  |-- Objects Involved:\n");
         for (uint32_t i = 0; i < pCallbackData->objectCount; i++) {
-            printf("  |   |-- Handle: 0x%llu | Type: %s\n",
+            printf("  |   |-- Handle: 0x%" PRId64 " | Type: %s\n",
                 pCallbackData->pObjects[i].objectHandle,
                 vk_object_type_to_string(pCallbackData->pObjects[i].objectType));
         }
