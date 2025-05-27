@@ -4,6 +4,10 @@
 
 static rhi_api s_CurrentAPI;
 
+gfx_config g_gfxConfig = {
+    .use_timeline_semaphores = false,
+};
+
 gfx_context (*gfx_ctx_init)(GLFWwindow* window, uint32_t width, uint32_t height);
 void        (*gfx_ctx_destroy)(gfx_context* ctx);
 

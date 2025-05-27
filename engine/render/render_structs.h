@@ -78,7 +78,7 @@ typedef enum SDF_PrimitiveType
     SDF_PRIM_Cylinder,
     SDF_PRIM_RoundedCylinder,
     SDF_PRIM_Ellipsoid,
-    SDF_PRIM_HexagonalPrism,
+	SDF_PRIM_HexagonalPrism,
     SDF_PRIM_TriangularPrism,
     SDF_PRIM_Cone,
     SDF_PRIM_CappedCone,
@@ -452,9 +452,7 @@ typedef struct gfx_config
     bool use_timeline_semaphores;
 } gfx_config;
 
-static gfx_config g_gfxConfig = {
-    .use_timeline_semaphores = false,
-};
+extern gfx_config g_gfxConfig;
 
 // Draft-1 gfx_XXX memory alloc design
 // void* backend will be allocated by malloc and manual free (hightly fragmented and not data-oriented)

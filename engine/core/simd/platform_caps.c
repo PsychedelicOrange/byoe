@@ -5,9 +5,9 @@
 #if defined(_MSC_VER)
     #include <intrin.h>
 #elif defined(__clang__) || defined(__GNUC__)
-    #if defined(__APPLE__)
+    #if defined(__APPLE__) || defined (__LINUX__)
         #include <sys/types.h>
-    #else
+	#elif defined (_WIN32)
         #include <x86intrin.h>
     #endif
 #else
