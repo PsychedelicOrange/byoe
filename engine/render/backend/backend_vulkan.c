@@ -22,6 +22,7 @@
 
 #include <stdlib.h>
 #include <string.h>    // memset
+#include <inttypes.h>
 
 DEFINE_CLAMP(int)
 
@@ -566,7 +567,7 @@ static VkBool32 vulkan_backend_debug_callback(
     if (pCallbackData->objectCount > 0) {
         printf("  |-- Objects Involved:\n");
         for (uint32_t i = 0; i < pCallbackData->objectCount; i++) {
-            printf("  |   |-- Handle: 0x%llu | Type: %s\n",
+            printf("  |   |-- Handle: 0x%" PRId64 " | Type: %s\n",
                 pCallbackData->pObjects[i].objectHandle,
                 vk_object_type_to_string(pCallbackData->pObjects[i].objectType));
         }
@@ -692,8 +693,7 @@ static VkInstance vulkan_internal_create_instance(void)
         .messageType =
             // VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
         VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-        VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT |
-        VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT,
+        VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT, 
         .pfnUserCallback = vulkan_backend_debug_callback};
 
     VkApplicationInfo app_info = {
@@ -808,7 +808,7 @@ static VkPhysicalDevice vulkan_internal_select_best_gpu(VkInstance instance)
     if (!gpus)
         return VK_NULL_HANDLE;
 
-    VkPhysicalDevice candidate_gpu = {0};
+    VkPhysicalDevice candidate_gpu = gpus[0];
     for (uint32_t i = 0; i < total_gpus_count; ++i) {
         if (vulkan_internal_is_best_GPU(gpus[i]) || total_gpus_count == 1) {
             candidate_gpu = gpus[i];
