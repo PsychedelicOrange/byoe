@@ -283,7 +283,7 @@ typedef struct SDF_Node
 //------------------------
 
 #define MAX_BACKBUFFERS         3
-#define MAX_FRAME_INFLIGHT      3
+#define MAX_FRAME_INFLIGHT      2
 #define MAX_CMD_BUFFS_PER_QUEUE 16
 #define MAX_RT                  8
 

@@ -808,7 +808,7 @@ static VkPhysicalDevice vulkan_internal_select_best_gpu(VkInstance instance)
     if (!gpus)
         return VK_NULL_HANDLE;
 
-    VkPhysicalDevice candidate_gpu = {0};
+    VkPhysicalDevice candidate_gpu = gpus[0];
     for (uint32_t i = 0; i < total_gpus_count; ++i) {
         if (vulkan_internal_is_best_GPU(gpus[i]) || total_gpus_count == 1) {
             candidate_gpu = gpus[i];
