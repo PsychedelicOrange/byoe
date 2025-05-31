@@ -20,13 +20,96 @@
 
 #include <GLFW/glfw3.h>
 
+#include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>    // memset
-#include <inttypes.h>
-
-DEFINE_CLAMP(int)
 
 //--------------------------------------------------------
+
+const rhi_jumptable vulkan_jumptable = {
+    vulkan_ctx_init,
+    vulkan_ctx_destroy,
+    vulkan_flush_gpu_work,
+    vulkan_device_create_swapchain,
+    vulkan_device_destroy_swapchain,
+    vulkan_device_create_gfx_cmd_pool,
+    vulkan_device_destroy_gfx_cmd_pool,
+    vulkan_device_create_gfx_cmd_buf,
+    vulkan_device_create_frame_sync,
+    vulkan_device_destroy_frame_sync,
+    vulkan_device_create_compute_shader,
+    vulkan_device_destroy_compute_shader,
+    vulkan_device_create_vs_ps_shader,
+    vulkan_device_destroy_vs_ps_shader,
+    vulkan_device_create_pipeline,
+    vulkan_device_destroy_pipeline,
+    vulkan_device_create_root_signature,
+    vulkan_device_destroy_root_signature,
+
+    vulkan_device_create_descriptor_table,
+    vulkan_device_destroy_descriptor_table,
+    vulkan_device_update_descriptor_table,
+
+    vulkan_device_create_texture_resource,
+    vulkan_device_destroy_texture_resource,
+
+    vulkan_device_create_sampler,
+    vulkan_device_destroy_sampler,
+
+    vulkan_device_create_uniform_buffer_resource,
+    vulkan_device_destroy_uniform_buffer_resource,
+    vulkan_device_update_uniform_buffer,
+
+    vulkan_device_create_texture_resource_view,
+    vulkan_device_destroy_texture_resource_view,
+
+    vulkan_backend_create_sampler_resource_view,
+    vulkan_backend_destroy_sampler_resource_view,
+
+    vulkan_device_create_uniform_buffer_resource_view,
+    vulkan_device_destroy_uniform_buffer_resource_view,
+
+    vulkan_device_create_single_time_command_buffer,
+    vulkan_device_destroy_single_time_command_buffer,
+
+    vulkan_device_readback_swapchain,
+
+    vulkan_frame_begin,
+    vulkan_frame_end,
+
+    vulkan_wait_on_previous_cmds,
+    vulkan_acquire_image,
+    vulkan_gfx_cmd_enque_submit,
+    vulkan_gfx_cmd_submit_queue,
+    vulkan_present,
+
+    vulkan_resize_swapchain,
+
+    vulkan_begin_gfx_cmd_recording,
+    vulkan_end_gfx_cmd_recording,
+
+    vulkan_begin_render_pass,
+    vulkan_end_render_pass,
+
+    vulkan_set_viewport,
+    vulkan_set_scissor,
+
+    vulkan_bind_gfx_pipeline,
+    vulkan_bind_compute_pipeline,
+    vulkan_device_bind_root_signature,
+    vulkan_device_bind_descriptor_table,
+    vulkan_device_bind_push_constant,
+
+    vulkan_draw,
+    vulkan_dispatch,
+
+    vulkan_transition_image_layout,
+
+    vulkan_clear_image};
+
+//--------------------------------------------------------
+
+DEFINE_CLAMP(int)
 
 #define VK_CHECK_RESULT(x, msg) \
     if (x != VK_SUCCESS) { LOG_ERROR(msg); }
@@ -693,7 +776,7 @@ static VkInstance vulkan_internal_create_instance(void)
         .messageType =
             // VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
         VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-        VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT, 
+        VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
         .pfnUserCallback = vulkan_backend_debug_callback};
 
     VkApplicationInfo app_info = {
@@ -1426,6 +1509,17 @@ gfx_shader vulkan_device_create_compute_shader(const char* spv_file_path)
     return shader;
 }
 
+void vulkan_device_destroy_compute_shader(gfx_shader* shader)
+{
+    uuid_destroy(&shader->uuid);
+
+    shader_backend* backend = shader->stages.CS;
+
+    vkDestroyShaderModule(VKDEVICE, backend->modules.CS, NULL);
+
+    free(backend);
+}
+
 gfx_shader vulkan_device_create_vs_ps_shader(const char* spv_file_path_vs, const char* spv_file_path_ps)
 {
     gfx_shader shader = {0};
@@ -1460,17 +1554,6 @@ gfx_shader vulkan_device_create_vs_ps_shader(const char* spv_file_path_vs, const
     }
 
     return shader;
-}
-
-void vulkan_device_destroy_compute_shader(gfx_shader* shader)
-{
-    uuid_destroy(&shader->uuid);
-
-    shader_backend* backend = shader->stages.CS;
-
-    vkDestroyShaderModule(VKDEVICE, backend->modules.CS, NULL);
-
-    free(backend);
 }
 
 void vulkan_device_destroy_vs_ps_shader(gfx_shader* shader)
@@ -2608,16 +2691,15 @@ rhi_error_codes vulkan_clear_image(const gfx_cmd_buf* cmd_buffer, const gfx_reso
     VkCommandBuffer  vkCmdBuffer = *(VkCommandBuffer*) cmd_buffer->backend;
     texture_backend* backend     = image->texture->backend;
 
-    VkClearColorValue clearColor = {{0.0f, 0.0f, 0.0f, 0.0f}};
-    VkImageSubresourceRange range = {
-        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, // TODO: Handle depth images too
-        .baseArrayLayer = 0,
-        .baseMipLevel = 0,
-        .layerCount = 1,
-        .levelCount = 1
-    };
+    VkClearColorValue       clearColor = {{0.0f, 0.0f, 0.0f, 0.0f}};
+    VkImageSubresourceRange range      = {
+             .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,    // TODO: Handle depth images too
+             .baseArrayLayer = 0,
+             .baseMipLevel   = 0,
+             .layerCount     = 1,
+             .levelCount     = 1};
 
     vkCmdClearColorImage(vkCmdBuffer, backend->image, VK_IMAGE_LAYOUT_GENERAL, &clearColor, 1, &range);
-    
+
     return Success;
 }

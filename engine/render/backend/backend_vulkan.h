@@ -6,6 +6,10 @@
 #include "../frontend/gfx_frontend.h"
 
 //------------------------------------------
+extern const rhi_jumptable vulkan_jumptable;
+//------------------------------------------
+
+//------------------------------------------
 // Context
 //------------------------------------------
 gfx_context vulkan_ctx_init(GLFWwindow* window, uint32_t width, uint32_t height);
@@ -37,10 +41,10 @@ void           vulkan_device_destroy_frame_sync(gfx_frame_sync* frame_sync);
 
 // TODO: Use a Span DS to make this more intuitive
 gfx_shader vulkan_device_create_compute_shader(const char* spv_file_path);
-gfx_shader vulkan_device_create_vs_ps_shader(const char* spv_file_path_vs, const char* spv_file_path_ps);
+void       vulkan_device_destroy_compute_shader(gfx_shader* shader);
 
-void vulkan_device_destroy_compute_shader(gfx_shader* shader);
-void vulkan_device_destroy_vs_ps_shader(gfx_shader* shader);
+gfx_shader vulkan_device_create_vs_ps_shader(const char* spv_file_path_vs, const char* spv_file_path_ps);
+void       vulkan_device_destroy_vs_ps_shader(gfx_shader* shader);
 
 gfx_pipeline vulkan_device_create_pipeline(gfx_pipeline_create_info info);
 void         vulkan_device_destroy_pipeline(gfx_pipeline* pipeline);
@@ -102,7 +106,6 @@ rhi_error_codes vulkan_set_scissor(const gfx_cmd_buf* cmd_buf, gfx_scissor sciss
 
 rhi_error_codes vulkan_bind_gfx_pipeline(const gfx_cmd_buf* cmd_buf, gfx_pipeline pipeline);
 rhi_error_codes vulkan_bind_compute_pipeline(const gfx_cmd_buf* cmd_buf, gfx_pipeline pipeline);
-
 rhi_error_codes vulkan_device_bind_root_signature(const gfx_cmd_buf* cmd_buf, const gfx_root_signature* root_signature);
 rhi_error_codes vulkan_device_bind_descriptor_table(const gfx_cmd_buf* cmd_buf, const gfx_descriptor_table* descriptor_table, gfx_pipeline_type pipeline_type);
 rhi_error_codes vulkan_device_bind_push_constant(const gfx_cmd_buf* cmd_buf, gfx_root_signature* root_sig, gfx_push_constant push_constant);

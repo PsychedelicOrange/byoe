@@ -78,7 +78,7 @@ typedef enum SDF_PrimitiveType
     SDF_PRIM_Cylinder,
     SDF_PRIM_RoundedCylinder,
     SDF_PRIM_Ellipsoid,
-	SDF_PRIM_HexagonalPrism,
+    SDF_PRIM_HexagonalPrism,
     SDF_PRIM_TriangularPrism,
     SDF_PRIM_Cone,
     SDF_PRIM_CappedCone,
@@ -283,7 +283,7 @@ typedef struct SDF_Node
 //------------------------
 
 #define MAX_BACKBUFFERS         3
-#define MAX_FRAME_INFLIGHT      3
+#define MAX_FRAME_INFLIGHT      2
 #define MAX_CMD_BUFFS_PER_QUEUE 16
 #define MAX_RT                  8
 
@@ -447,6 +447,7 @@ typedef enum gfx_image_layout
     GFX_IMAGE_LAYOUT_PRESENTATION,
 } gfx_image_layout;
 
+// Values defined in frontend.c
 typedef struct gfx_config
 {
     bool use_timeline_semaphores;
