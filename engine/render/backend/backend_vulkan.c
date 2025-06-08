@@ -1426,7 +1426,7 @@ gfx_frame_sync vulkan_device_create_frame_sync(void)
 
     {
         uuid_generate(&frame_sync.image_ready.uuid);
-        frame_sync.image_ready.visibility = GFX_FENCE_TYPE_GPU;
+        frame_sync.image_ready.visibility = GFX_SYNCOBJ_TYPE_GPU;
         frame_sync.image_ready.value      = UINT32_MAX;
         frame_sync.image_ready.backend    = malloc(sizeof(VkSemaphore));
         vulkan_internal_create_sema(frame_sync.image_ready.backend);
@@ -1435,7 +1435,7 @@ gfx_frame_sync vulkan_device_create_frame_sync(void)
 
     {
         uuid_generate(&frame_sync.rendering_done.uuid);
-        frame_sync.rendering_done.visibility = GFX_FENCE_TYPE_GPU;
+        frame_sync.rendering_done.visibility = GFX_SYNCOBJ_TYPE_GPU;
         frame_sync.rendering_done.value      = UINT32_MAX;
         frame_sync.rendering_done.backend    = malloc(sizeof(VkSemaphore));
         vulkan_internal_create_sema(frame_sync.rendering_done.backend);
@@ -1444,7 +1444,7 @@ gfx_frame_sync vulkan_device_create_frame_sync(void)
 
     if (!g_gfxConfig.use_timeline_semaphores) {
         uuid_generate(&frame_sync.in_flight.uuid);
-        frame_sync.in_flight.visibility = GFX_FENCE_TYPE_CPU;
+        frame_sync.in_flight.visibility = GFX_SYNCOBJ_TYPE_CPU;
         frame_sync.in_flight.value      = UINT32_MAX;
         frame_sync.in_flight.backend    = malloc(sizeof(VkFence));
         vulkan_internal_create_fence(frame_sync.in_flight.backend);
@@ -1463,7 +1463,7 @@ void vulkan_device_destroy_frame_sync(gfx_frame_sync* frame_sync)
     vulkan_internal_destroy_sema(*(VkSemaphore*) frame_sync->rendering_done.backend);
     vulkan_internal_destroy_sema(*(VkSemaphore*) frame_sync->image_ready.backend);
 
-    if (!g_gfxConfig.use_timeline_semaphores && frame_sync->in_flight.visibility == GFX_FENCE_TYPE_CPU)
+    if (!g_gfxConfig.use_timeline_semaphores && frame_sync->in_flight.visibility == GFX_SYNCOBJ_TYPE_CPU)
         vulkan_internal_destroy_fence(*(VkFence*) frame_sync->in_flight.backend);
 
     free(frame_sync->rendering_done.backend);

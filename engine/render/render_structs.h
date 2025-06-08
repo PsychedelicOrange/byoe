@@ -328,9 +328,9 @@ typedef enum gfx_shader_stage
 
 typedef enum gfx_fence_type
 {
-    GFX_FENCE_TYPE_CPU,
-    GFX_FENCE_TYPE_GPU
-} gfx_fence_type;
+    GFX_SYNCOBJ_TYPE_CPU,
+    GFX_SYNCOBJ_TYPE_GPU
+} gfx_syncobj_type;
 
 typedef enum gfx_pipeline_type
 {
@@ -472,14 +472,14 @@ typedef struct gfx_swapchain
     uint32_t      _pad0[3];
 } gfx_swapchain;
 
-typedef struct gfx_fence
+typedef struct gfx_syncobj
 {
-    random_uuid_t  uuid;
-    void*          backend;
-    uint64_t       value;    // TODO: track backend value
-    gfx_fence_type visibility;
-    uint32_t       _pad0[3];
-} gfx_fence;
+    random_uuid_t    uuid;
+    void*            backend;
+    uint64_t         value;    // TODO: track backend value
+    gfx_syncobj_type visibility;
+    uint32_t         _pad0[3];
+} gfx_syncobj;
 
 typedef struct gfx_vertex_buffer
 {
@@ -744,9 +744,9 @@ typedef struct gfx_scissor
 // Triple Buffering
 typedef struct gfx_frame_sync
 {
-    gfx_fence in_flight;
-    gfx_fence image_ready;
-    gfx_fence rendering_done;
+    gfx_syncobj in_flight;
+    gfx_syncobj image_ready;
+    gfx_syncobj rendering_done;
 } gfx_frame_sync;
 
 typedef struct gfx_context
