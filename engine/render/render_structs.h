@@ -453,7 +453,10 @@ typedef struct gfx_config
     bool use_timeline_semaphores;
 } gfx_config;
 
+// Global GFX config
+//------------------------------
 extern gfx_config g_gfxConfig;
+//------------------------------
 
 // Draft-1 gfx_XXX memory alloc design
 // void* backend will be allocated by malloc and manual free (hightly fragmented and not data-oriented)
