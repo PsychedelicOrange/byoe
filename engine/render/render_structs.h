@@ -282,7 +282,7 @@ typedef struct SDF_Node
 // Graphics API
 //------------------------
 
-#define MAX_BACKBUFFERS         3
+#define MAX_BACKBUFFERS         4
 #define MAX_FRAME_INFLIGHT      2
 #define MAX_CMD_BUFFS_PER_QUEUE 16
 #define MAX_RT                  8
@@ -326,7 +326,7 @@ typedef enum gfx_shader_stage
     GFX_SHADER_STAGE_RAY_CLOSEST_HIT
 } gfx_shader_stage;
 
-typedef enum gfx_fence_type
+typedef enum gfx_syncobj_type
 {
     GFX_SYNCOBJ_TYPE_CPU,
     GFX_SYNCOBJ_TYPE_GPU
@@ -465,24 +465,30 @@ extern gfx_config g_gfxConfig;
 // TODO: void* backend will be refactored to use a uint32_t index for backend resource pools, frontend will have similar pools
 // TODO: frontend_resource_pool_(Type) will have it's own allocators with a index to another backend pool elements
 
+typedef struct gfx_syncobj
+{
+    random_uuid_t    uuid;
+    void*            backend;
+    uint64_t         value;
+    gfx_syncobj_type visibility;
+    uint32_t         _pad0[3];
+} gfx_syncobj;
+
+typedef uint64_t gfx_sync_point;
+
 typedef struct gfx_swapchain
 {
     random_uuid_t uuid;
     void*         backend;
     uint32_t      width;
     uint32_t      height;
+    uint32_t      image_count;
     uint32_t      current_backbuffer_idx;
-    uint32_t      _pad0[3];
+    uint32_t      current_syncobj_idx;
+    uint32_t      _pad0[1];
+    gfx_syncobj   image_ready[MAX_BACKBUFFERS];
+    gfx_syncobj   rendering_done[MAX_BACKBUFFERS];
 } gfx_swapchain;
-
-typedef struct gfx_syncobj
-{
-    random_uuid_t    uuid;
-    void*            backend;
-    uint64_t         value;    // TODO: track backend value
-    gfx_syncobj_type visibility;
-    uint32_t         _pad0[3];
-} gfx_syncobj;
 
 typedef struct gfx_vertex_buffer
 {
@@ -743,14 +749,6 @@ typedef struct gfx_scissor
 //-----------------------------------
 // High-level structs
 //-----------------------------------
-// Frame Sync
-// Triple Buffering
-typedef struct gfx_frame_sync
-{
-    gfx_syncobj in_flight;
-    gfx_syncobj image_ready;
-    gfx_syncobj rendering_done;
-} gfx_frame_sync;
 
 typedef struct gfx_context
 {
@@ -759,12 +757,13 @@ typedef struct gfx_context
     uint32_t       _pad0;
     uint32_t       frame_idx;
     gfx_swapchain  swapchain;
-    gfx_frame_sync frame_sync[MAX_FRAME_INFLIGHT];
-    // TODO: Add all the command buffers you want here...Draw, Async etc.
+    gfx_syncobj    in_flight[MAX_FRAME_INFLIGHT];
+    // NOTE: Add all the command buffers you want here...Draw, Async etc.
     // 1 per thread, only single threaded for now
     gfx_cmd_pool  draw_cmds_pool;
     gfx_cmd_buf   draw_cmds[MAX_FRAME_INFLIGHT];
     gfx_cmd_queue cmd_queue;
+    uint64_t      timeline_syncobj_value;                  // last timeline value signaled
 } gfx_context;
 
 typedef struct gfx_attachment

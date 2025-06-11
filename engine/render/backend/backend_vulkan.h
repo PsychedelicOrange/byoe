@@ -24,9 +24,13 @@ void vulkan_flush_gpu_work(void);
 //------------------------------------------
 // Device
 //------------------------------------------
-// https://www.sctheblog.com/blog/vulkan-synchronization/
 // https://www.khronos.org/blog/vulkan-timeline-semaphores
-//gfx_fence vulkan_device_create_timeline_semaphores();
+// ---------------------------------------------------------
+// TEST API NOT INTEGATRED INTO RHI YET
+gfx_syncobj vulkan_device_create_timeline_semaphore(void);
+void vulkan_device_destroy_timeline_semaphore(gfx_syncobj* syncobj);
+void vulkan_device_wait_on_semaphore(const gfx_syncobj* syncobj, int wait_value);
+// ---------------------------------------------------------
 
 gfx_swapchain vulkan_device_create_swapchain(uint32_t width, uint32_t height);
 void          vulkan_device_destroy_swapchain(gfx_swapchain* sc);

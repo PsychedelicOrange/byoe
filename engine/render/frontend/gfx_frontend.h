@@ -57,9 +57,6 @@ typedef struct rhi_jumptable
 
     gfx_cmd_buf (*create_gfx_cmd_buf)(gfx_cmd_pool*);
 
-    gfx_frame_sync (*create_frame_sync)(void);
-    void (*destroy_frame_sync)(gfx_frame_sync*);
-
     gfx_shader (*create_compute_shader)(const char*);
     void (*destroy_compute_shader)(gfx_shader*);
 
@@ -100,14 +97,14 @@ typedef struct rhi_jumptable
 
     gfx_texture_readback (*readback_swapchain)(const gfx_swapchain*);
 
-    gfx_frame_sync* (*frame_begin)(gfx_context*);
+    gfx_syncobj* (*frame_begin)(gfx_context*);
     rhi_error_codes (*frame_end)(gfx_context*);
 
-    rhi_error_codes (*wait_on_previous_cmds)(const gfx_frame_sync*);
-    rhi_error_codes (*acquire_image)(gfx_swapchain*, const gfx_frame_sync*);
+    rhi_error_codes (*wait_on_previous_cmds)(const gfx_syncobj*);
+    rhi_error_codes (*acquire_image)(gfx_swapchain*, const gfx_syncobj*);
     rhi_error_codes (*gfx_cmd_enque_submit)(gfx_cmd_queue*, const gfx_cmd_buf*);
-    rhi_error_codes (*gfx_cmd_submit_queue)(const gfx_cmd_queue*, gfx_frame_sync*);
-    rhi_error_codes (*present)(const gfx_swapchain*, const gfx_frame_sync*);
+    rhi_error_codes (*gfx_cmd_submit_queue)(const gfx_cmd_queue*, gfx_syncobj*);
+    rhi_error_codes (*present)(const gfx_swapchain*, const gfx_syncobj*);
 
     rhi_error_codes (*resize_swapchain)(gfx_swapchain*, uint32_t, uint32_t);
 
