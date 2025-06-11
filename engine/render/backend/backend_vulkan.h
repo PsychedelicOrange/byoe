@@ -40,9 +40,6 @@ void         vulkan_device_destroy_gfx_cmd_pool(gfx_cmd_pool* pool);
 
 gfx_cmd_buf vulkan_device_create_gfx_cmd_buf(gfx_cmd_pool* pool);
 
-gfx_frame_sync vulkan_device_create_frame_sync(void);
-void           vulkan_device_destroy_frame_sync(gfx_frame_sync* frame_sync);
-
 // TODO: Use a Span DS to make this more intuitive
 gfx_shader vulkan_device_create_compute_shader(const char* spv_file_path);
 void       vulkan_device_destroy_compute_shader(gfx_shader* shader);
@@ -88,14 +85,14 @@ gfx_texture_readback vulkan_device_readback_swapchain(const gfx_swapchain* swapc
 // RHI
 //------------------------------------------
 
-gfx_frame_sync* vulkan_frame_begin(gfx_context* context);
+gfx_syncobj* vulkan_frame_begin(gfx_context* context);
 rhi_error_codes vulkan_frame_end(gfx_context* context);
 
-rhi_error_codes vulkan_wait_on_previous_cmds(const gfx_frame_sync* in_flight_sync);
-rhi_error_codes vulkan_acquire_image(gfx_swapchain* swapchain, const gfx_frame_sync* in_flight_sync);
+rhi_error_codes vulkan_wait_on_previous_cmds(const gfx_syncobj* in_flight_sync);
+rhi_error_codes vulkan_acquire_image(gfx_swapchain* swapchain, const gfx_syncobj* in_flight_sync);
 rhi_error_codes vulkan_gfx_cmd_enque_submit(gfx_cmd_queue* cmd_queue, const gfx_cmd_buf* cmd_buff);
-rhi_error_codes vulkan_gfx_cmd_submit_queue(const gfx_cmd_queue* cmd_queue, gfx_frame_sync* frame_sync);
-rhi_error_codes vulkan_present(const gfx_swapchain* swapchain, const gfx_frame_sync* frame_sync);
+rhi_error_codes vulkan_gfx_cmd_submit_queue(const gfx_cmd_queue* cmd_queue, gfx_syncobj* frame_sync);
+rhi_error_codes vulkan_present(const gfx_swapchain* swapchain, const gfx_syncobj* frame_sync);
 
 rhi_error_codes vulkan_resize_swapchain(gfx_swapchain* swapchain, uint32_t width, uint32_t height);
 

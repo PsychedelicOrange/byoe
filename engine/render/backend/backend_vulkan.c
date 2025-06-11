@@ -2557,7 +2557,7 @@ rhi_error_codes vulkan_present(const gfx_swapchain* swapchain, const gfx_syncobj
         .pSwapchains        = &((swapchain_backend*) (swapchain->backend))->swapchain,
         .pImageIndices      = &swapchain->current_backbuffer_idx,
         .waitSemaphoreCount = 1,
-        .pWaitSemaphores    = (VkSemaphore*) (frame_sync->rendering_done.backend),
+        .pWaitSemaphores    = (VkSemaphore*) (rendering_done[swapchain->current_syncobj_idx].backend),
         .pResults           = NULL};
 
     VkResult result = vkQueuePresentKHR(s_VkCtx.queues.gfx, &presentInfo);
