@@ -111,8 +111,12 @@ const rhi_jumptable vulkan_jumptable = {
 
 DEFINE_CLAMP(int)
 
-#define VK_CHECK_RESULT(x, msg) \
-    if (x != VK_SUCCESS) { LOG_ERROR(msg); }
+#define VK_CHECK_RESULT(x, msg)                 \
+    if (x != VK_SUCCESS) {                      \
+        LOG_ERROR("VkResult: %d", (uint32_t) x) \
+        LOG_ERROR(msg);                         \
+        exit(-1);                               \
+    }
 
 #define VK_LAYER_KHRONOS_VALIDATION_NAME "VK_LAYER_KHRONOS_validation"
 
@@ -2316,8 +2320,8 @@ gfx_syncobj vulkan_device_create_syncobj(gfx_syncobj_type type)
     gfx_syncobj syncobj = {0};
     uuid_generate(&syncobj.uuid);
 
-    syncobj.type = type;
-    syncobj.value      = 0;
+    syncobj.type  = type;
+    syncobj.value = 0;
 
     if (type == GFX_SYNCOBJ_TYPE_CPU) {
         syncobj.backend = malloc(sizeof(VkFence));
