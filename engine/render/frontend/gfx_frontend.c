@@ -25,26 +25,8 @@ int gfx_init(rhi_api api)
 
 void gfx_destroy(void)
 {
-}
-
-void gfx_util_ignite_init_resources(gfx_context* ctx)
-{
-    // command pool: only per thread and 2 in-flight command buffers per pool
-    ctx->draw_cmds_pool = g_rhi.create_gfx_cmd_pool();
-    for (uint32_t i = 0; i < MAX_FRAME_INFLIGHT; i++) {
-        ctx->frame_sync[i] = g_rhi.create_frame_sync();
-
-        // Allocate and create the command buffers
-        ctx->draw_cmds[i] = g_rhi.create_gfx_cmd_buf(&ctx->draw_cmds_pool);
-    }
-}
-
-void gfx_util_recreate_frame_sync(gfx_context* ctx)
-{
-    for (uint32_t i = 0; i < MAX_FRAME_INFLIGHT; i++) {
-        g_rhi.destroy_frame_sync(&ctx->frame_sync[i]);
-        ctx->frame_sync[i] = g_rhi.create_frame_sync();
-    }
+    rhi_jumptable null = {0};
+    g_rhi = null;
 }
 
 uint32_t gfx_util_get_back_buffer_idx(const gfx_swapchain* swapchain)
@@ -52,7 +34,7 @@ uint32_t gfx_util_get_back_buffer_idx(const gfx_swapchain* swapchain)
     return swapchain->current_backbuffer_idx;
 }
 
-uint32_t gfx_util_get_current_frame_idx(const gfx_context* ctx)
+uint32_t gfx_util_get_current_inflight_idx(const gfx_context* ctx)
 {
-    return ctx->frame_idx;
+    return ctx->inflight_frame_idx;
 }

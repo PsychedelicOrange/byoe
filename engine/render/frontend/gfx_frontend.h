@@ -38,76 +38,76 @@ int  gfx_init(rhi_api api);
 void gfx_destroy(void);
 
 // Helper functions
-void     gfx_util_ignite_init_resources(gfx_context* ctx);
-void     gfx_util_recreate_frame_sync(gfx_context* ctx);
+void     gfx_util_create_init_resources(gfx_context* ctx);
 uint32_t gfx_util_get_back_buffer_idx(const gfx_swapchain* swapchain);
-uint32_t gfx_util_get_current_frame_idx(const gfx_context* ctx);
+uint32_t gfx_util_get_current_inflight_idx(const gfx_context* ctx);
 
-typedef struct rhi_jumptable
+typedef struct rhi_jumptablefrontend
 {
     gfx_context (*ctx_init)(GLFWwindow*, uint32_t, uint32_t);
-    void        (*ctx_destroy)(gfx_context*);
-    void        (*flush_gpu_work)(void);
+    void (*ctx_destroy)(gfx_context*);
+    void (*flush_gpu_work)(void);
 
     gfx_swapchain (*create_swapchain)(uint32_t, uint32_t);
-    void          (*destroy_swapchain)(gfx_swapchain*);
+    void (*destroy_swapchain)(gfx_swapchain*);
 
     gfx_cmd_pool (*create_gfx_cmd_pool)(void);
-    void         (*destroy_gfx_cmd_pool)(gfx_cmd_pool*);
+    void (*destroy_gfx_cmd_pool)(gfx_cmd_pool*);
 
     gfx_cmd_buf (*create_gfx_cmd_buf)(gfx_cmd_pool*);
 
-    gfx_frame_sync (*create_frame_sync)(void);
-    void           (*destroy_frame_sync)(gfx_frame_sync*);
-
     gfx_shader (*create_compute_shader)(const char*);
-    void       (*destroy_compute_shader)(gfx_shader*);
+    void (*destroy_compute_shader)(gfx_shader*);
 
     gfx_shader (*create_vs_ps_shader)(const char*, const char*);
-    void       (*destroy_vs_ps_shader)(gfx_shader*);
+    void (*destroy_vs_ps_shader)(gfx_shader*);
 
     gfx_pipeline (*create_pipeline)(gfx_pipeline_create_info);
-    void         (*destroy_pipeline)(gfx_pipeline*);
+    void (*destroy_pipeline)(gfx_pipeline*);
 
     gfx_root_signature (*create_root_signature)(const gfx_descriptor_set_layout*, uint32_t, const gfx_push_constant_range*, uint32_t);
-    void               (*destroy_root_signature)(gfx_root_signature*);
+    void (*destroy_root_signature)(gfx_root_signature*);
 
     gfx_descriptor_table (*create_descriptor_table)(const gfx_root_signature*);
-    void                 (*destroy_descriptor_table)(gfx_descriptor_table*);
-    void                 (*update_descriptor_table)(gfx_descriptor_table*, gfx_descriptor_table_entry*, uint32_t);
+    void (*destroy_descriptor_table)(gfx_descriptor_table*);
+    void (*update_descriptor_table)(gfx_descriptor_table*, gfx_descriptor_table_entry*, uint32_t);
 
     gfx_resource (*create_texture_resource)(gfx_texture_create_info);
-    void         (*destroy_texture_resource)(gfx_resource*);
+    void (*destroy_texture_resource)(gfx_resource*);
 
     gfx_resource (*create_sampler)(gfx_sampler_create_info);
-    void         (*destroy_sampler)(gfx_resource*);
+    void (*destroy_sampler)(gfx_resource*);
 
     gfx_resource (*create_uniform_buffer_resource)(uint32_t);
-    void         (*destroy_uniform_buffer_resource)(gfx_resource*);
-    void         (*update_uniform_buffer)(gfx_resource*, uint32_t, uint32_t, void*);
+    void (*destroy_uniform_buffer_resource)(gfx_resource*);
+    void (*update_uniform_buffer)(gfx_resource*, uint32_t, uint32_t, void*);
 
     gfx_resource_view (*create_texture_resource_view)(gfx_resource_view_create_info);
-    void              (*destroy_texture_resource_view)(gfx_resource_view*);
+    void (*destroy_texture_resource_view)(gfx_resource_view*);
 
     gfx_resource_view (*create_sampler_resource_view)(gfx_resource_view_create_info);
-    void              (*destroy_sampler_resource_view)(gfx_resource_view*);
+    void (*destroy_sampler_resource_view)(gfx_resource_view*);
 
     gfx_resource_view (*create_uniform_buffer_resource_view)(gfx_resource*, uint32_t, uint32_t);
-    void              (*destroy_uniform_buffer_resource_view)(gfx_resource_view*);
+    void (*destroy_uniform_buffer_resource_view)(gfx_resource_view*);
 
     gfx_cmd_buf (*create_single_time_cmd_buffer)(void);
-    void        (*destroy_single_time_cmd_buffer)(gfx_cmd_buf*);
+    void (*destroy_single_time_cmd_buffer)(gfx_cmd_buf*);
+
+    gfx_syncobj (*create_syncobj)(gfx_syncobj_type);
+    void (*destroy_syncobj)(gfx_syncobj*);    
 
     gfx_texture_readback (*readback_swapchain)(const gfx_swapchain*);
 
-    gfx_frame_sync* (*frame_begin)(gfx_context*);
+    rhi_error_codes (*frame_begin)(gfx_context*);
     rhi_error_codes (*frame_end)(gfx_context*);
 
-    rhi_error_codes (*wait_on_previous_cmds)(const gfx_frame_sync*);
-    rhi_error_codes (*acquire_image)(gfx_swapchain*, const gfx_frame_sync*);
-    rhi_error_codes (*gfx_cmd_enque_submit)(gfx_cmd_queue*, const gfx_cmd_buf*);
-    rhi_error_codes (*gfx_cmd_submit_queue)(const gfx_cmd_queue*, gfx_frame_sync*);
-    rhi_error_codes (*present)(const gfx_swapchain*, const gfx_frame_sync*);
+    rhi_error_codes (*wait_on_previous_cmds)(const gfx_syncobj*);
+    rhi_error_codes (*acquire_image)(gfx_context*);
+    rhi_error_codes (*gfx_cmd_enque_submit)(gfx_cmd_queue*, gfx_cmd_buf*);
+    rhi_error_codes (*gfx_cmd_submit_queue)(const gfx_cmd_queue*, gfx_submit_syncobj);
+    rhi_error_codes (*gfx_cmd_submit_for_rendering)(gfx_context*);
+    rhi_error_codes (*present)(const gfx_context*);
 
     rhi_error_codes (*resize_swapchain)(gfx_swapchain*, uint32_t, uint32_t);
 
