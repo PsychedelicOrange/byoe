@@ -26,5 +26,5 @@ int gfx_init(rhi_api api)
 void gfx_destroy(void)
 {
     rhi_jumptable null = {0};
-    g_rhi = null;
+    g_rhi              = null;
 }

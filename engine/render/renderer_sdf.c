@@ -382,7 +382,7 @@ static bool render_internal_sdf_init_gfx_ctx(uint32_t width, uint32_t height)
         }
 
         // command pool: only per thread and 2 in-flight command buffers per pool
-         s_RendererSDFInternalState.gfxcontext.draw_cmds_pool = g_rhi.create_gfx_cmd_pool();
+        s_RendererSDFInternalState.gfxcontext.draw_cmds_pool = g_rhi.create_gfx_cmd_pool();
         for (uint32_t i = 0; i < MAX_FRAMES_INFLIGHT; i++) {
             // Allocate and create the command buffers
             s_RendererSDFInternalState.gfxcontext.draw_cmds[i] = g_rhi.create_gfx_cmd_buf(&s_RendererSDFInternalState.gfxcontext.draw_cmds_pool);
@@ -462,7 +462,7 @@ void renderer_sdf_destroy(void)
 
     // clean up
     renderer_internal_destroy_sdf_pass_resources();
-    
+
     renderer_internal_sdf_destroy_gfx_ctx();
 
     g_rhi.destroy_swapchain(&s_RendererSDFInternalState.gfxcontext.swapchain);
@@ -622,7 +622,7 @@ void renderer_sdf_draw_scene(const SDF_Scene* scene)
         g_rhi.end_gfx_cmd_recording(cmd_buff);
 
         g_rhi.gfx_cmd_enque_submit(&s_RendererSDFInternalState.gfxcontext.cmd_queue, cmd_buff);
-        
+
         // This is for submitting rendering commands that takes presentation into account for sync
         g_rhi.gfx_cmd_submit_for_rendering(&s_RendererSDFInternalState.gfxcontext);
 

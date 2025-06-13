@@ -750,17 +750,17 @@ typedef struct gfx_scissor
 
 typedef struct gfx_submit_syncobj
 {
-    const gfx_syncobj*  wait_synobjs;
-    const gfx_syncobj*  signal_synobjs;
-    uint32_t            wait_syncobjs_count;
-    uint32_t            signal_syncobjs_count;
+    const gfx_syncobj* wait_synobjs;
+    const gfx_syncobj* signal_synobjs;
+    uint32_t           wait_syncobjs_count;
+    uint32_t           signal_syncobjs_count;
     // CPU sync primitve to wait on: Fence or Timeline Semaphore
-    gfx_syncobj*        inflight_syncobj;
+    gfx_syncobj* inflight_syncobj;
     // Global timeline synnc point that will be signalled when the submit operation is completed
-    // Workloads can wait on this or intermediate points, 
+    // Workloads can wait on this or intermediate points,
     // this is sued to increment Values to singnal queue submits
     // this is tracked per-inflight farme, gfx_context owns This
-    uint64_t*           timeline_syncpoint;
+    uint64_t* timeline_syncpoint;
 } gfx_submit_syncobj;
 
 typedef struct gfx_context

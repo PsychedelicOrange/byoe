@@ -90,7 +90,7 @@ typedef struct rhi_jumptablefrontend
     void (*destroy_single_time_cmd_buffer)(gfx_cmd_buf*);
 
     gfx_syncobj (*create_syncobj)(gfx_syncobj_type);
-    void (*destroy_syncobj)(gfx_syncobj*);    
+    void (*destroy_syncobj)(gfx_syncobj*);
 
     gfx_texture_readback (*readback_swapchain)(const gfx_swapchain*);
 
