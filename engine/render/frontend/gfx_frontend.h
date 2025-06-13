@@ -38,12 +38,11 @@ int  gfx_init(rhi_api api);
 void gfx_destroy(void);
 
 // Helper functions
-void     gfx_util_ignite_init_resources(gfx_context* ctx);
-void     gfx_util_recreate_frame_sync(gfx_context* ctx);
+void     gfx_util_create_init_resources(gfx_context* ctx);
 uint32_t gfx_util_get_back_buffer_idx(const gfx_swapchain* swapchain);
-uint32_t gfx_util_get_current_frame_idx(const gfx_context* ctx);
+uint32_t gfx_util_get_current_inflight_idx(const gfx_context* ctx);
 
-typedef struct rhi_jumptable
+typedef struct rhi_jumptablefrontend
 {
     gfx_context (*ctx_init)(GLFWwindow*, uint32_t, uint32_t);
     void (*ctx_destroy)(gfx_context*);
@@ -95,16 +94,20 @@ typedef struct rhi_jumptable
     gfx_cmd_buf (*create_single_time_cmd_buffer)(void);
     void (*destroy_single_time_cmd_buffer)(gfx_cmd_buf*);
 
+    gfx_syncobj (*create_syncobj)(gfx_syncobj_type);
+    void (*destroy_syncobj)(gfx_syncobj*);    
+
     gfx_texture_readback (*readback_swapchain)(const gfx_swapchain*);
 
-    gfx_syncobj* (*frame_begin)(gfx_context*);
+    rhi_error_codes (*frame_begin)(gfx_context*);
     rhi_error_codes (*frame_end)(gfx_context*);
 
     rhi_error_codes (*wait_on_previous_cmds)(const gfx_syncobj*);
-    rhi_error_codes (*acquire_image)(gfx_swapchain*, const gfx_syncobj*);
-    rhi_error_codes (*gfx_cmd_enque_submit)(gfx_cmd_queue*, const gfx_cmd_buf*);
-    rhi_error_codes (*gfx_cmd_submit_queue)(const gfx_cmd_queue*, gfx_syncobj*);
-    rhi_error_codes (*present)(const gfx_swapchain*, const gfx_syncobj*);
+    rhi_error_codes (*acquire_image)(gfx_swapchain*);
+    rhi_error_codes (*gfx_cmd_enque_submit)(gfx_cmd_queue*, gfx_cmd_buf*);
+    rhi_error_codes (*gfx_cmd_submit_queue)(const gfx_cmd_queue*, gfx_submit_syncobj);
+    rhi_error_codes (*gfx_cmd_submit_for_rendering)(const gfx_context*);
+    rhi_error_codes (*present)(const gfx_swapchain*);
 
     rhi_error_codes (*resize_swapchain)(gfx_swapchain*, uint32_t, uint32_t);
 

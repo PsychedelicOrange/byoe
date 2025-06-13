@@ -99,7 +99,6 @@ static void renderer_internal_sdf_resize(GLFWwindow* window, int width, int heig
 
     g_rhi.flush_gpu_work();
 
-    gfx_util_recreate_frame_sync(&s_RendererSDFInternalState.gfxcontext);
     g_rhi.resize_swapchain(&s_RendererSDFInternalState.gfxcontext.swapchain, width, height);
 }
 
@@ -382,13 +381,20 @@ static bool render_internal_sdf_init_gfx_ctx(uint32_t width, uint32_t height)
             return false;
         }
 
-        gfx_util_ignite_init_resources(&s_RendererSDFInternalState.gfxcontext);
-
-        s_RendererSDFInternalState.gfxcontext.cmd_queue.cmds       = calloc(MAX_FRAME_INFLIGHT, sizeof(gfx_cmd_buf*));
-        s_RendererSDFInternalState.gfxcontext.cmd_queue.cmds_count = MAX_FRAME_INFLIGHT;
+        // command pool: only per thread and 2 in-flight command buffers per pool
+         s_RendererSDFInternalState.gfxcontext.draw_cmds_pool = g_rhi.create_gfx_cmd_pool();
+        for (uint32_t i = 0; i < MAX_FRAMES_INFLIGHT; i++) {
+            // Allocate and create the command buffers
+            s_RendererSDFInternalState.gfxcontext.draw_cmds[i] = g_rhi.create_gfx_cmd_buf(&s_RendererSDFInternalState.gfxcontext.draw_cmds_pool);
+        }
 
         return true;
     }
+}
+
+static void renderer_internal_sdf_destroy_gfx_ctx(void)
+{
+    g_rhi.destroy_gfx_cmd_pool(&s_RendererSDFInternalState.gfxcontext.draw_cmds_pool);
 }
 
 //----------------------------------------------------------------
@@ -456,12 +462,8 @@ void renderer_sdf_destroy(void)
 
     // clean up
     renderer_internal_destroy_sdf_pass_resources();
-
-    g_rhi.destroy_gfx_cmd_pool(&s_RendererSDFInternalState.gfxcontext.draw_cmds_pool);
-    for (uint32_t i = 0; i < MAX_FRAME_INFLIGHT; i++) {
-        //free(s_RendererSDFInternalState.gfxcontext.cmd_queue.cmds[i]);
-        g_rhi.destroy_frame_sync(&s_RendererSDFInternalState.gfxcontext.frame_sync[i]);
-    }
+    
+    renderer_internal_sdf_destroy_gfx_ctx();
 
     g_rhi.destroy_swapchain(&s_RendererSDFInternalState.gfxcontext.swapchain);
     g_rhi.ctx_destroy(&s_RendererSDFInternalState.gfxcontext);
@@ -600,9 +602,9 @@ void renderer_sdf_draw_scene(const SDF_Scene* scene)
     if (!scene)
         return;
 
-    gfx_frame_sync* frame_sync = g_rhi.frame_begin(&s_RendererSDFInternalState.gfxcontext);
+    g_rhi.frame_begin(&s_RendererSDFInternalState.gfxcontext);
     {
-        gfx_cmd_buf* cmd_buff = &s_RendererSDFInternalState.gfxcontext.draw_cmds[s_RendererSDFInternalState.gfxcontext.frame_idx];
+        gfx_cmd_buf* cmd_buff = &s_RendererSDFInternalState.gfxcontext.draw_cmds[s_RendererSDFInternalState.gfxcontext.inflight_frame_idx];
 
         g_rhi.begin_gfx_cmd_recording(cmd_buff);
 
@@ -620,7 +622,9 @@ void renderer_sdf_draw_scene(const SDF_Scene* scene)
         g_rhi.end_gfx_cmd_recording(cmd_buff);
 
         g_rhi.gfx_cmd_enque_submit(&s_RendererSDFInternalState.gfxcontext.cmd_queue, cmd_buff);
-        g_rhi.gfx_cmd_submit_queue(&s_RendererSDFInternalState.gfxcontext.cmd_queue, frame_sync);
+        
+        // This is for submitting rendering commands that takes presentation into account for sync
+        g_rhi.gfx_cmd_submit_for_rendering(&s_RendererSDFInternalState.gfxcontext);
 
         if (s_RendererSDFInternalState.captureSwapchain) {
             s_RendererSDFInternalState.lastSwapchainReadback = g_rhi.readback_swapchain(&s_RendererSDFInternalState.gfxcontext.swapchain);

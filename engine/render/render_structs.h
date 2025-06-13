@@ -283,7 +283,7 @@ typedef struct SDF_Node
 //------------------------
 
 #define MAX_BACKBUFFERS         4
-#define MAX_FRAME_INFLIGHT      2
+#define MAX_FRAMES_INFLIGHT     2
 #define MAX_CMD_BUFFS_PER_QUEUE 16
 #define MAX_RT                  8
 
@@ -329,7 +329,8 @@ typedef enum gfx_shader_stage
 typedef enum gfx_syncobj_type
 {
     GFX_SYNCOBJ_TYPE_CPU,
-    GFX_SYNCOBJ_TYPE_GPU
+    GFX_SYNCOBJ_TYPE_GPU,
+    GFX_SYNCOBJ_TYPE_TIMELINE
 } gfx_syncobj_type;
 
 typedef enum gfx_pipeline_type
@@ -622,9 +623,9 @@ typedef struct gfx_cmd_buf
 
 typedef struct gfx_cmd_queue
 {
-    const gfx_cmd_buf** cmds;
-    uint32_t            cmds_count;
-    uint32_t            _pad0;
+    gfx_cmd_buf*  cmds[MAX_CMD_BUFFS_PER_QUEUE];
+    uint32_t      cmds_count;
+    uint32_t      _pad0;
 } gfx_cmd_queue;
 
 typedef struct gfx_shader
@@ -750,18 +751,32 @@ typedef struct gfx_scissor
 // High-level structs
 //-----------------------------------
 
+typedef struct gfx_submit_syncobj
+{
+    const gfx_syncobj* wait_synobjs;
+    const gfx_syncobj* signal_synobjs;
+    uint32_t wait_syncobjs_count;
+    uint32_t signal_syncobjs_count;
+    // CPU sync primitve to wait on: Fence or Timeline Semaphore
+    union {
+        gfx_syncobj inflight_syncobj;
+        uint64_t timeline_signal_value;
+    };
+} gfx_submit_syncobj;
+
 typedef struct gfx_context
 {
     random_uuid_t  uuid;
     void*          backend;
     uint32_t       _pad0;
-    uint32_t       frame_idx;
+    uint32_t       inflight_frame_idx;
     gfx_swapchain  swapchain;
-    gfx_syncobj    in_flight[MAX_FRAME_INFLIGHT];
+    gfx_syncobj    inflight_syncobj[MAX_FRAMES_INFLIGHT];
     // NOTE: Add all the command buffers you want here...Draw, Async etc.
     // 1 per thread, only single threaded for now
     gfx_cmd_pool  draw_cmds_pool;
-    gfx_cmd_buf   draw_cmds[MAX_FRAME_INFLIGHT];
+    // FIXME: Do we really need 2 of these draw_cmds and queue? can't we collapse and use 1?
+    gfx_cmd_buf   draw_cmds[MAX_FRAMES_INFLIGHT];
     gfx_cmd_queue cmd_queue;
     uint64_t      timeline_syncobj_value;                  // last timeline value signaled
 } gfx_context;

@@ -25,12 +25,12 @@ void vulkan_flush_gpu_work(void);
 // Device
 //------------------------------------------
 // https://www.khronos.org/blog/vulkan-timeline-semaphores
-// ---------------------------------------------------------
+//---------------------------------------------------------
 // TEST API NOT INTEGATRED INTO RHI YET
-gfx_syncobj vulkan_device_create_timeline_semaphore(void);
-void vulkan_device_destroy_timeline_semaphore(gfx_syncobj* syncobj);
-void vulkan_device_wait_on_semaphore(const gfx_syncobj* syncobj, int wait_value);
-// ---------------------------------------------------------
+// gfx_syncobj vulkan_device_create_timeline_semaphore(void);
+// void vulkan_device_destroy_timeline_semaphore(gfx_syncobj* syncobj);
+// void vulkan_device_wait_on_semaphore(const gfx_syncobj* syncobj, int wait_value);
+//---------------------------------------------------------
 
 gfx_swapchain vulkan_device_create_swapchain(uint32_t width, uint32_t height);
 void          vulkan_device_destroy_swapchain(gfx_swapchain* sc);
@@ -79,20 +79,24 @@ void              vulkan_device_destroy_uniform_buffer_resource_view(gfx_resourc
 gfx_cmd_buf vulkan_device_create_single_time_command_buffer(void);
 void        vulkan_device_destroy_single_time_command_buffer(gfx_cmd_buf* cmd_buf);
 
+gfx_syncobj vulkan_device_create_syncobj(gfx_syncobj_type type);
+void        vulkan_device_destroy_syncobj(gfx_syncobj* syncobj);
+
 gfx_texture_readback vulkan_device_readback_swapchain(const gfx_swapchain* swapchain);
 
 //------------------------------------------
 // RHI
 //------------------------------------------
 
-gfx_syncobj* vulkan_frame_begin(gfx_context* context);
+rhi_error_codes vulkan_frame_begin(gfx_context* context);
 rhi_error_codes vulkan_frame_end(gfx_context* context);
 
 rhi_error_codes vulkan_wait_on_previous_cmds(const gfx_syncobj* in_flight_sync);
-rhi_error_codes vulkan_acquire_image(gfx_swapchain* swapchain, const gfx_syncobj* in_flight_sync);
-rhi_error_codes vulkan_gfx_cmd_enque_submit(gfx_cmd_queue* cmd_queue, const gfx_cmd_buf* cmd_buff);
-rhi_error_codes vulkan_gfx_cmd_submit_queue(const gfx_cmd_queue* cmd_queue, gfx_syncobj* frame_sync);
-rhi_error_codes vulkan_present(const gfx_swapchain* swapchain, const gfx_syncobj* frame_sync);
+rhi_error_codes vulkan_acquire_image(gfx_swapchain* swapchain);
+rhi_error_codes vulkan_gfx_cmd_enque_submit(gfx_cmd_queue* cmd_queue, gfx_cmd_buf* cmd_buff);
+rhi_error_codes vulkan_gfx_cmd_submit_queue(const gfx_cmd_queue* cmd_queue, gfx_submit_syncobj submit_sync);
+rhi_error_codes vulkan_gfx_cmd_submit_for_rendering(const gfx_context* ctx);
+rhi_error_codes vulkan_present(const gfx_swapchain* swapchain);
 
 rhi_error_codes vulkan_resize_swapchain(gfx_swapchain* swapchain, uint32_t width, uint32_t height);
 
