@@ -111,12 +111,16 @@ const rhi_jumptable vulkan_jumptable = {
 
 DEFINE_CLAMP(int)
 
-#define VK_CHECK_RESULT(x, msg)                 \
-    if (x != VK_SUCCESS) {                      \
-        LOG_ERROR("VkResult: %d", (uint32_t) x) \
-        LOG_ERROR(msg);                         \
-        exit(-1);                               \
-    }
+#define VK_CHECK_RESULT(x, msg)                         \
+    do {                                                \
+        VkResult _res = (x);                            \
+        if (_res != VK_SUCCESS) {                       \
+            LOG_ERROR("VkResult: %d", (uint32_t) _res); \
+            LOG_ERROR(msg);                             \
+            exit(-1);                                   \
+        }                                               \
+    } while (0)
+
 
 #define VK_LAYER_KHRONOS_VALIDATION_NAME "VK_LAYER_KHRONOS_validation"
 
