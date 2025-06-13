@@ -1144,7 +1144,7 @@ gfx_context vulkan_ctx_init(GLFWwindow* window, uint32_t width, uint32_t height)
     uuid_generate(&ctx.uuid);
     ctx.backend = &s_VkCtx;
 
-    // Create in-flight sync primitves (Fence or TimelimeSemaphores per in-flight frame)
+    // Create in-flight sync primitives (Fence or TimelimeSemaphores per in-flight frame)
     for(int i = 0; i < MAX_FRAMES_INFLIGHT; i++) {
         if(!g_gfxConfig.use_timeline_semaphores) {
             ctx.inflight_syncobj[i] = vulkan_device_create_syncobj(GFX_SYNCOBJ_TYPE_CPU);
@@ -1164,7 +1164,7 @@ void vulkan_ctx_destroy(gfx_context* ctx)
 
     for(int i = 0; i < MAX_FRAMES_INFLIGHT; i++) {
         if(!g_gfxConfig.use_timeline_semaphores) {
-            vulkan_device_destroy_syncobj(ctx->inflight_syncobj[i].backend);
+            vulkan_device_destroy_syncobj(&ctx->inflight_syncobj[i]);
         }
     }
 
@@ -1357,8 +1357,8 @@ void vulkan_device_destroy_swapchain(gfx_swapchain* sc)
         swapchain_backend* backend = sc->backend;
         
         for (uint32_t i = 0; i < sc->image_count; i++) {
-            vulkan_device_destroy_syncobj(sc->rendering_done[i].backend);
-            vulkan_device_destroy_syncobj(sc->image_ready[i].backend);
+            vulkan_device_destroy_syncobj(&sc->rendering_done[i]);
+            vulkan_device_destroy_syncobj(&sc->image_ready[i]);
         }
 
         vulkan_internal_destroy_backbuffers(backend, sc->image_count);
@@ -2330,10 +2330,10 @@ gfx_syncobj vulkan_device_create_syncobj(gfx_syncobj_type type)
 void vulkan_device_destroy_syncobj(gfx_syncobj* syncobj) 
 {
     if(syncobj->visibility == GFX_SYNCOBJ_TYPE_CPU) {
-        vulkan_internal_destroy_fence(syncobj->backend);
+        vulkan_internal_destroy_fence(*(VkFence*)syncobj->backend);
     }
     else if(syncobj->visibility == GFX_SYNCOBJ_TYPE_GPU) {
-        vulkan_internal_destroy_sema(syncobj->backend);
+        vulkan_internal_destroy_sema(*(VkSemaphore*)syncobj->backend);
     }
     // TODO: Handle timeline semaphores
     
