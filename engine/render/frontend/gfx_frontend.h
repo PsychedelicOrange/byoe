@@ -37,11 +37,6 @@ typedef enum rhi_error_codes
 int  gfx_init(rhi_api api);
 void gfx_destroy(void);
 
-// Helper functions
-void     gfx_util_create_init_resources(gfx_context* ctx);
-uint32_t gfx_util_get_back_buffer_idx(const gfx_swapchain* swapchain);
-uint32_t gfx_util_get_current_inflight_idx(const gfx_context* ctx);
-
 typedef struct rhi_jumptablefrontend
 {
     gfx_context (*ctx_init)(GLFWwindow*, uint32_t, uint32_t);

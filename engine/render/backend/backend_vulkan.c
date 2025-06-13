@@ -2840,23 +2840,3 @@ rhi_error_codes vulkan_clear_image(const gfx_cmd_buf* cmd_buffer, const gfx_reso
 
     return Success;
 }
-
-//------------------------------------------------------------------------------------------------
-// Timeline Semaphore Utility Functions
-
-void vulkan_device_wait_on_syncobj(const gfx_syncobj* syncobj, uint64_t wait_value)
-{
-    VkSemaphore semaphore = *((VkSemaphore*)(syncobj->backend));
-
-    VkSemaphoreWaitInfo waitInfo = {
-        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
-        .pNext = NULL,
-        .flags = 0,
-        .semaphoreCount = 1,
-        .pSemaphores = &semaphore,
-        .pValues = &wait_value,
-    };
-
-    VK_CHECK_RESULT(vkWaitSemaphores(VKDEVICE, &waitInfo, UINT64_MAX), "Failed to wait on timeline semaphore");
-}
-//------------------------------------------------------------------------------------------------

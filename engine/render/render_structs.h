@@ -756,6 +756,10 @@ typedef struct gfx_submit_syncobj
     uint32_t            signal_syncobjs_count;
     // CPU sync primitve to wait on: Fence or Timeline Semaphore
     gfx_syncobj*        inflight_syncobj;
+    // Global timeline synnc point that will be signalled when the submit operation is completed
+    // Workloads can wait on this or intermediate points, 
+    // this is sued to increment Values to singnal queue submits
+    // this is tracked per-inflight farme, gfx_context owns This
     uint64_t*           timeline_syncpoint;
 } gfx_submit_syncobj;
 

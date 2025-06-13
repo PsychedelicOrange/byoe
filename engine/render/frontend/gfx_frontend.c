@@ -28,13 +28,3 @@ void gfx_destroy(void)
     rhi_jumptable null = {0};
     g_rhi = null;
 }
-
-uint32_t gfx_util_get_back_buffer_idx(const gfx_swapchain* swapchain)
-{
-    return swapchain->current_backbuffer_idx;
-}
-
-uint32_t gfx_util_get_current_inflight_idx(const gfx_context* ctx)
-{
-    return ctx->inflight_frame_idx;
-}

@@ -24,11 +24,6 @@ void vulkan_flush_gpu_work(void);
 //------------------------------------------
 // Device
 //------------------------------------------
-// https://www.khronos.org/blog/vulkan-timeline-semaphores
-//---------------------------------------------------------
-// TEST API NOT INTEGATRED INTO RHI YET
-// void vulkan_device_wait_on_syncobj(const gfx_syncobj* syncobj, int wait_value);
-//---------------------------------------------------------
 
 gfx_swapchain vulkan_device_create_swapchain(uint32_t width, uint32_t height);
 void          vulkan_device_destroy_swapchain(gfx_swapchain* sc);
