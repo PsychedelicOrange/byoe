@@ -470,7 +470,7 @@ typedef struct gfx_syncobj
 {
     random_uuid_t    uuid;
     void*            backend;
-    uint64_t         value;
+    uint64_t         wait_value;
     gfx_syncobj_type type;
     uint32_t         _pad0[3];
 } gfx_syncobj;
@@ -750,16 +750,13 @@ typedef struct gfx_scissor
 
 typedef struct gfx_submit_syncobj
 {
-    const gfx_syncobj* wait_synobjs;
-    const gfx_syncobj* signal_synobjs;
-    uint32_t           wait_syncobjs_count;
-    uint32_t           signal_syncobjs_count;
+    const gfx_syncobj*  wait_synobjs;
+    const gfx_syncobj*  signal_synobjs;
+    uint32_t            wait_syncobjs_count;
+    uint32_t            signal_syncobjs_count;
     // CPU sync primitve to wait on: Fence or Timeline Semaphore
-    union
-    {
-        gfx_syncobj inflight_syncobj;
-        uint64_t    timeline_signal_value;
-    };
+    gfx_syncobj*        inflight_syncobj;
+    uint64_t*           timeline_syncpoint;
 } gfx_submit_syncobj;
 
 typedef struct gfx_context
@@ -778,8 +775,7 @@ typedef struct gfx_context
     // FIXME: Do we really need 2 of these draw_cmds and queue? can't we collapse and use 1?
     gfx_cmd_buf   draw_cmds[MAX_FRAMES_INFLIGHT];
     gfx_cmd_queue cmd_queue;
-    uint64_t      timeline_syncobj_value;    // last timeline value signaled
-    uint64_t      _pad0[1];
+    uint64_t      timeline_syncpoint[MAX_FRAMES_INFLIGHT];    // last timeline value signaled
 } gfx_context;
 
 typedef struct gfx_attachment

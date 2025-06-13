@@ -5,11 +5,11 @@
 #include "../core/logging/log.h"
 
 #include "../core/shader.h"
-
+#include <stdint.h>
+// clang-format off
 #define VK_NO_PROTOTYPES
 #include <volk.h>
 #include <vulkan/vulkan.h>
-// clang-format off
 #ifdef _WIN32 // careful of the order
     #include <windows.h>
     #include <vulkan/vulkan_win32.h>
@@ -1035,8 +1035,14 @@ static VkDevice vulkan_internal_create_logical_device(device_create_info_ex info
 {
     (void) info;
 
+    VkPhysicalDeviceTimelineSemaphoreFeatures timelineFeatures = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES,
+        .pNext = NULL
+    }; 
+
     VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamicRenderingFeatures = {
         .sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR,
+        .pNext            = &timelineFeatures,
         .dynamicRendering = VK_TRUE};
 
     VkPhysicalDeviceFeatures2 device_features = {
@@ -1079,6 +1085,8 @@ static VkDevice vulkan_internal_create_logical_device(device_create_info_ex info
     VkDevice device = VK_NULL_HANDLE;
 
     VK_CHECK_RESULT(vkCreateDevice(info.gpu, &device_ci, NULL, &device), "Failed to create VkDevice");
+
+    g_gfxConfig.use_timeline_semaphores = timelineFeatures.timelineSemaphore;
 
     return device;
 }
@@ -1157,6 +1165,10 @@ gfx_context vulkan_ctx_init(GLFWwindow* window, uint32_t width, uint32_t height)
             ctx.inflight_syncobj[i] = vulkan_device_create_syncobj(GFX_SYNCOBJ_TYPE_CPU);
             VK_TAG_OBJECT("INFLIGHT_FENCE", VK_OBJECT_TYPE_FENCE, *((VkFence*) (ctx.inflight_syncobj[i].backend)));
         }
+        else {
+           ctx.inflight_syncobj[i] = vulkan_device_create_syncobj(GFX_SYNCOBJ_TYPE_TIMELINE);
+           VK_TAG_OBJECT("INFLIGHT_SEMA", VK_OBJECT_TYPE_SEMAPHORE, *((VkFence*) (ctx.inflight_syncobj[i].backend)));
+        }
     }
 
     // Create frame sync primitives per swapchain image
@@ -1179,9 +1191,7 @@ void vulkan_ctx_destroy(gfx_context* ctx)
     free(s_VkCtx.supported_extensions);
 
     for (int i = 0; i < MAX_FRAMES_INFLIGHT; i++) {
-        if (!g_gfxConfig.use_timeline_semaphores) {
-            vulkan_device_destroy_syncobj(&ctx->inflight_syncobj[i]);
-        }
+        vulkan_device_destroy_syncobj(&ctx->inflight_syncobj[i]);
     }
 
     for (uint32_t i = 0; i < MAX_BACKBUFFERS; i++) {
@@ -1455,6 +1465,31 @@ static void vulkan_internal_create_fence(void* backend)
 static void vulkan_internal_destroy_fence(VkFence fence)
 {
     vkDestroyFence(VKDEVICE, fence, NULL);
+}
+
+void vulkan_internal_create_timeline_semaphore(void* backend)
+{
+    VkSemaphoreTypeCreateInfo timelineCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
+        .pNext = NULL,
+        .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
+        .initialValue = 0,
+    };
+
+    VkSemaphoreCreateInfo semaphoreCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+        .pNext = &timelineCreateInfo,
+        .flags = 0,
+    };
+
+    VK_CHECK_RESULT(vkCreateSemaphore(VKDEVICE, &semaphoreCreateInfo, NULL, backend), "Failed to create timeline semaphore");
+}
+
+void vulkan_internal_destroy_timeline_semaphore(VkSemaphore semaphore)
+{
+    if (semaphore != VK_NULL_HANDLE) {
+        vkDestroySemaphore(VKDEVICE, semaphore, NULL);
+    }
 }
 
 static VkShaderModule vulkan_internal_create_shader_handle(const char* spv_file_path)
@@ -2324,7 +2359,7 @@ gfx_syncobj vulkan_device_create_syncobj(gfx_syncobj_type type)
     uuid_generate(&syncobj.uuid);
 
     syncobj.type  = type;
-    syncobj.value = 0;
+    syncobj.wait_value = 0;
 
     if (type == GFX_SYNCOBJ_TYPE_CPU) {
         syncobj.backend = malloc(sizeof(VkFence));
@@ -2332,8 +2367,10 @@ gfx_syncobj vulkan_device_create_syncobj(gfx_syncobj_type type)
     } else if (type == GFX_SYNCOBJ_TYPE_GPU) {
         syncobj.backend = malloc(sizeof(VkSemaphore));
         vulkan_internal_create_sema(syncobj.backend);
+    } else {
+        syncobj.backend = malloc(sizeof(VkSemaphore));
+        vulkan_internal_create_timeline_semaphore(syncobj.backend);
     }
-    // TODO: Handle timeline semaphores
     return syncobj;
 }
 
@@ -2343,6 +2380,8 @@ void vulkan_device_destroy_syncobj(gfx_syncobj* syncobj)
         vulkan_internal_destroy_fence(*(VkFence*) syncobj->backend);
     } else if (syncobj->type == GFX_SYNCOBJ_TYPE_GPU) {
         vulkan_internal_destroy_sema(*(VkSemaphore*) syncobj->backend);
+    } else {
+        vulkan_internal_destroy_timeline_semaphore(*(VkSemaphore*)(syncobj->backend));
     }
     // TODO: Handle timeline semaphores
 
@@ -2440,9 +2479,18 @@ rhi_error_codes vulkan_wait_on_previous_cmds(const gfx_syncobj* in_flight_sync)
     if (in_flight_sync->type == GFX_SYNCOBJ_TYPE_CPU) {
         VK_CHECK_RESULT(vkWaitForFences(VKDEVICE, 1, (VkFence*) (in_flight_sync->backend), true, UINT32_MAX), "cannot wait on in-flight fence");
         VK_CHECK_RESULT(vkResetFences(VKDEVICE, 1, (VkFence*) (in_flight_sync->backend)), "cannot reset above in-flight fence");
+    } else if (in_flight_sync->type == GFX_SYNCOBJ_TYPE_TIMELINE) {
+        VkSemaphore semaphore = *((VkSemaphore*)(in_flight_sync->backend));
+        VkSemaphoreWaitInfo waitInfo = {
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
+            .pNext = NULL,
+            .flags = 0,
+            .semaphoreCount = 1,
+            .pSemaphores = &semaphore,
+            .pValues = &in_flight_sync->wait_value,
+        };
+        VK_CHECK_RESULT(vkWaitSemaphores(VKDEVICE, &waitInfo, UINT32_MAX), "cannot wait on in-flight timeline semaphore");
     }
-    // TODO: Use timeline semaphores wait to on CPU
-    // TODO: else if (g_gfx_confix.timelineSemaphores && in_flight_sync->type == GFX_SYNCOBJ_TYPE_TIMELINE) {}
 
     return Success;
 }
@@ -2472,50 +2520,85 @@ rhi_error_codes vulkan_gfx_cmd_enque_submit(gfx_cmd_queue* cmd_queue, gfx_cmd_bu
 
 rhi_error_codes vulkan_gfx_cmd_submit_queue(const gfx_cmd_queue* cmd_queue, gfx_submit_syncobj submit_sync)
 {
-    // Flatten all the gfx_cmd_buff into a VkCommandBuffer Array
     VkCommandBuffer* vk_cmd_buffs = malloc(cmd_queue->cmds_count * sizeof(VkCommandBuffer));
     for (uint32_t i = 0; i < cmd_queue->cmds_count; i++)
         vk_cmd_buffs[i] = *((VkCommandBuffer*) (cmd_queue->cmds[i]->backend));
 
-    // Flatten syncobjs into VkSemaphore arrays
+    if (g_gfxConfig.use_timeline_semaphores)
+        submit_sync.signal_syncobjs_count++;
+
     VkSemaphore* wait_semaphores   = malloc(submit_sync.wait_syncobjs_count * sizeof(VkSemaphore));
     VkSemaphore* signal_semaphores = malloc(submit_sync.signal_syncobjs_count * sizeof(VkSemaphore));
 
     for (uint32_t i = 0; i < submit_sync.wait_syncobjs_count; ++i)
         wait_semaphores[i] = *((VkSemaphore*) (submit_sync.wait_synobjs[i].backend));
 
-    for (uint32_t i = 0; i < submit_sync.signal_syncobjs_count; ++i)
+    for (uint32_t i = 0; i < submit_sync.signal_syncobjs_count - 1; ++i)
         signal_semaphores[i] = *((VkSemaphore*) (submit_sync.signal_synobjs[i].backend));
-
+    
     VkPipelineStageFlags waitStages[1] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 
-    VkSubmitInfo submitInfo = {
-        .sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-        .pNext                = NULL,
-        .commandBufferCount   = cmd_queue->cmds_count,
-        .pCommandBuffers      = vk_cmd_buffs,
-        .waitSemaphoreCount   = submit_sync.wait_syncobjs_count,
-        .pWaitSemaphores      = wait_semaphores,
-        .pWaitDstStageMask    = waitStages,
-        .signalSemaphoreCount = submit_sync.signal_syncobjs_count,
-        .pSignalSemaphores    = signal_semaphores,
+    VkTimelineSemaphoreSubmitInfo timelineInfo = {
+        .sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO,
+        .pNext = NULL,
+        .waitSemaphoreValueCount = 0,
+        .pWaitSemaphoreValues = NULL,
+        .signalSemaphoreValueCount = 0,
+        .pSignalSemaphoreValues = NULL,
     };
 
-    // TODO: Once we switch to Timeline semaphores we can ignore this
     VkFence signal_fence = VK_NULL_HANDLE;
-    if (!g_gfxConfig.use_timeline_semaphores)
-        signal_fence = *((VkFence*) (submit_sync.inflight_syncobj.backend));
+    if (!g_gfxConfig.use_timeline_semaphores) {
+        signal_fence = *((VkFence*) (submit_sync.inflight_syncobj->backend));
+    } else {
+        VkSemaphore inflight = *((VkSemaphore*) (submit_sync.inflight_syncobj->backend));
+        // Global tracker to tell where to signal to
+        uint64_t signal_value = ++(*submit_sync.timeline_syncpoint);
 
+        timelineInfo.waitSemaphoreValueCount = submit_sync.wait_syncobjs_count;
+        timelineInfo.signalSemaphoreValueCount = submit_sync.signal_syncobjs_count;
+
+        uint64_t* wait_values = malloc(sizeof(uint64_t) * submit_sync.wait_syncobjs_count);
+        memset(wait_values, 0, sizeof(uint64_t) * submit_sync.wait_syncobjs_count);
+        uint64_t* signal_values = malloc(sizeof(uint64_t) * submit_sync.signal_syncobjs_count);
+        memset(signal_values, 0, sizeof(uint64_t) * submit_sync.signal_syncobjs_count);
+
+        signal_semaphores[submit_sync.signal_syncobjs_count - 1] = inflight;
+        signal_values[submit_sync.signal_syncobjs_count - 1] = signal_value; // Signal the new value
+        
+        // Register syncobj to wait on this timepoint signal
+        submit_sync.inflight_syncobj->wait_value = signal_value;
+
+        timelineInfo.pWaitSemaphoreValues = wait_values;
+        timelineInfo.pSignalSemaphoreValues = signal_values;
+    }
+
+    VkSubmitInfo submitInfo = {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .pNext = g_gfxConfig.use_timeline_semaphores ? &timelineInfo : NULL,
+        .commandBufferCount = cmd_queue->cmds_count,
+        .pCommandBuffers = vk_cmd_buffs,
+        .waitSemaphoreCount = submit_sync.wait_syncobjs_count,
+        .pWaitSemaphores = wait_semaphores,
+        .pWaitDstStageMask = waitStages,
+        .signalSemaphoreCount = submit_sync.signal_syncobjs_count,
+        .pSignalSemaphores = signal_semaphores,
+    };
     VK_CHECK_RESULT(vkQueueSubmit(s_VkCtx.queues.gfx, 1, &submitInfo, signal_fence), "Failed to submit command buffers");
 
     free(vk_cmd_buffs);
     free(wait_semaphores);
     free(signal_semaphores);
 
+    if (g_gfxConfig.use_timeline_semaphores) {
+        free((void*)timelineInfo.pWaitSemaphoreValues);
+        free((void*)timelineInfo.pSignalSemaphoreValues);
+    }
+
     return Success;
 }
 
-rhi_error_codes vulkan_gfx_cmd_submit_for_rendering(const gfx_context* ctx)
+rhi_error_codes vulkan_gfx_cmd_submit_for_rendering(gfx_context* ctx)
 {
     gfx_submit_syncobj submit_sync = {0};
 
@@ -2526,7 +2609,8 @@ rhi_error_codes vulkan_gfx_cmd_submit_for_rendering(const gfx_context* ctx)
     submit_sync.wait_synobjs          = &(ctx->image_ready[curr_syncobj_idx]);
     submit_sync.signal_syncobjs_count = 1;
     submit_sync.signal_synobjs        = &(ctx->rendering_done[curr_syncobj_idx]);
-    submit_sync.inflight_syncobj      = ctx->inflight_syncobj[inflight_idx];
+    submit_sync.inflight_syncobj      = &ctx->inflight_syncobj[inflight_idx];
+    submit_sync.timeline_syncpoint = &ctx->timeline_syncpoint[inflight_idx];
 
     return vulkan_gfx_cmd_submit_queue(&ctx->cmd_queue, submit_sync);
 }
@@ -2758,22 +2842,21 @@ rhi_error_codes vulkan_clear_image(const gfx_cmd_buf* cmd_buffer, const gfx_reso
 }
 
 //------------------------------------------------------------------------------------------------
-// gfx_syncobj vulkan_device_create_timeline_semaphore(void)
-// {
-//     gfx_syncobj syncobj = {0};
-//     uuid_generate(&syncobj.uuid);
-//
-//     return syncobj;
-// }
-//
-// void vulkan_device_destroy_timeline_semaphore(gfx_syncobj* syncobj)
-// {
-//      (void) syncobj;
-// }
-//
-// void vulkan_device_wait_on_semaphore(const gfx_syncobj* syncobj, int wait_value)
-// {
-//     (void) syncobj;
-//     (void) wait_value;
-// }
+// Timeline Semaphore Utility Functions
+
+void vulkan_device_wait_on_syncobj(const gfx_syncobj* syncobj, uint64_t wait_value)
+{
+    VkSemaphore semaphore = *((VkSemaphore*)(syncobj->backend));
+
+    VkSemaphoreWaitInfo waitInfo = {
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
+        .pNext = NULL,
+        .flags = 0,
+        .semaphoreCount = 1,
+        .pSemaphores = &semaphore,
+        .pValues = &wait_value,
+    };
+
+    VK_CHECK_RESULT(vkWaitSemaphores(VKDEVICE, &waitInfo, UINT64_MAX), "Failed to wait on timeline semaphore");
+}
 //------------------------------------------------------------------------------------------------

@@ -27,9 +27,7 @@ void vulkan_flush_gpu_work(void);
 // https://www.khronos.org/blog/vulkan-timeline-semaphores
 //---------------------------------------------------------
 // TEST API NOT INTEGATRED INTO RHI YET
-// gfx_syncobj vulkan_device_create_timeline_semaphore(void);
-// void vulkan_device_destroy_timeline_semaphore(gfx_syncobj* syncobj);
-// void vulkan_device_wait_on_semaphore(const gfx_syncobj* syncobj, int wait_value);
+// void vulkan_device_wait_on_syncobj(const gfx_syncobj* syncobj, int wait_value);
 //---------------------------------------------------------
 
 gfx_swapchain vulkan_device_create_swapchain(uint32_t width, uint32_t height);
@@ -95,7 +93,7 @@ rhi_error_codes vulkan_wait_on_previous_cmds(const gfx_syncobj* in_flight_sync);
 rhi_error_codes vulkan_acquire_image(gfx_context* swapchain);
 rhi_error_codes vulkan_gfx_cmd_enque_submit(gfx_cmd_queue* cmd_queue, gfx_cmd_buf* cmd_buff);
 rhi_error_codes vulkan_gfx_cmd_submit_queue(const gfx_cmd_queue* cmd_queue, gfx_submit_syncobj submit_sync);
-rhi_error_codes vulkan_gfx_cmd_submit_for_rendering(const gfx_context* ctx);
+rhi_error_codes vulkan_gfx_cmd_submit_for_rendering(gfx_context* ctx);
 rhi_error_codes vulkan_present(const gfx_context* swapchain);
 
 rhi_error_codes vulkan_resize_swapchain(gfx_swapchain* swapchain, uint32_t width, uint32_t height);
