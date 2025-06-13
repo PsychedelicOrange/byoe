@@ -116,7 +116,7 @@ DEFINE_CLAMP(int)
 
 #define VK_LAYER_KHRONOS_VALIDATION_NAME "VK_LAYER_KHRONOS_validation"
 
-#define VK_TAG_OBJECT(name, type, handle) vulkan_internal_tag_object(name, type, (uint64_t)(handle));
+#define VK_TAG_OBJECT(name, type, handle) vulkan_internal_tag_object(name, type, (uint64_t) (handle));
 
 // Backend Macro Abstraction
 
@@ -988,7 +988,7 @@ static TypedGrowableArray vulkan_internal_create_queue_family_infos(queue_indice
     static float queuePriority = 1.0f;
 
     VkDeviceQueueCreateInfo* gfxQueueInfo = malloc(sizeof(VkDeviceQueueCreateInfo));
-    *gfxQueueInfo                         = (VkDeviceQueueCreateInfo) {
+    *gfxQueueInfo                         = (VkDeviceQueueCreateInfo){
                                 .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
                                 .queueFamilyIndex = indices.gfx,
                                 .queueCount       = 1,
@@ -997,7 +997,7 @@ static TypedGrowableArray vulkan_internal_create_queue_family_infos(queue_indice
 
     if (indices.gfx != indices.present) {
         VkDeviceQueueCreateInfo* presentQueueInfo = malloc(sizeof(VkDeviceQueueCreateInfo));
-        *presentQueueInfo                         = (VkDeviceQueueCreateInfo) {
+        *presentQueueInfo                         = (VkDeviceQueueCreateInfo){
                                     .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
                                     .queueFamilyIndex = indices.present,
                                     .queueCount       = 1,
@@ -1007,7 +1007,7 @@ static TypedGrowableArray vulkan_internal_create_queue_family_infos(queue_indice
 
     if (indices.async_compute != indices.gfx) {
         VkDeviceQueueCreateInfo* computeQueueInfo = malloc(sizeof(VkDeviceQueueCreateInfo));
-        *computeQueueInfo                         = (VkDeviceQueueCreateInfo) {
+        *computeQueueInfo                         = (VkDeviceQueueCreateInfo){
                                     .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
                                     .queueFamilyIndex = indices.async_compute,
                                     .queueCount       = 1,
@@ -1072,7 +1072,7 @@ static VkDevice vulkan_internal_create_logical_device(device_create_info_ex info
     VkDevice device = VK_NULL_HANDLE;
 
     VK_CHECK_RESULT(vkCreateDevice(info.gpu, &device_ci, NULL, &device), "Failed to create VkDevice");
-    
+
     return device;
 }
 
@@ -1145,11 +1145,20 @@ gfx_context vulkan_ctx_init(GLFWwindow* window, uint32_t width, uint32_t height)
     ctx.backend = &s_VkCtx;
 
     // Create in-flight sync primitives (Fence or TimelimeSemaphores per in-flight frame)
-    for(int i = 0; i < MAX_FRAMES_INFLIGHT; i++) {
-        if(!g_gfxConfig.use_timeline_semaphores) {
+    for (int i = 0; i < MAX_FRAMES_INFLIGHT; i++) {
+        if (!g_gfxConfig.use_timeline_semaphores) {
             ctx.inflight_syncobj[i] = vulkan_device_create_syncobj(GFX_SYNCOBJ_TYPE_CPU);
-            VK_TAG_OBJECT("INFLIGHT_FENCE", VK_OBJECT_TYPE_FENCE, *((VkFence*)(ctx.inflight_syncobj[i].backend)));
+            VK_TAG_OBJECT("INFLIGHT_FENCE", VK_OBJECT_TYPE_FENCE, *((VkFence*) (ctx.inflight_syncobj[i].backend)));
         }
+    }
+
+    // Create frame sync primitives per swapchain image
+    for (int i = 0; i < MAX_BACKBUFFERS; i++) {
+        ctx.rendering_done[i] = vulkan_device_create_syncobj(GFX_SYNCOBJ_TYPE_GPU);
+        ctx.image_ready[i]    = vulkan_device_create_syncobj(GFX_SYNCOBJ_TYPE_GPU);
+
+        VK_TAG_OBJECT("IMAGE_READY_SEMAPHORE", VK_OBJECT_TYPE_SEMAPHORE, *(VkSemaphore*) (ctx.image_ready[i].backend));
+        VK_TAG_OBJECT("RENDERING_DONE_SEMAPHORE", VK_OBJECT_TYPE_SEMAPHORE, *(VkSemaphore*) (ctx.rendering_done[i].backend));
     }
 
     return ctx;
@@ -1162,10 +1171,15 @@ void vulkan_ctx_destroy(gfx_context* ctx)
 
     free(s_VkCtx.supported_extensions);
 
-    for(int i = 0; i < MAX_FRAMES_INFLIGHT; i++) {
-        if(!g_gfxConfig.use_timeline_semaphores) {
+    for (int i = 0; i < MAX_FRAMES_INFLIGHT; i++) {
+        if (!g_gfxConfig.use_timeline_semaphores) {
             vulkan_device_destroy_syncobj(&ctx->inflight_syncobj[i]);
         }
+    }
+
+    for (uint32_t i = 0; i < MAX_BACKBUFFERS; i++) {
+        vulkan_device_destroy_syncobj(&ctx->rendering_done[i]);
+        vulkan_device_destroy_syncobj(&ctx->image_ready[i]);
     }
 
     vkDestroyCommandPool(VKDEVICE, s_VkCtx.single_time_cmd_pool.pool, NULL);
@@ -1303,8 +1317,11 @@ gfx_swapchain vulkan_device_create_swapchain(uint32_t width, uint32_t height)
 
     swapchain.image_count = caps.minImageCount + 1;
     if (caps.maxImageCount > 0 && swapchain.image_count > caps.maxImageCount)
-         swapchain.image_count = caps.maxImageCount;
-   
+        swapchain.image_count = caps.maxImageCount;
+
+    // Clamp it to some max value
+    if (swapchain.image_count > MAX_BACKBUFFERS)
+        swapchain.image_count = MAX_BACKBUFFERS;
 
     VkSwapchainCreateInfoKHR sc_ci = {
         .sType                 = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
@@ -1324,7 +1341,7 @@ gfx_swapchain vulkan_device_create_swapchain(uint32_t width, uint32_t height)
         .oldSwapchain          = backend->old_swapchain};
 
     VK_CHECK_RESULT(vkCreateSwapchainKHR(VKDEVICE, &sc_ci, NULL, &backend->swapchain), "[Vulkan] Failed to create swapchain handle");
-    
+
     if (backend->old_swapchain != VK_NULL_HANDLE) {
         vkDestroySwapchainKHR(VKDEVICE, backend->old_swapchain, VK_NULL_HANDLE);
         backend->old_swapchain = VK_NULL_HANDLE;
@@ -1337,14 +1354,6 @@ gfx_swapchain vulkan_device_create_swapchain(uint32_t width, uint32_t height)
         gfx_cmd_buf cmd_buff = vulkan_device_create_single_time_command_buffer();
         vulkan_internal_insert_image_memory_barrier(*(VkCommandBuffer*) (cmd_buff.backend), backend->backbuffers[i], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
         vulkan_device_destroy_single_time_command_buffer(&cmd_buff);
-
-        // Create frame sync primitives per swapchain image
-        swapchain.rendering_done[i] = vulkan_device_create_syncobj(GFX_SYNCOBJ_TYPE_GPU);
-        swapchain.image_ready[i] = vulkan_device_create_syncobj(GFX_SYNCOBJ_TYPE_GPU);
-
-        VK_TAG_OBJECT("IMAGE_READY_SEMAPHORE", VK_OBJECT_TYPE_SEMAPHORE, *(VkSemaphore*)(swapchain.image_ready[i].backend));
-        VK_TAG_OBJECT("RENDERING_DONE_SEMAPHORE", VK_OBJECT_TYPE_SEMAPHORE, *(VkSemaphore*)(swapchain.rendering_done[i].backend));
-
     }
 
     return swapchain;
@@ -1355,11 +1364,6 @@ void vulkan_device_destroy_swapchain(gfx_swapchain* sc)
     if (!uuid_is_null(&sc->uuid)) {
         uuid_destroy(&sc->uuid);
         swapchain_backend* backend = sc->backend;
-        
-        for (uint32_t i = 0; i < sc->image_count; i++) {
-            vulkan_device_destroy_syncobj(&sc->rendering_done[i]);
-            vulkan_device_destroy_syncobj(&sc->image_ready[i]);
-        }
 
         vulkan_internal_destroy_backbuffers(backend, sc->image_count);
 
@@ -1475,7 +1479,7 @@ gfx_shader vulkan_device_create_compute_shader(const char* spv_file_path)
 
         backend->modules.CS = vulkan_internal_create_shader_handle(spv_file_path);
 
-        backend->stage_ci = (VkPipelineShaderStageCreateInfo) {
+        backend->stage_ci = (VkPipelineShaderStageCreateInfo){
             .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage  = VK_SHADER_STAGE_COMPUTE_BIT,
             .pName  = "main",
@@ -1507,7 +1511,7 @@ gfx_shader vulkan_device_create_vs_ps_shader(const char* spv_file_path_vs, const
 
         backend_vs->modules.VS = vulkan_internal_create_shader_handle(spv_file_path_vs);
 
-        backend_vs->stage_ci = (VkPipelineShaderStageCreateInfo) {
+        backend_vs->stage_ci = (VkPipelineShaderStageCreateInfo){
             .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage  = VK_SHADER_STAGE_VERTEX_BIT,
             .pName  = "main",
@@ -1521,7 +1525,7 @@ gfx_shader vulkan_device_create_vs_ps_shader(const char* spv_file_path_vs, const
 
         backend_ps->modules.PS = vulkan_internal_create_shader_handle(spv_file_path_ps);
 
-        backend_ps->stage_ci = (VkPipelineShaderStageCreateInfo) {
+        backend_ps->stage_ci = (VkPipelineShaderStageCreateInfo){
             .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage  = VK_SHADER_STAGE_FRAGMENT_BIT,
             .pName  = "main",
@@ -1796,7 +1800,7 @@ gfx_root_signature vulkan_device_create_root_signature(const gfx_descriptor_set_
 
         for (uint32_t j = 0; j < set_layout->binding_count; ++j) {
             const gfx_descriptor_binding binding = set_layout->bindings[j];
-            vk_bindings[j]                       = (VkDescriptorSetLayoutBinding) {
+            vk_bindings[j]                       = (VkDescriptorSetLayoutBinding){
                                       .binding            = binding.location.binding,
                                       .descriptorType     = vulkan_util_descriptor_type_translate(binding.type),
                                       .descriptorCount    = binding.count,
@@ -1823,7 +1827,7 @@ gfx_root_signature vulkan_device_create_root_signature(const gfx_descriptor_set_
 
         for (uint32_t i = 0; i < push_constant_count; ++i) {
             const gfx_push_constant_range push_constant = push_constants[i];
-            vk_push_constants[i]                        = (VkPushConstantRange) {
+            vk_push_constants[i]                        = (VkPushConstantRange){
                                        .offset     = push_constant.offset,
                                        .size       = push_constant.size,
                                        .stageFlags = vulkan_util_shader_stage_bits(push_constant.stage),
@@ -1939,7 +1943,7 @@ void vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_tabl
         const gfx_resource*      res      = entries[i].resource;
         const gfx_resource_view* res_view = entries[i].resource_view;
 
-        writes[i] = (VkWriteDescriptorSet) {
+        writes[i] = (VkWriteDescriptorSet){
             .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
             .dstSet          = sets[entries[i].location.set],
             .dstBinding      = entries[i].location.binding,
@@ -2085,7 +2089,7 @@ gfx_resource_view vulkan_device_create_texture_resource_view(const gfx_resource_
         .image            = tex_backend->image,
         .format           = vulkan_util_format_translate(desc.texture.format),
         .viewType         = vulkan_util_texture_view_type_translate(desc.texture.texture_type),
-        .components       = (VkComponentMapping) {VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A},
+        .components       = (VkComponentMapping){VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A},
         .subresourceRange = {
             .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,    // FIXME: hard coded shit since depth texture should have VK_IMAGE_ASPECT_DEPTH_BIT aspect mask
             .baseArrayLayer = desc.texture.base_layer,
@@ -2312,14 +2316,13 @@ gfx_syncobj vulkan_device_create_syncobj(gfx_syncobj_type type)
     gfx_syncobj syncobj = {0};
     uuid_generate(&syncobj.uuid);
 
-    syncobj.visibility = type;
-    syncobj.value = 0;
-    
-    if(type == GFX_SYNCOBJ_TYPE_CPU) {
+    syncobj.type = type;
+    syncobj.value      = 0;
+
+    if (type == GFX_SYNCOBJ_TYPE_CPU) {
         syncobj.backend = malloc(sizeof(VkFence));
         vulkan_internal_create_fence(syncobj.backend);
-    }
-    else if(type == GFX_SYNCOBJ_TYPE_GPU) {
+    } else if (type == GFX_SYNCOBJ_TYPE_GPU) {
         syncobj.backend = malloc(sizeof(VkSemaphore));
         vulkan_internal_create_sema(syncobj.backend);
     }
@@ -2327,16 +2330,15 @@ gfx_syncobj vulkan_device_create_syncobj(gfx_syncobj_type type)
     return syncobj;
 }
 
-void vulkan_device_destroy_syncobj(gfx_syncobj* syncobj) 
+void vulkan_device_destroy_syncobj(gfx_syncobj* syncobj)
 {
-    if(syncobj->visibility == GFX_SYNCOBJ_TYPE_CPU) {
-        vulkan_internal_destroy_fence(*(VkFence*)syncobj->backend);
-    }
-    else if(syncobj->visibility == GFX_SYNCOBJ_TYPE_GPU) {
-        vulkan_internal_destroy_sema(*(VkSemaphore*)syncobj->backend);
+    if (syncobj->type == GFX_SYNCOBJ_TYPE_CPU) {
+        vulkan_internal_destroy_fence(*(VkFence*) syncobj->backend);
+    } else if (syncobj->type == GFX_SYNCOBJ_TYPE_GPU) {
+        vulkan_internal_destroy_sema(*(VkSemaphore*) syncobj->backend);
     }
     // TODO: Handle timeline semaphores
-    
+
     BACKEND_SAFE_FREE(syncobj);
 }
 
@@ -2405,7 +2407,7 @@ rhi_error_codes vulkan_frame_begin(gfx_context* context)
 {
     gfx_syncobj in_flight_sync = context->inflight_syncobj[context->inflight_frame_idx];
     vulkan_wait_on_previous_cmds(&in_flight_sync);
-    vulkan_acquire_image(&context->swapchain);
+    vulkan_acquire_image(context);
 
     memset(context->cmd_queue.cmds, 0, context->cmd_queue.cmds_count * sizeof(gfx_cmd_buf*));
     context->cmd_queue.cmds_count = 0;
@@ -2415,11 +2417,11 @@ rhi_error_codes vulkan_frame_begin(gfx_context* context)
 
 rhi_error_codes vulkan_frame_end(gfx_context* context)
 {
-    vulkan_present(&context->swapchain);
+    vulkan_present(context);
 
-    context->inflight_frame_idx = (context->inflight_frame_idx + 1) % MAX_FRAMES_INFLIGHT;
-    context->swapchain.current_syncobj_idx = (context->swapchain.current_syncobj_idx + 1) % (context->swapchain.image_count);
-    
+    context->inflight_frame_idx  = (context->inflight_frame_idx + 1) % MAX_FRAMES_INFLIGHT;
+    context->current_syncobj_idx = (context->current_syncobj_idx + 1) % (context->swapchain.image_count);
+
     return Success;
 }
 
@@ -2428,24 +2430,24 @@ rhi_error_codes vulkan_frame_end(gfx_context* context)
 
 rhi_error_codes vulkan_wait_on_previous_cmds(const gfx_syncobj* in_flight_sync)
 {
-    if(in_flight_sync->visibility == GFX_SYNCOBJ_TYPE_CPU) {
+    if (in_flight_sync->type == GFX_SYNCOBJ_TYPE_CPU) {
         VK_CHECK_RESULT(vkWaitForFences(VKDEVICE, 1, (VkFence*) (in_flight_sync->backend), true, UINT32_MAX), "cannot wait on in-flight fence");
         VK_CHECK_RESULT(vkResetFences(VKDEVICE, 1, (VkFence*) (in_flight_sync->backend)), "cannot reset above in-flight fence");
     }
-    // TODO: Use timeline sempahores wait to on CPU 
-    // TODO: else if (g_gfx_confix.timelineSemaphores && in_flight_sync->visibility == GFX_SYNCOBJ_TYPE_TIMELINE) {}
+    // TODO: Use timeline semaphores wait to on CPU
+    // TODO: else if (g_gfx_confix.timelineSemaphores && in_flight_sync->type == GFX_SYNCOBJ_TYPE_TIMELINE) {}
 
     return Success;
 }
 
-rhi_error_codes vulkan_acquire_image(gfx_swapchain* swapchain)
+rhi_error_codes vulkan_acquire_image(gfx_context* ctx)
 {
-    gfx_syncobj image_ready = swapchain->image_ready[swapchain->current_syncobj_idx];
-    VkResult result = vkAcquireNextImageKHR(VKDEVICE, ((swapchain_backend*) (swapchain->backend))->swapchain, UINT32_MAX, *(VkSemaphore*) (image_ready.backend), NULL, &swapchain->current_backbuffer_idx);
+    gfx_syncobj image_ready = ctx->image_ready[ctx->current_syncobj_idx];
+    VkResult    result      = vkAcquireNextImageKHR(VKDEVICE, ((swapchain_backend*) (ctx->swapchain.backend))->swapchain, UINT32_MAX, *(VkSemaphore*) (image_ready.backend), NULL, &ctx->swapchain.current_backbuffer_idx);
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
         LOG_ERROR("[Vulkan] Swapchain out of date or suboptimal...recreating...");
         vkDeviceWaitIdle(VKDEVICE);
-        vulkan_resize_swapchain(swapchain, swapchain->width, swapchain->height);
+        vulkan_resize_swapchain(&ctx->swapchain, ctx->swapchain.width, ctx->swapchain.height);
     }
     if (result == VK_SUCCESS)
         return Success;
@@ -2465,7 +2467,7 @@ rhi_error_codes vulkan_gfx_cmd_submit_queue(const gfx_cmd_queue* cmd_queue, gfx_
 {
     // Flatten all the gfx_cmd_buff into a VkCommandBuffer Array
     VkCommandBuffer* vk_cmd_buffs = malloc(cmd_queue->cmds_count * sizeof(VkCommandBuffer));
-    for (uint32_t i = 0; i < cmd_queue->cmds_count; i++) 
+    for (uint32_t i = 0; i < cmd_queue->cmds_count; i++)
         vk_cmd_buffs[i] = *((VkCommandBuffer*) (cmd_queue->cmds[i]->backend));
 
     // Flatten syncobjs into VkSemaphore arrays
@@ -2494,7 +2496,7 @@ rhi_error_codes vulkan_gfx_cmd_submit_queue(const gfx_cmd_queue* cmd_queue, gfx_
 
     // TODO: Once we switch to Timeline semaphores we can ignore this
     VkFence signal_fence = VK_NULL_HANDLE;
-    if(!g_gfxConfig.use_timeline_semaphores)
+    if (!g_gfxConfig.use_timeline_semaphores)
         signal_fence = *((VkFence*) (submit_sync.inflight_syncobj.backend));
 
     VK_CHECK_RESULT(vkQueueSubmit(s_VkCtx.queues.gfx, 1, &submitInfo, signal_fence), "Failed to submit command buffers");
@@ -2509,29 +2511,29 @@ rhi_error_codes vulkan_gfx_cmd_submit_queue(const gfx_cmd_queue* cmd_queue, gfx_
 rhi_error_codes vulkan_gfx_cmd_submit_for_rendering(const gfx_context* ctx)
 {
     gfx_submit_syncobj submit_sync = {0};
-    
-    uint32_t curr_syncobj_idx = ctx->swapchain.current_syncobj_idx;
-    uint32_t inflight_idx = ctx->inflight_frame_idx;
 
-    submit_sync.wait_syncobjs_count     = 1; 
-    submit_sync.wait_synobjs            = &(ctx->swapchain.image_ready[curr_syncobj_idx]);
-    submit_sync.signal_syncobjs_count   = 1; 
-    submit_sync.signal_synobjs          = &(ctx->swapchain.rendering_done[curr_syncobj_idx]);    
-    submit_sync.inflight_syncobj        = ctx->inflight_syncobj[inflight_idx];
+    uint32_t curr_syncobj_idx = ctx->current_syncobj_idx;
+    uint32_t inflight_idx     = ctx->inflight_frame_idx;
+
+    submit_sync.wait_syncobjs_count   = 1;
+    submit_sync.wait_synobjs          = &(ctx->image_ready[curr_syncobj_idx]);
+    submit_sync.signal_syncobjs_count = 1;
+    submit_sync.signal_synobjs        = &(ctx->rendering_done[curr_syncobj_idx]);
+    submit_sync.inflight_syncobj      = ctx->inflight_syncobj[inflight_idx];
 
     return vulkan_gfx_cmd_submit_queue(&ctx->cmd_queue, submit_sync);
 }
 
-rhi_error_codes vulkan_present(const gfx_swapchain* swapchain)
+rhi_error_codes vulkan_present(const gfx_context* ctx)
 {
-    gfx_syncobj rendering_done = swapchain->rendering_done[swapchain->current_syncobj_idx];
+    gfx_syncobj rendering_done = ctx->rendering_done[ctx->current_syncobj_idx];
 
     VkPresentInfoKHR presentInfo = {
         .sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
         .pNext              = NULL,
         .swapchainCount     = 1,
-        .pSwapchains        = &((swapchain_backend*) (swapchain->backend))->swapchain,
-        .pImageIndices      = &swapchain->current_backbuffer_idx,
+        .pSwapchains        = &((swapchain_backend*) (ctx->swapchain.backend))->swapchain,
+        .pImageIndices      = &ctx->swapchain.current_backbuffer_idx,
         .waitSemaphoreCount = 1,
         .pWaitSemaphores    = (VkSemaphore*) (rendering_done.backend),
         .pResults           = NULL};
@@ -2749,7 +2751,7 @@ rhi_error_codes vulkan_clear_image(const gfx_cmd_buf* cmd_buffer, const gfx_reso
 }
 
 //------------------------------------------------------------------------------------------------
-// gfx_syncobj vulkan_device_create_timeline_semaphore(void) 
+// gfx_syncobj vulkan_device_create_timeline_semaphore(void)
 // {
 //     gfx_syncobj syncobj = {0};
 //     uuid_generate(&syncobj.uuid);

@@ -103,11 +103,11 @@ typedef struct rhi_jumptablefrontend
     rhi_error_codes (*frame_end)(gfx_context*);
 
     rhi_error_codes (*wait_on_previous_cmds)(const gfx_syncobj*);
-    rhi_error_codes (*acquire_image)(gfx_swapchain*);
+    rhi_error_codes (*acquire_image)(gfx_context*);
     rhi_error_codes (*gfx_cmd_enque_submit)(gfx_cmd_queue*, gfx_cmd_buf*);
     rhi_error_codes (*gfx_cmd_submit_queue)(const gfx_cmd_queue*, gfx_submit_syncobj);
     rhi_error_codes (*gfx_cmd_submit_for_rendering)(const gfx_context*);
-    rhi_error_codes (*present)(const gfx_swapchain*);
+    rhi_error_codes (*present)(const gfx_context*);
 
     rhi_error_codes (*resize_swapchain)(gfx_swapchain*, uint32_t, uint32_t);
 
