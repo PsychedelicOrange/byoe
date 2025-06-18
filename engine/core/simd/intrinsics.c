@@ -3,60 +3,70 @@
 
 #include <stddef.h>
 
-#if defined(_MSC_VER)    // MSVC Compiler
+// Compiler-specific branch prediction and prefetch
 
-    // MSVC specific prefetch (similar to __builtin_prefetch in GCC/Clang)
-    #include <intrin.h>
+#if defined(__clang__) || defined(__GNUC__)
 
+// GCC/Clang: available on all platforms (x86, ARM, etc.)
 void prefetch(const void* ptr)
 {
-    _mm_prefetch((const char*) ptr, _MM_HINT_T0);    // T0: Most temporal locality
+    __builtin_prefetch(ptr, 0, 3);    // 0: read, 3: high temporal locality
 }
 
-// MSVC equivalent to __builtin_expect
 int likely(int expr)
 {
-    __assume(expr);    // MSVC doesn't have built-in likely/unlikely, use __assume
-    return expr;
+    return __builtin_expect(!!(expr), 1);
 }
 
 int unlikely(int expr)
 {
-    __assume(!expr);    // Assumes the expression is false
-    return expr;
+    return __builtin_expect(!!(expr), 0);
 }
 
-#elif defined(__clang__) || defined(__GNUC__)    // GCC/Clang compilers
+#elif defined(_MSC_VER)
 
-// GCC/Clang: __builtin_prefetch
+    #if defined(_M_IX86) || defined(_M_X64)
+        #include <intrin.h>
+
+void prefetch(const void* ptr)
+{
+    _mm_prefetch((const char*) ptr, _MM_HINT_T0);
+}
+    #elif defined(_M_ARM64)
+// No intrin.h or prefetch on ARM64 safely, fallback to no-op
 void prefetch(const void* ptr)
 {
     (void) ptr;
-    __builtin_prefetch(ptr, 0, 3);    // 0: Read, 3: High temporal locality
 }
+    #else
+        #error "Unsupported MSVC architecture"
+    #endif
 
-// GCC/Clang: __builtin_expect for likely/unlikely branch predictions
+// MSVC doesn't have __builtin_expect; __assume is a hint
 int likely(int expr)
 {
-    return __builtin_expect(!!(expr), 1);    // Optimizer hint for likely conditions
+    __assume(expr);
+    return expr;
 }
 
 int unlikely(int expr)
 {
-    return __builtin_expect(!!(expr), 0);    // Optimizer hint for unlikely conditions
+    __assume(!expr);
+    return expr;
 }
 
 #else
-    #error "Unknown compiler! Please provide a prefetch and likely/unlikely mechanism."
+    #error "Unsupported compiler. Please define prefetch, likely, and unlikely for your platform."
 #endif
 
-// Function to perform prefetch for an array
+// Array-wide prefetch utility (platform-agnostic)
+
 void prefetch_array(const void* array, size_t size)
 {
     const char* ptr = (const char*) array;
-    for (size_t i = 0; i < size; i += 64) {    // Assuming 64 bytes per cache line
+    for (size_t i = 0; i < size; i += 64) {    // 64-byte assumed cache line
         prefetch(ptr + i);
     }
 }
 
-#endif
+#endif    // INTRINSICS_H

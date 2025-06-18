@@ -3,7 +3,9 @@
 #include "../logging/log.h"
 
 #if defined(_MSC_VER)
-    #include <intrin.h>
+    #if defined(_M_IX86) || defined(_M_X64)
+        #include <intrin.h>    // x86 intrinsics
+    #endif
 #elif defined(__clang__) || defined(__GNUC__)
     #if defined(__APPLE__) || defined (__LINUX__)
         #include <sys/types.h>
@@ -86,6 +88,10 @@ inline int cpu_detect_instruction_set(void)
     supported |= SIMD_ASIMD;
         #endif
     #endif
+#elif defined(_M_ARM64)
+    // Windows on ARM64: Use general feature flags
+    supported |= SIMD_NEON;
+    supported |= SIMD_ASIMD;    // Most ARM64 CPUs support ASIMD
 #endif
 
     return supported;
@@ -100,14 +106,23 @@ void cpu_caps_print_info(void)
     LOG_INFO("Number of processors: %u", sysinfo.dwNumberOfProcessors);
 
     // Processor architecture
-    if (sysinfo.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64) {
-        LOG_INFO("Processor architecture: x64 (AMD or Intel)");
-    } else if (sysinfo.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_ARM) {
-        LOG_INFO("Processor architecture: ARM");
-    } else if (sysinfo.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_INTEL) {
-        LOG_INFO("Processor architecture: x86 (Intel)");
+    switch (sysinfo.wProcessorArchitecture) {
+        case PROCESSOR_ARCHITECTURE_AMD64:
+            LOG_INFO("Processor architecture: x64 (AMD or Intel)");
+            break;
+        case PROCESSOR_ARCHITECTURE_INTEL:
+            LOG_INFO("Processor architecture: x86 (Intel)");
+            break;
+        case PROCESSOR_ARCHITECTURE_ARM64:
+            LOG_INFO("Processor architecture: ARM64");
+            break;
+        case PROCESSOR_ARCHITECTURE_ARM:
+            LOG_INFO("Processor architecture: ARM (32-bit)");
+            break;
+        default:
+            LOG_INFO("Processor architecture: Unknown (%u)", sysinfo.wProcessorArchitecture);
+            break;
     }
-
     // Processor name
     HKEY  hKeyProcessor;
     char  cpuName[256] = {0};
