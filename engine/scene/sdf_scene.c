@@ -86,7 +86,7 @@ void sdf_scene_update_scene_node_gpu_data(const SDF_Scene* scene)
             gpuNode->primType = node.primitive.type;
             gpuNode->material = node.primitive.material;
 
-            mat4s transform    = create_transform_matrix(node.primitive.transform.position.raw, node.primitive.transform.rotation, (vec3){1.0f, 1.0f, 1.0f});
+            mat4s transform    = create_transform_matrix(node.primitive.transform.position.raw, node.primitive.transform.rotation, (vec3) {1.0f, 1.0f, 1.0f});
             gpuNode->transform = transform;
             gpuNode->scale     = node.primitive.transform.scale;
 
@@ -98,7 +98,7 @@ void sdf_scene_update_scene_node_gpu_data(const SDF_Scene* scene)
             gpuNode->prim_a = node.object.prim_a;
             gpuNode->prim_b = node.object.prim_b;
 
-            mat4s transform    = create_transform_matrix(node.object.transform.position.raw, node.object.transform.rotation, (vec3){1.0f, 1.0f, 1.0f});
+            mat4s transform    = create_transform_matrix(node.object.transform.position.raw, node.object.transform.rotation, (vec3) {1.0f, 1.0f, 1.0f});
             gpuNode->transform = transform;
             gpuNode->scale     = node.primitive.transform.scale;
         }

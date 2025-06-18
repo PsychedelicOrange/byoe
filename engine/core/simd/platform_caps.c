@@ -7,9 +7,9 @@
         #include <intrin.h>    // x86 intrinsics
     #endif
 #elif defined(__clang__) || defined(__GNUC__)
-    #if defined(__APPLE__) || defined (__LINUX__)
+    #if defined(__APPLE__) || defined(__LINUX__)
         #include <sys/types.h>
-	#elif defined (_WIN32)
+    #elif defined(_WIN32)
         #include <x86intrin.h>
     #endif
 #else

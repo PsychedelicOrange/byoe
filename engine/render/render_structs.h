@@ -282,8 +282,8 @@ typedef struct SDF_Node
 // Graphics API
 //------------------------
 
-#define MAX_BACKBUFFERS         3
-#define MAX_FRAME_INFLIGHT      2
+#define MAX_BACKBUFFERS         4
+#define MAX_FRAMES_INFLIGHT     2
 #define MAX_CMD_BUFFS_PER_QUEUE 16
 #define MAX_RT                  8
 
@@ -326,11 +326,12 @@ typedef enum gfx_shader_stage
     GFX_SHADER_STAGE_RAY_CLOSEST_HIT
 } gfx_shader_stage;
 
-typedef enum gfx_fence_type
+typedef enum gfx_syncobj_type
 {
-    GFX_FENCE_TYPE_CPU,
-    GFX_FENCE_TYPE_GPU
-} gfx_fence_type;
+    GFX_SYNCOBJ_TYPE_CPU,
+    GFX_SYNCOBJ_TYPE_GPU,
+    GFX_SYNCOBJ_TYPE_TIMELINE
+} gfx_syncobj_type;
 
 typedef enum gfx_pipeline_type
 {
@@ -453,7 +454,10 @@ typedef struct gfx_config
     bool use_timeline_semaphores;
 } gfx_config;
 
+// Global GFX config
+//------------------------------
 extern gfx_config g_gfxConfig;
+//------------------------------
 
 // Draft-1 gfx_XXX memory alloc design
 // void* backend will be allocated by malloc and manual free (hightly fragmented and not data-oriented)
@@ -462,24 +466,27 @@ extern gfx_config g_gfxConfig;
 // TODO: void* backend will be refactored to use a uint32_t index for backend resource pools, frontend will have similar pools
 // TODO: frontend_resource_pool_(Type) will have it's own allocators with a index to another backend pool elements
 
+typedef struct gfx_syncobj
+{
+    random_uuid_t    uuid;
+    void*            backend;
+    uint64_t         wait_value;
+    gfx_syncobj_type type;
+    uint32_t         _pad0[3];
+} gfx_syncobj;
+
+typedef uint64_t gfx_sync_point;
+
 typedef struct gfx_swapchain
 {
     random_uuid_t uuid;
     void*         backend;
     uint32_t      width;
     uint32_t      height;
+    uint32_t      image_count;
     uint32_t      current_backbuffer_idx;
-    uint32_t      _pad0[3];
+    uint32_t      _pad0[2];
 } gfx_swapchain;
-
-typedef struct gfx_fence
-{
-    random_uuid_t  uuid;
-    void*          backend;
-    uint64_t       value;    // TODO: track backend value
-    gfx_fence_type visibility;
-    uint32_t       _pad0[3];
-} gfx_fence;
 
 typedef struct gfx_vertex_buffer
 {
@@ -613,9 +620,9 @@ typedef struct gfx_cmd_buf
 
 typedef struct gfx_cmd_queue
 {
-    const gfx_cmd_buf** cmds;
-    uint32_t            cmds_count;
-    uint32_t            _pad0;
+    gfx_cmd_buf* cmds[MAX_CMD_BUFFS_PER_QUEUE];
+    uint32_t     cmds_count;
+    uint32_t     _pad0[3];
 } gfx_cmd_queue;
 
 typedef struct gfx_shader
@@ -740,28 +747,39 @@ typedef struct gfx_scissor
 //-----------------------------------
 // High-level structs
 //-----------------------------------
-// Frame Sync
-// Triple Buffering
-typedef struct gfx_frame_sync
+
+typedef struct gfx_submit_syncobj
 {
-    gfx_fence in_flight;
-    gfx_fence image_ready;
-    gfx_fence rendering_done;
-} gfx_frame_sync;
+    const gfx_syncobj* wait_synobjs;
+    const gfx_syncobj* signal_synobjs;
+    uint32_t           wait_syncobjs_count;
+    uint32_t           signal_syncobjs_count;
+    // CPU sync primitve to wait on: Fence or Timeline Semaphore
+    gfx_syncobj* inflight_syncobj;
+    // Global timeline synnc point that will be signalled when the submit operation is completed
+    // Workloads can wait on this or intermediate points,
+    // this is sued to increment Values to singnal queue submits
+    // this is tracked per-inflight farme, gfx_context owns This
+    uint64_t* timeline_syncpoint;
+} gfx_submit_syncobj;
 
 typedef struct gfx_context
 {
-    random_uuid_t  uuid;
-    void*          backend;
-    uint32_t       _pad0;
-    uint32_t       frame_idx;
-    gfx_swapchain  swapchain;
-    gfx_frame_sync frame_sync[MAX_FRAME_INFLIGHT];
-    // TODO: Add all the command buffers you want here...Draw, Async etc.
+    random_uuid_t uuid;
+    void*         backend;
+    uint32_t      current_syncobj_idx;
+    uint32_t      inflight_frame_idx;
+    gfx_swapchain swapchain;
+    gfx_syncobj   inflight_syncobj[MAX_FRAMES_INFLIGHT];
+    gfx_syncobj   image_ready[MAX_BACKBUFFERS];
+    gfx_syncobj   rendering_done[MAX_BACKBUFFERS];
+    // NOTE: Add all the command buffers you want here...Draw, Async etc.
     // 1 per thread, only single threaded for now
-    gfx_cmd_pool  draw_cmds_pool;
-    gfx_cmd_buf   draw_cmds[MAX_FRAME_INFLIGHT];
+    gfx_cmd_pool draw_cmds_pool;
+    // FIXME: Do we really need 2 of these draw_cmds and queue? can't we collapse and use 1?
+    gfx_cmd_buf   draw_cmds[MAX_FRAMES_INFLIGHT];
     gfx_cmd_queue cmd_queue;
+    uint64_t      timeline_syncpoint[MAX_FRAMES_INFLIGHT];    // last timeline value signaled
 } gfx_context;
 
 typedef struct gfx_attachment
