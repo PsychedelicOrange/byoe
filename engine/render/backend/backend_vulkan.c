@@ -167,7 +167,7 @@ DEFINE_CLAMP(int)
 // - [x] Investigate CS perf issues - dispatching at low res than 32x3 such as 8x8 works fine for this shader, also the shader has high register pressure!!!
 // - [x] IMPORTANT!!! Texture read back for tests
 // ----------------------> renderer_backend Draft-1
-// - [ ] Improve frame sync use seemaphores per swapchain image for mobile GPUs
+// - [x] Improve frame sync use seemaphores per swapchain image for mobile GPUs
 // Draft-2 Goals: resource memory pool RAAI kinda simulation + backend* design consistency using macros + MSAA
 
 typedef struct swapchain_backend

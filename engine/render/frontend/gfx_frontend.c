@@ -1,6 +1,7 @@
 #include "gfx_frontend.h"
 
 #include "../backend/backend_vulkan.h"
+#include "../backend/backend_dx12.h"
 
 //---------------------------
 rhi_api g_current_api = Vulkan;    // Default Value
