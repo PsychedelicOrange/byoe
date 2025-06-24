@@ -5,6 +5,8 @@
 
 #include "../frontend/gfx_frontend.h"
 
+#ifdef _WIN32
+
 //------------------------------------------
 extern const rhi_jumptable dx12_jumptable;
 //------------------------------------------
@@ -17,4 +19,5 @@ void        dx12_ctx_destroy(gfx_context* ctx);
 
 void dx12_flush_gpu_work(void);
 
-#endif // BACKEND_DX12_H
+#endif
+#endif    // BACKEND_DX12_H
