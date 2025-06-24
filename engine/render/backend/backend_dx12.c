@@ -11,8 +11,12 @@
 // clang-format off
 #ifdef _WIN32 // careful of the order
     #include <windows.h>
-    #include <dxgi1_6.h>
+#ifdef _DEBUG
+#include <dxgidebug.h>
+#endif
     #include <d3d12.h>
+    #include <d3d12sdklayers.h>
+    #include <dxgi1_6.h>
 #endif
 // clang-format on
 
@@ -24,10 +28,11 @@
 
 //--------------------------------------------------------
 // TODO:
-// - [ ] Use the IDXGIFactory7 to query for the best GPUa and create the IDXGIAdapter4 or use AgilitySDK with DeviceFactory
-//   - [ ] Figure out how to replicate COM model in C, use lpvtable and manually release memory for ID3DXXXX/iDXGIXXXX objects
-// - [ ] Create the device and cache the Features
-// - [ ] Debug Layers
+// - [x] Use the IDXGIFactory7 to query for the best GPUa and create the IDXGIAdapter4 or use AgilitySDK with DeviceFactory
+//   - [x] Figure out how to replicate COM model in C, use lpvtable and manually release memory for ID3DXXXX/iDXGIXXXX objects
+// - [x] Create the device
+// - [x] cache the device Features
+// - [x] Debug Layers (D3D12 + DXGI + LiveObjectTracking)
 // - [ ] Create swapchain and Sync Primitives
 // - [ ] Basic submit/present flow using Fence counting + gfx_syncobj
 // - [ ] Hello Triangle without VB/IB in single shader quad
@@ -67,6 +72,31 @@ const rhi_jumptable dx12_jumptable = {
 // Internal Types
 //--------------------------------------------------------
 
+typedef struct D3D12FeatureCache
+{
+    D3D12_FEATURE_DATA_D3D12_OPTIONS   options;
+    D3D12_FEATURE_DATA_D3D12_OPTIONS1  options1;
+    D3D12_FEATURE_DATA_D3D12_OPTIONS5  options5;
+    D3D12_FEATURE_DATA_D3D12_OPTIONS10 options10;
+    D3D12_FEATURE_DATA_D3D12_OPTIONS12 options12;
+
+    D3D12_FEATURE_DATA_ARCHITECTURE1  architecture;
+    D3D12_FEATURE_DATA_SHADER_MODEL   shaderModel;
+    D3D12_FEATURE_DATA_ROOT_SIGNATURE rootSig;
+
+    D3D12_FEATURE_DATA_GPU_VIRTUAL_ADDRESS_SUPPORT vaSupport;
+
+    UINT nodeCount;
+    BOOL isUMA;
+    BOOL isCacheCoherentUMA;
+} D3D12FeatureCache;
+
+/**
+ * Direct3D feature levels like 11_0, 12_0, 12_1, etc. define a baseline set of guaranteed features.
+ * They determine the minimum functionality that the device must support, but additional features 
+ * can still be queried independently using CheckFeatureSupport() — even beyond what the feature level guarantees.
+*/
+
 typedef struct context_backend
 {
     IDXGIFactory7*    factory;
@@ -74,6 +104,13 @@ typedef struct context_backend
     ID3D12Device10*   device;    // Win 11 latest, other latest version needs Agility SDK
     HWND              window;
     D3D_FEATURE_LEVEL feat_level;
+    D3D12FeatureCache features;
+    #ifdef _DEBUG
+    ID3D12Debug3*    d3d12_debug;
+    ID3D12InfoQueue* d3d12_info_queue;
+    IDXGIInfoQueue*  dxgi_info_queue;
+    IDXGIDebug*      dxgi_debug;
+    #endif
 } context_backend;
 
 //--------------------------------------------------------
@@ -124,6 +161,9 @@ static IDXGIAdapter4* dx12_internal_select_best_adapter(IDXGIFactory7* factory, 
         // Select adapter with highest VRAM
 
         if (desc.DedicatedVideoMemory > maxDedicatedVRAM) {
+            if (best_adapter)
+                best_adapter->lpVtbl->Release(best_adapter);
+
             maxDedicatedVRAM = desc.DedicatedVideoMemory;
             // ++ Also check if the adapter supports min feature level
             HR_CHECK(D3D12CreateDevice((IUnknown*) adapter4, min_feat_level, IID_PPV_ARGS_C(&IID_ID3D12Device, NULL)));
@@ -157,6 +197,146 @@ static IDXGIAdapter4* dx12_internal_select_best_adapter(IDXGIFactory7* factory, 
         return best_adapter;
     }
 }
+
+static void dx12_internal_cache_features(context_backend* backend)
+{
+    ID3D12Device10*    device = backend->device;
+    D3D12FeatureCache* f      = &backend->features;
+
+    device->lpVtbl->CheckFeatureSupport(device, D3D12_FEATURE_D3D12_OPTIONS, &f->options, sizeof(f->options));
+    device->lpVtbl->CheckFeatureSupport(device, D3D12_FEATURE_D3D12_OPTIONS1, &f->options1, sizeof(f->options1));
+    device->lpVtbl->CheckFeatureSupport(device, D3D12_FEATURE_D3D12_OPTIONS5, &f->options5, sizeof(f->options5));
+    device->lpVtbl->CheckFeatureSupport(device, D3D12_FEATURE_D3D12_OPTIONS10, &f->options10, sizeof(f->options10));
+    device->lpVtbl->CheckFeatureSupport(device, D3D12_FEATURE_D3D12_OPTIONS12, &f->options12, sizeof(f->options12));
+
+    f->architecture.NodeIndex = 0;
+    device->lpVtbl->CheckFeatureSupport(device, D3D12_FEATURE_ARCHITECTURE1, &f->architecture, sizeof(f->architecture));
+    f->isUMA              = f->architecture.UMA;
+    f->isCacheCoherentUMA = f->architecture.CacheCoherentUMA;
+
+    f->shaderModel.HighestShaderModel = D3D_SHADER_MODEL_6_7;
+    if (FAILED(device->lpVtbl->CheckFeatureSupport(device, D3D12_FEATURE_SHADER_MODEL, &f->shaderModel, sizeof(f->shaderModel)))) {
+        f->shaderModel.HighestShaderModel = D3D_SHADER_MODEL_6_0;
+    }
+
+    f->rootSig.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_1;
+    if (FAILED(device->lpVtbl->CheckFeatureSupport(device, D3D12_FEATURE_ROOT_SIGNATURE, &f->rootSig, sizeof(f->rootSig)))) {
+        f->rootSig.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
+    }
+
+    device->lpVtbl->CheckFeatureSupport(device, D3D12_FEATURE_GPU_VIRTUAL_ADDRESS_SUPPORT, &f->vaSupport, sizeof(f->vaSupport));
+
+    f->nodeCount = device->lpVtbl->GetNodeCount(device);
+}
+
+static void dx12_internal_print_features(const D3D12FeatureCache* f)
+{
+    LOG_INFO("============ D3D12 Device Feature Info ============");
+
+    LOG_INFO("Shader Model          : %u.%u",
+        (f->shaderModel.HighestShaderModel >> 4) & 0xF,
+        f->shaderModel.HighestShaderModel & 0xF);
+
+    LOG_INFO("Root Signature        : v1.%d",
+        f->rootSig.HighestVersion == D3D_ROOT_SIGNATURE_VERSION_1_1 ? 1 : 0);
+
+    LOG_INFO("GPU Nodes             : %u", f->nodeCount);
+    LOG_INFO("UMA                   : %s", f->isUMA ? "Yes" : "No");
+    LOG_INFO("Cache-Coherent UMA    : %s", f->isCacheCoherentUMA ? "Yes" : "No");
+
+    // D3D12_OPTIONS
+    LOG_INFO("Conservative Raster   : %s", f->options.ConservativeRasterizationTier != D3D12_CONSERVATIVE_RASTERIZATION_TIER_NOT_SUPPORTED ? "Yes" : "No");
+    LOG_INFO("Standard Swizzle      : %s", f->options.StandardSwizzle64KBSupported ? "Yes" : "No");
+    LOG_INFO("Typed UAV Load ADDR64 : %s", f->options.TypedUAVLoadAdditionalFormats ? "Yes" : "No");
+
+    // D3D12_OPTIONS1
+    LOG_INFO("Wave Ops              : %s", f->options1.WaveOps ? "Yes" : "No");
+    LOG_INFO("Wave Lane Count       : Min %u / Max %u", f->options1.WaveLaneCountMin, f->options1.WaveLaneCountMax);
+    LOG_INFO("Int64 Shader Ops      : %s", f->options1.Int64ShaderOps ? "Yes" : "No");
+
+    // D3D12_OPTIONS5
+    LOG_INFO("Raytracing Tier       : Tier %d", f->options5.RaytracingTier);
+
+    // D3D12_OPTIONS12
+    LOG_INFO("Enhanced Barriers     : %s", f->options12.EnhancedBarriersSupported ? "Yes" : "No");
+
+    // VA support
+    LOG_INFO("VA 64-bit Support     : %s", f->vaSupport.MaxGPUVirtualAddressBitsPerResource >= 44 ? "Yes" : "Partial/No");
+
+    LOG_INFO("===================================================");
+}
+
+    #ifdef _DEBUG
+static void dx12_internal_register_debug_interface(context_backend* backend)
+{
+    if (SUCCEEDED(D3D12GetDebugInterface(&IID_ID3D12Debug3, (void**) &backend->d3d12_debug))) {
+        backend->d3d12_debug->lpVtbl->EnableDebugLayer(backend->d3d12_debug);
+        backend->d3d12_debug->lpVtbl->SetEnableGPUBasedValidation(backend->d3d12_debug, TRUE);
+        LOG_INFO("D3D12 debug layer and GPU-based validation enabled");
+    } else {
+        LOG_WARN("D3D12 debug interface not available. Debug layer not enabled.");
+    }
+}
+
+static void dx12_internal_d3d12_register_info_queue(context_backend* backend)
+{
+    if (!backend->device) {
+        LOG_ERROR("D3D12 device is NULL; can't register info queue.");
+        return;
+    }
+
+    // This increases the device refcount.
+    if (SUCCEEDED(backend->device->lpVtbl->QueryInterface(backend->device, &IID_ID3D12InfoQueue, (void**) &backend->d3d12_info_queue))) {
+        ID3D12InfoQueue* q = backend->d3d12_info_queue;
+
+        q->lpVtbl->SetBreakOnSeverity(q, D3D12_MESSAGE_SEVERITY_ERROR, TRUE);
+        q->lpVtbl->SetBreakOnSeverity(q, D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE);
+
+        LOG_INFO("D3D12 info queue registered and debug message filters installed");
+    } else {
+        LOG_WARN("Failed to query ID3D12InfoQueue interface. Validation messages will not be captured.");
+    }
+}
+
+static void dx12_internal_dxgi_register_info_queue(context_backend* backend)
+{
+    if (SUCCEEDED(DXGIGetDebugInterface1(0, &IID_IDXGIInfoQueue, (void**) &backend->dxgi_info_queue))) {
+        IDXGIInfoQueue* q = backend->dxgi_info_queue;
+
+        q->lpVtbl->SetBreakOnSeverity(q, DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_ERROR, TRUE);
+        q->lpVtbl->SetBreakOnSeverity(q, DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_CORRUPTION, TRUE);
+
+        LOG_INFO("DXGI debug info queue registered");
+    } else {
+        LOG_WARN("DXGI info queue not available. No message filtering.");
+    }
+}
+
+static void dx12_internal_track_dxgi_liveobjects(context_backend* backend)
+{
+    LOG_WARN("Tracking live DXGI objects. This will report all live objects at the end of the program.");
+    if (SUCCEEDED(DXGIGetDebugInterface1(0, &IID_IDXGIDebug, (void**) &backend->dxgi_debug))) {
+        backend->dxgi_debug->lpVtbl->ReportLiveObjects(
+            backend->dxgi_debug,
+            DXGI_DEBUG_ALL,
+            (DXGI_DEBUG_RLO_FLAGS) (DXGI_DEBUG_RLO_DETAIL | DXGI_DEBUG_RLO_SUMMARY | DXGI_DEBUG_RLO_IGNORE_INTERNAL));
+        LOG_INFO("DXGI live object report completed");
+        backend->dxgi_debug->lpVtbl->Release(backend->dxgi_debug);
+    }
+}
+
+static void dx12_internal_destroy_debug_handles(context_backend* backend)
+{
+    if (backend->d3d12_debug)
+        backend->d3d12_debug->lpVtbl->Release(backend->d3d12_debug);
+
+    if (backend->d3d12_info_queue)
+        backend->d3d12_info_queue->lpVtbl->Release(backend->d3d12_info_queue);
+
+    if (backend->dxgi_info_queue)
+        backend->dxgi_info_queue->lpVtbl->Release(backend->dxgi_info_queue);
+}
+    #endif
 
 //--------------------------------------------------------
 
@@ -199,7 +379,12 @@ gfx_context dx12_ctx_init(GLFWwindow* window, uint32_t width, uint32_t height)
         return ctx;
     }
 
-    LOG_INFO("Creating D3D12 Device");
+    // Enable DX12 debug layer if available
+    #ifdef _DEBUG
+    dx12_internal_register_debug_interface(backend);
+    #endif
+
+    LOG_INFO("Creating D3D12 Device...");
     hr = D3D12CreateDevice((IUnknown*) backend->gpu, backend->feat_level, IID_PPV_ARGS_C(&IID_ID3D12Device10, &backend->device));
     if (FAILED(hr)) {
         LOG_ERROR("Failed to create D3D12 Device (HRESULT = 0x%08X)", (unsigned int) hr);
@@ -208,8 +393,17 @@ gfx_context dx12_ctx_init(GLFWwindow* window, uint32_t width, uint32_t height)
         free(backend);
         return ctx;
     }
-
     LOG_SUCCESS("Created D3D12 Device!");
+
+    #ifdef _DEBUG
+    dx12_internal_d3d12_register_info_queue(backend);
+    dx12_internal_dxgi_register_info_queue(backend);
+    #endif
+
+    dx12_internal_cache_features(backend);
+    dx12_internal_print_features(&backend->features);
+
+    dx12_ctx_destroy(&ctx);
 
     // WIP!
     uuid_destroy(&ctx.uuid);
@@ -222,7 +416,6 @@ void dx12_ctx_destroy(gfx_context* ctx)
         LOG_ERROR("Context or backend is NULL, cannot destroy D3D12 context");
         return;
     }
-
     context_backend* backend = (context_backend*) ctx->backend;
 
     if (backend->device) {
@@ -239,6 +432,11 @@ void dx12_ctx_destroy(gfx_context* ctx)
         backend->factory->lpVtbl->Release(backend->factory);
         backend->factory = NULL;
     }
+
+    #ifdef _DEBUG
+    dx12_internal_destroy_debug_handles(backend);
+    dx12_internal_track_dxgi_liveobjects(backend);
+    #endif
 
     free(ctx->backend);
     ctx->backend = NULL;
