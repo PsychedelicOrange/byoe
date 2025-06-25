@@ -39,7 +39,7 @@ void gfx_destroy(void);
 
 typedef struct rhi_jumptablefrontend
 {
-    gfx_context (*ctx_init)(GLFWwindow*, uint32_t, uint32_t);
+    gfx_context (*ctx_init)(GLFWwindow*);
     void (*ctx_destroy)(gfx_context*);
     void (*flush_gpu_work)(void);
 

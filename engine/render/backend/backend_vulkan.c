@@ -282,7 +282,7 @@ typedef struct device_create_info_ex
 //---------------------------------
 typedef struct context_backend
 {
-    GLFWwindow*                      window;
+    GLFWwindow*                      hwnd;
     VkInstance                       instance;
     VkDebugUtilsMessengerEXT         debug_messenger;
     VkSurfaceKHR                     surface;
@@ -1102,15 +1102,12 @@ static queue_backend vulkan_internal_create_queues(queue_indices indices)
 
 //--------------------------------------------------------
 
-gfx_context vulkan_ctx_init(GLFWwindow* window, uint32_t width, uint32_t height)
+gfx_context vulkan_ctx_init(GLFWwindow* window)
 {
-    (void) width;
-    (void) height;
-
     gfx_context ctx = {0};
 
     memset(&s_VkCtx, 0, sizeof(context_backend));
-    s_VkCtx.window = window;
+    s_VkCtx.hwnd = window;
 
     if (volkInitialize() != VK_SUCCESS) {
         LOG_ERROR("Failed to initialize Volk");
@@ -1256,7 +1253,7 @@ static VkExtent2D vulkan_internal_choose_extents(void)
         return caps.currentExtent;
     else {
         int width, height;
-        glfwGetFramebufferSize((GLFWwindow*) s_VkCtx.window, &width, &height);
+        glfwGetFramebufferSize((GLFWwindow*) s_VkCtx.hwnd, &width, &height);
 
         VkExtent2D actualExtent = {
             (uint32_t) (width),

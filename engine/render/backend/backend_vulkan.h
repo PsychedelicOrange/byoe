@@ -12,7 +12,7 @@ extern const rhi_jumptable vulkan_jumptable;
 //------------------------------------------
 // Context
 //------------------------------------------
-gfx_context vulkan_ctx_init(GLFWwindow* window, uint32_t width, uint32_t height);
+gfx_context vulkan_ctx_init(GLFWwindow* window);
 void        vulkan_ctx_destroy(gfx_context* ctx);
 
 void vulkan_flush_gpu_work(void);

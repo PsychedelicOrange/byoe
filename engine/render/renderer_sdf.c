@@ -370,13 +370,11 @@ static void renderer_internal_hot_reload_shaders(void)
 
 static bool render_internal_sdf_init_gfx_ctx(uint32_t width, uint32_t height)
 {
-    s_RendererSDFInternalState.gfxcontext = g_rhi.ctx_init(s_RendererSDFInternalState.window, width, height);
-    if (uuid_is_null(&s_RendererSDFInternalState.gfxcontext.uuid)) {
-        LOG_ERROR("Failed to create gfx backend!");
-        return false;
-    } else {
+    s_RendererSDFInternalState.gfxcontext = g_rhi.ctx_init(s_RendererSDFInternalState.window);
+    if (!uuid_is_null(&s_RendererSDFInternalState.gfxcontext.uuid)) {
         s_RendererSDFInternalState.gfxcontext.swapchain = g_rhi.create_swapchain(width, height);
         if (uuid_is_null(&s_RendererSDFInternalState.gfxcontext.swapchain.uuid)) {
+            g_rhi.destroy_swapchain(&s_RendererSDFInternalState.gfxcontext.swapchain);
             LOG_ERROR("Failed to create gfx_swapchain!");
             return false;
         }
@@ -389,6 +387,9 @@ static bool render_internal_sdf_init_gfx_ctx(uint32_t width, uint32_t height)
         }
 
         return true;
+    } else {
+        LOG_ERROR("Failed to create gfx backend!");
+        return false;
     }
 }
 

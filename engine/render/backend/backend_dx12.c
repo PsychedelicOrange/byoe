@@ -17,10 +17,14 @@
     #include <d3d12.h>
     #include <d3d12sdklayers.h>
     #include <dxgi1_6.h>
-#endif
-// clang-format on
 
-    #include <GLFW/glfw3.h>
+#endif
+
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include <GLFW/glfw3.h>
+#include <GLFW/glfw3native.h>
+
+// clang-format on
 
     #include <inttypes.h>
     #include <stdlib.h>
@@ -102,10 +106,11 @@ typedef struct D3D12FeatureCache
 // pollute the global functions with gfx_context, so we can keep it as a global state.
 typedef struct context_backend
 {
+    GLFWwindow*         glfwWindow;
     IDXGIFactory7*      factory;
     IDXGIAdapter4*      gpu;
     ID3D12Device10*     device;    // Win 11 latest, other latest version needs Agility SDK
-    HWND                window;
+    HWND                hwnd;
     D3D_FEATURE_LEVEL   feat_level;
     D3D12FeatureCache   features;
     ID3D12CommandQueue* direct_queue;
@@ -117,6 +122,8 @@ typedef struct context_backend
     #endif
 } context_backend;
 
+static context_backend s_DXCtx;
+
 typedef struct swapchain_backend
 {
     IDXGISwapChain4*      swapchain;
@@ -124,7 +131,8 @@ typedef struct swapchain_backend
     ID3D12Resource*       backbuffers[MAX_BACKBUFFERS];
     uint32_t              image_count;
 } swapchain_backend;
-const uint32_t g_max_scbuffer_count = 3;
+
+    #define MAX_DX_SWAPCHAIN_BUFFERS 3;
 
 //--------------------------------------------------------
 
@@ -353,26 +361,25 @@ static void dx12_internal_destroy_debug_handles(context_backend* backend)
 
 //--------------------------------------------------------
 
-gfx_context dx12_ctx_init(GLFWwindow* window, uint32_t width, uint32_t height)
+gfx_context dx12_ctx_init(GLFWwindow* window)
 {
-    (void) width;
-    (void) height;
-    (void) window;
-
     gfx_context ctx = {0};
     uuid_generate(&ctx.uuid);
 
-    context_backend* backend = malloc(sizeof(context_backend));
-    if (!backend) {
-        LOG_ERROR("error malloc swapchain_backend");
-        uuid_destroy(&ctx.uuid);
-        return ctx;
-    }
-    memset(backend, 0, sizeof(context_backend));
-    ctx.backend = backend;
+    memset(&s_DXCtx, 0, sizeof(context_backend));
+    ctx.backend = &s_DXCtx;
+    // For readability, we cast ctx.backend to context_backend*
+    context_backend* backend = (context_backend*) ctx.backend;
+
+    backend->glfwWindow = window;
+    backend->hwnd       = (HWND) glfwGetWin32Window(window);
 
     LOG_INFO("Creating DXGI Factory7");
-    HRESULT hr = CreateDXGIFactory2(0, IID_PPV_ARGS_C(&IID_IDXGIFactory7, &backend->factory));
+    UINT createFactoryFlags = 0;
+    #if defined(_DEBUG)
+    createFactoryFlags = DXGI_CREATE_FACTORY_DEBUG;
+    #endif
+    HRESULT hr = CreateDXGIFactory2(createFactoryFlags, IID_PPV_ARGS_C(&IID_IDXGIFactory7, &backend->factory));
     if (FAILED(hr)) {
         LOG_ERROR("Failed to create DXGI Factory7 (HRESULT = 0x%08X)", (unsigned int) hr);
         uuid_destroy(&ctx.uuid);
@@ -423,8 +430,14 @@ gfx_context dx12_ctx_init(GLFWwindow* window, uint32_t width, uint32_t height)
     desc.Flags                    = D3D12_COMMAND_QUEUE_FLAG_NONE;
     desc.NodeMask                 = 0;
     backend->device->lpVtbl->CreateCommandQueue(backend->device, &desc, IID_PPV_ARGS_C(&IID_ID3D12CommandQueue, &backend->direct_queue));
+    if (!backend->direct_queue) {
+        LOG_ERROR("Failed to create D3D12 Direct Command Queue");
+        dx12_ctx_destroy(&ctx);
+        return ctx;
+    }
 
-    dx12_ctx_destroy(&ctx);
+    gfx_swapchain sc = dx12_create_swapchain(1280, 720);
+    dx12_destroy_swapchain(&sc);
 
     // WIP!
     uuid_destroy(&ctx.uuid);
@@ -464,10 +477,78 @@ void dx12_ctx_destroy(gfx_context* ctx)
     dx12_internal_track_dxgi_liveobjects(backend);
     #endif
 
-    free(ctx->backend);
-    ctx->backend = NULL;
-
     uuid_destroy(&ctx->uuid);
+}
+
+gfx_swapchain dx12_create_swapchain(uint32_t width, uint32_t height)
+{
+    gfx_swapchain swapchain = {0};
+    uuid_generate(&swapchain.uuid);
+
+    swapchain.width  = width;
+    swapchain.height = height;
+
+    swapchain_backend* backend = malloc(sizeof(swapchain_backend));
+    if (!backend) {
+        LOG_ERROR("error malloc swapchain_backend");
+        uuid_destroy(&swapchain.uuid);
+        return swapchain;
+    }
+    memset(backend, 0, sizeof(swapchain_backend));
+    swapchain.backend = backend;
+
+    DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {0};
+    swapChainDesc.Width                 = width;
+    swapChainDesc.Height                = height;
+    swapChainDesc.Format                = DXGI_FORMAT_R8G8B8A8_UNORM;
+    swapChainDesc.Stereo                = FALSE;
+    swapChainDesc.SampleDesc            = (DXGI_SAMPLE_DESC){1, 0};
+    swapChainDesc.BufferUsage           = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+    swapChainDesc.BufferCount           = MAX_DX_SWAPCHAIN_BUFFERS;
+    swapChainDesc.Scaling               = DXGI_SCALING_STRETCH;
+    swapChainDesc.SwapEffect            = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+    swapChainDesc.AlphaMode             = DXGI_ALPHA_MODE_UNSPECIFIED;
+    // It is recommended to always allow tearing if tearing support is available.
+    swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+
+    IDXGISwapChain1* swapchain1 = NULL;
+    HRESULT          hr         = s_DXCtx.factory->lpVtbl->CreateSwapChainForHwnd(s_DXCtx.factory, (IUnknown*) s_DXCtx.direct_queue, s_DXCtx.hwnd, &swapChainDesc, NULL, NULL, &swapchain1);
+    if (hr != S_OK) {
+        LOG_ERROR("Failed to create DXGI Swapchain (HRESULT = 0x%08X)", (unsigned int) hr);
+        uuid_destroy(&swapchain.uuid);
+        free(backend);
+        return swapchain;
+    }
+    swapchain1->lpVtbl->QueryInterface(swapchain1, IID_PPV_ARGS_C(&IID_IDXGISwapChain4, &backend->swapchain));
+    if (!backend->swapchain) {
+        LOG_ERROR("Failed to query IDXGISwapChain4 from IDXGISwapChain1");
+        swapchain1->lpVtbl->Release(swapchain1);
+        uuid_destroy(&swapchain.uuid);
+        free(backend);
+        return swapchain;
+    }
+    swapchain1->lpVtbl->Release(swapchain1);    // Release IDXGISwapChain1, we only need IDXGISwapChain4 now
+
+    // WIP!
+    uuid_destroy(&swapchain.uuid);
+    return swapchain;
+}
+
+void dx12_destroy_swapchain(gfx_swapchain* sc)
+{
+    if (!uuid_is_null(&sc->uuid)) {
+        uuid_destroy(&sc->uuid);
+        swapchain_backend* backend = sc->backend;
+
+        // TODO: dx12_internal_destroy_backbuffers(backend, sc->image_count);
+
+        if (backend->swapchain) {
+            backend->swapchain->lpVtbl->Release(backend->swapchain);
+            backend->swapchain = NULL;
+            free(backend);
+            sc->backend = NULL;
+        }
+    }
 }
 
 #endif    // _WIN32
