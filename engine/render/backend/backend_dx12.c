@@ -97,14 +97,18 @@ typedef struct D3D12FeatureCache
  * can still be queried independently using CheckFeatureSupport() — even beyond what the feature level guarantees.
 */
 
+// TODO: Make this a global static context like vulkan, to avoid passing it around sometimes!
+// we still pass around gfx_context which has some high-level structs but internally it will
+// pollute the global functions with gfx_context, so we can keep it as a global state.
 typedef struct context_backend
 {
-    IDXGIFactory7*    factory;
-    IDXGIAdapter4*    gpu;
-    ID3D12Device10*   device;    // Win 11 latest, other latest version needs Agility SDK
-    HWND              window;
-    D3D_FEATURE_LEVEL feat_level;
-    D3D12FeatureCache features;
+    IDXGIFactory7*      factory;
+    IDXGIAdapter4*      gpu;
+    ID3D12Device10*     device;    // Win 11 latest, other latest version needs Agility SDK
+    HWND                window;
+    D3D_FEATURE_LEVEL   feat_level;
+    D3D12FeatureCache   features;
+    ID3D12CommandQueue* direct_queue;
     #ifdef _DEBUG
     ID3D12Debug3*    d3d12_debug;
     ID3D12InfoQueue* d3d12_info_queue;
@@ -112,6 +116,15 @@ typedef struct context_backend
     IDXGIDebug*      dxgi_debug;
     #endif
 } context_backend;
+
+typedef struct swapchain_backend
+{
+    IDXGISwapChain4*      swapchain;
+    ID3D12DescriptorHeap* rtv_heap;
+    ID3D12Resource*       backbuffers[MAX_BACKBUFFERS];
+    uint32_t              image_count;
+} swapchain_backend;
+const uint32_t g_max_scbuffer_count = 3;
 
 //--------------------------------------------------------
 
@@ -403,6 +416,14 @@ gfx_context dx12_ctx_init(GLFWwindow* window, uint32_t width, uint32_t height)
     dx12_internal_cache_features(backend);
     dx12_internal_print_features(&backend->features);
 
+    // Create global command queues
+    D3D12_COMMAND_QUEUE_DESC desc = {0};
+    desc.Type                     = D3D12_COMMAND_LIST_TYPE_DIRECT;
+    desc.Priority                 = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
+    desc.Flags                    = D3D12_COMMAND_QUEUE_FLAG_NONE;
+    desc.NodeMask                 = 0;
+    backend->device->lpVtbl->CreateCommandQueue(backend->device, &desc, IID_PPV_ARGS_C(&IID_ID3D12CommandQueue, &backend->direct_queue));
+
     dx12_ctx_destroy(&ctx);
 
     // WIP!
@@ -417,6 +438,11 @@ void dx12_ctx_destroy(gfx_context* ctx)
         return;
     }
     context_backend* backend = (context_backend*) ctx->backend;
+
+    if (backend->direct_queue) {
+        backend->direct_queue->lpVtbl->Release(backend->direct_queue);
+        backend->direct_queue = NULL;
+    }
 
     if (backend->device) {
         backend->device->lpVtbl->Release(backend->device);

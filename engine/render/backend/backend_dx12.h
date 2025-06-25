@@ -19,5 +19,8 @@ void        dx12_ctx_destroy(gfx_context* ctx);
 
 void dx12_flush_gpu_work(void);
 
+gfx_swapchain dx12_create_swapchain(uint32_t width, uint32_t height);
+void          dx12_destroy_swapchain(gfx_swapchain* swapchain);
+
 #endif
 #endif    // BACKEND_DX12_H
