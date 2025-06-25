@@ -37,8 +37,8 @@
 // - [x] Create the device
 // - [x] cache the device Features
 // - [x] Debug Layers (D3D12 + DXGI + LiveObjectTracking)
-// - [ ] Create swapchain and Sync Primitives
-// - [ ] Basic submit/present flow using Fence counting + gfx_syncobj
+// - [x] Create swapchain and RTV heaps and extract back buffer
+// - [ ] Basic submit/present flow using Fence counting + gfx_syncobj primitives
 // - [ ] Hello Triangle without VB/IB in single shader quad
 //   - [ ] Drawing API
 //   - [ ] Shaders/Loading
@@ -57,6 +57,10 @@
 const rhi_jumptable dx12_jumptable = {
     dx12_ctx_init,
     dx12_ctx_destroy,
+    dx12_flush_gpu_work,
+
+    dx12_create_swapchain,
+    dx12_destroy_swapchain,
 };
 //--------------------------------------------------------
 
@@ -126,13 +130,14 @@ static context_backend s_DXCtx;
 
 typedef struct swapchain_backend
 {
-    IDXGISwapChain4*      swapchain;
-    ID3D12DescriptorHeap* rtv_heap;
-    ID3D12Resource*       backbuffers[MAX_BACKBUFFERS];
-    uint32_t              image_count;
+    IDXGISwapChain4*            swapchain;
+    ID3D12DescriptorHeap*       rtv_heap;
+    D3D12_CPU_DESCRIPTOR_HANDLE rtv_handle_start;
+    ID3D12Resource*             backbuffers[MAX_BACKBUFFERS];
+    uint32_t                    image_count;
 } swapchain_backend;
 
-    #define MAX_DX_SWAPCHAIN_BUFFERS 3;
+    #define MAX_DX_SWAPCHAIN_BUFFERS 3
 
 //--------------------------------------------------------
 
@@ -436,10 +441,6 @@ gfx_context dx12_ctx_init(GLFWwindow* window)
         return ctx;
     }
 
-    gfx_swapchain sc = dx12_create_swapchain(1280, 720);
-    dx12_destroy_swapchain(&sc);
-
-    // WIP!
     uuid_destroy(&ctx.uuid);
     return ctx;
 }
@@ -480,6 +481,75 @@ void dx12_ctx_destroy(gfx_context* ctx)
     uuid_destroy(&ctx->uuid);
 }
 
+void dx12_flush_gpu_work(void)
+{
+    // No exact equivalent, we need to do this on a per-queue basis
+}
+
+static void dx12_internal_create_backbuffers(gfx_swapchain* sc)
+{
+    swapchain_backend* backend = (swapchain_backend*) sc->backend;
+
+    // Create RTV heap and extract backbuffers
+    D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {0};
+    rtvHeapDesc.Type                       = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+    rtvHeapDesc.NumDescriptors             = MAX_DX_SWAPCHAIN_BUFFERS;
+    rtvHeapDesc.Flags                      = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+    rtvHeapDesc.NodeMask                   = 0;
+    HRESULT hr                             = s_DXCtx.device->lpVtbl->CreateDescriptorHeap(s_DXCtx.device, &rtvHeapDesc, IID_PPV_ARGS_C(&IID_ID3D12DescriptorHeap, &backend->rtv_heap));
+    if (FAILED(hr)) {
+        LOG_ERROR("Failed to create RTV Descriptor Heap (HRESULT = 0x%08X)", (unsigned int) hr);
+        backend->swapchain->lpVtbl->Release(backend->swapchain);
+        uuid_destroy(&sc->uuid);
+        free(backend);
+        return;
+    }
+
+    backend->image_count = MAX_DX_SWAPCHAIN_BUFFERS;
+    backend->rtv_heap->lpVtbl->GetCPUDescriptorHandleForHeapStart(backend->rtv_heap, &backend->rtv_handle_start);
+
+    for (uint32_t i = 0; i < MAX_DX_SWAPCHAIN_BUFFERS; i++) {
+        hr = backend->swapchain->lpVtbl->GetBuffer(backend->swapchain, i, IID_PPV_ARGS_C(&IID_ID3D12Resource, &backend->backbuffers[i]));
+        if (FAILED(hr)) {
+            LOG_ERROR("Failed to get backbuffer %u from swapchain (HRESULT = 0x%08X)", i, (unsigned int) hr);
+            for (uint32_t j = 0; j < i; j++) {
+                if (backend->backbuffers[j]) {
+                    backend->backbuffers[j]->lpVtbl->Release(backend->backbuffers[j]);
+                }
+            }
+            backend->rtv_heap->lpVtbl->Release(backend->rtv_heap);
+            backend->swapchain->lpVtbl->Release(backend->swapchain);
+            uuid_destroy(&sc->uuid);
+            free(backend);
+            return;
+        }
+
+        // Create RTV for the back buffer
+        D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = backend->rtv_handle_start;
+        rtvHandle.ptr += i * s_DXCtx.device->lpVtbl->GetDescriptorHandleIncrementSize(s_DXCtx.device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+        s_DXCtx.device->lpVtbl->CreateRenderTargetView(s_DXCtx.device, backend->backbuffers[i], NULL, rtvHandle);
+    }
+}
+
+static void dx12_internal_destroy_backbuffers(gfx_swapchain* sc)
+{
+    swapchain_backend* backend = (swapchain_backend*) sc->backend;
+
+    if (backend->rtv_heap) {
+        backend->rtv_heap->lpVtbl->Release(backend->rtv_heap);
+        backend->rtv_heap = NULL;
+    }
+
+    for (uint32_t i = 0; i < backend->image_count; i++) {
+        if (backend->backbuffers[i]) {
+            backend->backbuffers[i]->lpVtbl->Release(backend->backbuffers[i]);
+            backend->backbuffers[i] = NULL;
+        }
+    }
+
+    backend->image_count = 0;
+}
+
 gfx_swapchain dx12_create_swapchain(uint32_t width, uint32_t height)
 {
     gfx_swapchain swapchain = {0};
@@ -513,7 +583,7 @@ gfx_swapchain dx12_create_swapchain(uint32_t width, uint32_t height)
 
     IDXGISwapChain1* swapchain1 = NULL;
     HRESULT          hr         = s_DXCtx.factory->lpVtbl->CreateSwapChainForHwnd(s_DXCtx.factory, (IUnknown*) s_DXCtx.direct_queue, s_DXCtx.hwnd, &swapChainDesc, NULL, NULL, &swapchain1);
-    if (hr != S_OK) {
+    if (FAILED(hr)) {
         LOG_ERROR("Failed to create DXGI Swapchain (HRESULT = 0x%08X)", (unsigned int) hr);
         uuid_destroy(&swapchain.uuid);
         free(backend);
@@ -529,8 +599,8 @@ gfx_swapchain dx12_create_swapchain(uint32_t width, uint32_t height)
     }
     swapchain1->lpVtbl->Release(swapchain1);    // Release IDXGISwapChain1, we only need IDXGISwapChain4 now
 
-    // WIP!
-    uuid_destroy(&swapchain.uuid);
+    dx12_internal_create_backbuffers(&swapchain);
+
     return swapchain;
 }
 
@@ -540,7 +610,7 @@ void dx12_destroy_swapchain(gfx_swapchain* sc)
         uuid_destroy(&sc->uuid);
         swapchain_backend* backend = sc->backend;
 
-        // TODO: dx12_internal_destroy_backbuffers(backend, sc->image_count);
+        dx12_internal_destroy_backbuffers(sc);
 
         if (backend->swapchain) {
             backend->swapchain->lpVtbl->Release(backend->swapchain);
