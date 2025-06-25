@@ -28,6 +28,9 @@ void vulkan_flush_gpu_work(void);
 gfx_swapchain vulkan_device_create_swapchain(uint32_t width, uint32_t height);
 void          vulkan_device_destroy_swapchain(gfx_swapchain* sc);
 
+gfx_syncobj vulkan_device_create_syncobj(gfx_syncobj_type type);
+void        vulkan_device_destroy_syncobj(gfx_syncobj* syncobj);
+
 gfx_cmd_pool vulkan_device_create_gfx_cmd_pool(void);
 void         vulkan_device_destroy_gfx_cmd_pool(gfx_cmd_pool* pool);
 
@@ -71,9 +74,6 @@ void              vulkan_device_destroy_uniform_buffer_resource_view(gfx_resourc
 
 gfx_cmd_buf vulkan_device_create_single_time_command_buffer(void);
 void        vulkan_device_destroy_single_time_command_buffer(gfx_cmd_buf* cmd_buf);
-
-gfx_syncobj vulkan_device_create_syncobj(gfx_syncobj_type type);
-void        vulkan_device_destroy_syncobj(gfx_syncobj* syncobj);
 
 gfx_texture_readback vulkan_device_readback_swapchain(const gfx_swapchain* swapchain);
 

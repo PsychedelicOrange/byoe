@@ -38,7 +38,10 @@
 // - [x] cache the device Features
 // - [x] Debug Layers (D3D12 + DXGI + LiveObjectTracking)
 // - [x] Create swapchain and RTV heaps and extract back buffer
-// - [ ] Basic submit/present flow using Fence counting + gfx_syncobj primitives
+// - [ ] gfx_syncobj primitives
+// - [ ] Create command allocators
+// - [ ] Create command lists from allocator
+// - [ ] Basic submit/present flow using Fence counting +
 // - [ ] Hello Triangle without VB/IB in single shader quad
 //   - [ ] Drawing API
 //   - [ ] Shaders/Loading
@@ -375,9 +378,8 @@ gfx_context dx12_ctx_init(GLFWwindow* window)
     ctx.backend = &s_DXCtx;
     // For readability, we cast ctx.backend to context_backend*
     context_backend* backend = (context_backend*) ctx.backend;
-
-    backend->glfwWindow = window;
-    backend->hwnd       = (HWND) glfwGetWin32Window(window);
+    backend->glfwWindow      = window;
+    backend->hwnd            = (HWND) glfwGetWin32Window(window);
 
     LOG_INFO("Creating DXGI Factory7");
     UINT createFactoryFlags = 0;

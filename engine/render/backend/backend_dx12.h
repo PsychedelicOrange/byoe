@@ -22,5 +22,8 @@ void dx12_flush_gpu_work(void);
 gfx_swapchain dx12_create_swapchain(uint32_t width, uint32_t height);
 void          dx12_destroy_swapchain(gfx_swapchain* swapchain);
 
+gfx_syncobj dx12_device_create_syncobj(gfx_syncobj_type type);
+void        dx12_device_destroy_syncobj(gfx_syncobj* syncobj);
+
 #endif
 #endif    // BACKEND_DX12_H

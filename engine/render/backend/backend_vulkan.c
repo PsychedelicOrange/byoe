@@ -30,6 +30,8 @@ const rhi_jumptable vulkan_jumptable = {
     vulkan_flush_gpu_work,
     vulkan_device_create_swapchain,
     vulkan_device_destroy_swapchain,
+    vulkan_device_create_syncobj,
+    vulkan_device_destroy_syncobj,
     vulkan_device_create_gfx_cmd_pool,
     vulkan_device_destroy_gfx_cmd_pool,
     vulkan_device_create_gfx_cmd_buf,
@@ -67,9 +69,6 @@ const rhi_jumptable vulkan_jumptable = {
 
     vulkan_device_create_single_time_command_buffer,
     vulkan_device_destroy_single_time_command_buffer,
-
-    vulkan_device_create_syncobj,
-    vulkan_device_destroy_syncobj,
 
     vulkan_device_readback_swapchain,
 
@@ -995,7 +994,7 @@ static TypedGrowableArray vulkan_internal_create_queue_family_infos(queue_indice
     static float queuePriority = 1.0f;
 
     VkDeviceQueueCreateInfo* gfxQueueInfo = malloc(sizeof(VkDeviceQueueCreateInfo));
-    *gfxQueueInfo                         = (VkDeviceQueueCreateInfo) {
+    *gfxQueueInfo                         = (VkDeviceQueueCreateInfo){
                                 .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
                                 .queueFamilyIndex = indices.gfx,
                                 .queueCount       = 1,
@@ -1004,7 +1003,7 @@ static TypedGrowableArray vulkan_internal_create_queue_family_infos(queue_indice
 
     if (indices.gfx != indices.present) {
         VkDeviceQueueCreateInfo* presentQueueInfo = malloc(sizeof(VkDeviceQueueCreateInfo));
-        *presentQueueInfo                         = (VkDeviceQueueCreateInfo) {
+        *presentQueueInfo                         = (VkDeviceQueueCreateInfo){
                                     .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
                                     .queueFamilyIndex = indices.present,
                                     .queueCount       = 1,
@@ -1014,7 +1013,7 @@ static TypedGrowableArray vulkan_internal_create_queue_family_infos(queue_indice
 
     if (indices.async_compute != indices.gfx) {
         VkDeviceQueueCreateInfo* computeQueueInfo = malloc(sizeof(VkDeviceQueueCreateInfo));
-        *computeQueueInfo                         = (VkDeviceQueueCreateInfo) {
+        *computeQueueInfo                         = (VkDeviceQueueCreateInfo){
                                     .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
                                     .queueFamilyIndex = indices.async_compute,
                                     .queueCount       = 1,
@@ -1105,8 +1104,10 @@ static queue_backend vulkan_internal_create_queues(queue_indices indices)
 gfx_context vulkan_ctx_init(GLFWwindow* window)
 {
     gfx_context ctx = {0};
+    uuid_generate(&ctx.uuid);
 
     memset(&s_VkCtx, 0, sizeof(context_backend));
+    ctx.backend  = &s_VkCtx;
     s_VkCtx.hwnd = window;
 
     if (volkInitialize() != VK_SUCCESS) {
@@ -1145,15 +1146,6 @@ gfx_context vulkan_ctx_init(GLFWwindow* window)
 
     s_VkCtx.queues = vulkan_internal_create_queues(s_VkCtx.queue_idxs);
 
-    VkCommandPoolCreateInfo cmdPoolCI = {0};
-    cmdPoolCI.sType                   = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    cmdPoolCI.queueFamilyIndex        = s_VkCtx.queue_idxs.gfx;    // same as present
-    cmdPoolCI.flags                   = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-    VK_CHECK_RESULT(vkCreateCommandPool(VKDEVICE, &cmdPoolCI, NULL, &s_VkCtx.single_time_cmd_pool.pool), "Cannot create single time gfx command pool");
-
-    uuid_generate(&ctx.uuid);
-    ctx.backend = &s_VkCtx;
-
     // Create in-flight sync primitives (Fence or TimelimeSemaphores per in-flight frame)
     for (int i = 0; i < MAX_FRAMES_INFLIGHT; i++) {
         if (!g_gfxConfig.use_timeline_semaphores) {
@@ -1173,6 +1165,12 @@ gfx_context vulkan_ctx_init(GLFWwindow* window)
         VK_TAG_OBJECT("IMAGE_READY_SEMAPHORE", VK_OBJECT_TYPE_SEMAPHORE, *(VkSemaphore*) (ctx.image_ready[i].backend));
         VK_TAG_OBJECT("RENDERING_DONE_SEMAPHORE", VK_OBJECT_TYPE_SEMAPHORE, *(VkSemaphore*) (ctx.rendering_done[i].backend));
     }
+
+    VkCommandPoolCreateInfo cmdPoolCI = {0};
+    cmdPoolCI.sType                   = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    cmdPoolCI.queueFamilyIndex        = s_VkCtx.queue_idxs.gfx;    // same as present
+    cmdPoolCI.flags                   = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    VK_CHECK_RESULT(vkCreateCommandPool(VKDEVICE, &cmdPoolCI, NULL, &s_VkCtx.single_time_cmd_pool.pool), "Cannot create single time gfx command pool");
 
     return ctx;
 }
@@ -1384,6 +1382,94 @@ void vulkan_device_destroy_swapchain(gfx_swapchain* sc)
     }
 }
 
+static void vulkan_internal_create_sema(void* backend)
+{
+    VkSemaphoreCreateInfo semaphoreInfo = {
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+        .pNext = NULL,
+        .flags = VK_SEMAPHORE_TYPE_BINARY};
+
+    VK_CHECK_RESULT(vkCreateSemaphore(VKDEVICE, &semaphoreInfo, NULL, backend), "[Vulkan] cannot create semaphore");
+}
+
+static void vulkan_internal_destroy_sema(VkSemaphore sema)
+{
+    vkDestroySemaphore(VKDEVICE, sema, NULL);
+}
+
+static void vulkan_internal_create_fence(void* backend)
+{
+    VkFenceCreateInfo fenceCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+        .flags = VK_FENCE_CREATE_SIGNALED_BIT};
+    VK_CHECK_RESULT(vkCreateFence(VKDEVICE, &fenceCreateInfo, NULL, backend), "[Vulkan] cannot create fence");
+}
+
+static void vulkan_internal_destroy_fence(VkFence fence)
+{
+    vkDestroyFence(VKDEVICE, fence, NULL);
+}
+
+static void vulkan_internal_create_timeline_semaphore(void* backend)
+{
+    VkSemaphoreTypeCreateInfo timelineCreateInfo = {
+        .sType         = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
+        .pNext         = NULL,
+        .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
+        .initialValue  = 0,
+    };
+
+    VkSemaphoreCreateInfo semaphoreCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+        .pNext = &timelineCreateInfo,
+        .flags = 0,
+    };
+
+    VK_CHECK_RESULT(vkCreateSemaphore(VKDEVICE, &semaphoreCreateInfo, NULL, backend), "Failed to create timeline semaphore");
+}
+
+static void vulkan_internal_destroy_timeline_semaphore(VkSemaphore semaphore)
+{
+    if (semaphore != VK_NULL_HANDLE) {
+        vkDestroySemaphore(VKDEVICE, semaphore, NULL);
+    }
+}
+
+gfx_syncobj vulkan_device_create_syncobj(gfx_syncobj_type type)
+{
+    gfx_syncobj syncobj = {0};
+    uuid_generate(&syncobj.uuid);
+
+    syncobj.type       = type;
+    syncobj.wait_value = 0;
+
+    if (type == GFX_SYNCOBJ_TYPE_CPU) {
+        syncobj.backend = malloc(sizeof(VkFence));
+        vulkan_internal_create_fence(syncobj.backend);
+    } else if (type == GFX_SYNCOBJ_TYPE_GPU) {
+        syncobj.backend = malloc(sizeof(VkSemaphore));
+        vulkan_internal_create_sema(syncobj.backend);
+    } else {
+        syncobj.backend = malloc(sizeof(VkSemaphore));
+        vulkan_internal_create_timeline_semaphore(syncobj.backend);
+    }
+    return syncobj;
+}
+
+void vulkan_device_destroy_syncobj(gfx_syncobj* syncobj)
+{
+    if (syncobj->type == GFX_SYNCOBJ_TYPE_CPU) {
+        vulkan_internal_destroy_fence(*(VkFence*) syncobj->backend);
+    } else if (syncobj->type == GFX_SYNCOBJ_TYPE_GPU) {
+        vulkan_internal_destroy_sema(*(VkSemaphore*) syncobj->backend);
+    } else {
+        vulkan_internal_destroy_timeline_semaphore(*(VkSemaphore*) (syncobj->backend));
+    }
+    // TODO: Handle timeline semaphores
+
+    BACKEND_SAFE_FREE(syncobj);
+}
+
 gfx_cmd_pool vulkan_device_create_gfx_cmd_pool(void)
 {
     gfx_cmd_pool pool = {0};
@@ -1433,59 +1519,6 @@ gfx_cmd_buf vulkan_device_create_gfx_cmd_buf(gfx_cmd_pool* pool)
     return cmd_buf;
 }
 
-static void vulkan_internal_create_sema(void* backend)
-{
-    VkSemaphoreCreateInfo semaphoreInfo = {
-        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-        .pNext = NULL,
-        .flags = VK_SEMAPHORE_TYPE_BINARY};
-
-    VK_CHECK_RESULT(vkCreateSemaphore(VKDEVICE, &semaphoreInfo, NULL, backend), "[Vulkan] cannot create semaphore");
-}
-
-static void vulkan_internal_destroy_sema(VkSemaphore sema)
-{
-    vkDestroySemaphore(VKDEVICE, sema, NULL);
-}
-
-static void vulkan_internal_create_fence(void* backend)
-{
-    VkFenceCreateInfo fenceCreateInfo = {
-        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-        .flags = VK_FENCE_CREATE_SIGNALED_BIT};
-    VK_CHECK_RESULT(vkCreateFence(VKDEVICE, &fenceCreateInfo, NULL, backend), "[Vulkan] cannot create fence");
-}
-
-static void vulkan_internal_destroy_fence(VkFence fence)
-{
-    vkDestroyFence(VKDEVICE, fence, NULL);
-}
-
-void vulkan_internal_create_timeline_semaphore(void* backend)
-{
-    VkSemaphoreTypeCreateInfo timelineCreateInfo = {
-        .sType         = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
-        .pNext         = NULL,
-        .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
-        .initialValue  = 0,
-    };
-
-    VkSemaphoreCreateInfo semaphoreCreateInfo = {
-        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-        .pNext = &timelineCreateInfo,
-        .flags = 0,
-    };
-
-    VK_CHECK_RESULT(vkCreateSemaphore(VKDEVICE, &semaphoreCreateInfo, NULL, backend), "Failed to create timeline semaphore");
-}
-
-void vulkan_internal_destroy_timeline_semaphore(VkSemaphore semaphore)
-{
-    if (semaphore != VK_NULL_HANDLE) {
-        vkDestroySemaphore(VKDEVICE, semaphore, NULL);
-    }
-}
-
 static VkShaderModule vulkan_internal_create_shader_handle(const char* spv_file_path)
 {
     SPVBuffer                shader_byte_code = loadSPVFile(spv_file_path);
@@ -1515,7 +1548,7 @@ gfx_shader vulkan_device_create_compute_shader(const char* spv_file_path)
 
         backend->modules.CS = vulkan_internal_create_shader_handle(spv_file_path);
 
-        backend->stage_ci = (VkPipelineShaderStageCreateInfo) {
+        backend->stage_ci = (VkPipelineShaderStageCreateInfo){
             .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage  = VK_SHADER_STAGE_COMPUTE_BIT,
             .pName  = "main",
@@ -1547,7 +1580,7 @@ gfx_shader vulkan_device_create_vs_ps_shader(const char* spv_file_path_vs, const
 
         backend_vs->modules.VS = vulkan_internal_create_shader_handle(spv_file_path_vs);
 
-        backend_vs->stage_ci = (VkPipelineShaderStageCreateInfo) {
+        backend_vs->stage_ci = (VkPipelineShaderStageCreateInfo){
             .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage  = VK_SHADER_STAGE_VERTEX_BIT,
             .pName  = "main",
@@ -1561,7 +1594,7 @@ gfx_shader vulkan_device_create_vs_ps_shader(const char* spv_file_path_vs, const
 
         backend_ps->modules.PS = vulkan_internal_create_shader_handle(spv_file_path_ps);
 
-        backend_ps->stage_ci = (VkPipelineShaderStageCreateInfo) {
+        backend_ps->stage_ci = (VkPipelineShaderStageCreateInfo){
             .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage  = VK_SHADER_STAGE_FRAGMENT_BIT,
             .pName  = "main",
@@ -1836,7 +1869,7 @@ gfx_root_signature vulkan_device_create_root_signature(const gfx_descriptor_set_
 
         for (uint32_t j = 0; j < set_layout->binding_count; ++j) {
             const gfx_descriptor_binding binding = set_layout->bindings[j];
-            vk_bindings[j]                       = (VkDescriptorSetLayoutBinding) {
+            vk_bindings[j]                       = (VkDescriptorSetLayoutBinding){
                                       .binding            = binding.location.binding,
                                       .descriptorType     = vulkan_util_descriptor_type_translate(binding.type),
                                       .descriptorCount    = binding.count,
@@ -1863,7 +1896,7 @@ gfx_root_signature vulkan_device_create_root_signature(const gfx_descriptor_set_
 
         for (uint32_t i = 0; i < push_constant_count; ++i) {
             const gfx_push_constant_range push_constant = push_constants[i];
-            vk_push_constants[i]                        = (VkPushConstantRange) {
+            vk_push_constants[i]                        = (VkPushConstantRange){
                                        .offset     = push_constant.offset,
                                        .size       = push_constant.size,
                                        .stageFlags = vulkan_util_shader_stage_bits(push_constant.stage),
@@ -1979,7 +2012,7 @@ void vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_tabl
         const gfx_resource*      res      = entries[i].resource;
         const gfx_resource_view* res_view = entries[i].resource_view;
 
-        writes[i] = (VkWriteDescriptorSet) {
+        writes[i] = (VkWriteDescriptorSet){
             .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
             .dstSet          = sets[entries[i].location.set],
             .dstBinding      = entries[i].location.binding,
@@ -2125,7 +2158,7 @@ gfx_resource_view vulkan_device_create_texture_resource_view(const gfx_resource_
         .image            = tex_backend->image,
         .format           = vulkan_util_format_translate(desc.texture.format),
         .viewType         = vulkan_util_texture_view_type_translate(desc.texture.texture_type),
-        .components       = (VkComponentMapping) {VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A},
+        .components       = (VkComponentMapping){VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A},
         .subresourceRange = {
             .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,    // FIXME: hard coded shit since depth texture should have VK_IMAGE_ASPECT_DEPTH_BIT aspect mask
             .baseArrayLayer = desc.texture.base_layer,
@@ -2345,41 +2378,6 @@ void vulkan_device_destroy_single_time_command_buffer(gfx_cmd_buf* cmd_buf)
 
     uuid_destroy(&cmd_buf->uuid);
     free(cmd_buf->backend);
-}
-
-gfx_syncobj vulkan_device_create_syncobj(gfx_syncobj_type type)
-{
-    gfx_syncobj syncobj = {0};
-    uuid_generate(&syncobj.uuid);
-
-    syncobj.type       = type;
-    syncobj.wait_value = 0;
-
-    if (type == GFX_SYNCOBJ_TYPE_CPU) {
-        syncobj.backend = malloc(sizeof(VkFence));
-        vulkan_internal_create_fence(syncobj.backend);
-    } else if (type == GFX_SYNCOBJ_TYPE_GPU) {
-        syncobj.backend = malloc(sizeof(VkSemaphore));
-        vulkan_internal_create_sema(syncobj.backend);
-    } else {
-        syncobj.backend = malloc(sizeof(VkSemaphore));
-        vulkan_internal_create_timeline_semaphore(syncobj.backend);
-    }
-    return syncobj;
-}
-
-void vulkan_device_destroy_syncobj(gfx_syncobj* syncobj)
-{
-    if (syncobj->type == GFX_SYNCOBJ_TYPE_CPU) {
-        vulkan_internal_destroy_fence(*(VkFence*) syncobj->backend);
-    } else if (syncobj->type == GFX_SYNCOBJ_TYPE_GPU) {
-        vulkan_internal_destroy_sema(*(VkSemaphore*) syncobj->backend);
-    } else {
-        vulkan_internal_destroy_timeline_semaphore(*(VkSemaphore*) (syncobj->backend));
-    }
-    // TODO: Handle timeline semaphores
-
-    BACKEND_SAFE_FREE(syncobj);
 }
 
 gfx_texture_readback vulkan_device_readback_swapchain(const gfx_swapchain* swapchain)
