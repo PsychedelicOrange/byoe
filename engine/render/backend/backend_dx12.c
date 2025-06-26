@@ -457,7 +457,6 @@ gfx_context dx12_ctx_init(GLFWwindow* window)
         return ctx;
     }
 
-    uuid_destroy(&ctx.uuid);
     return ctx;
 }
 
@@ -649,7 +648,7 @@ gfx_syncobj dx12_create_syncobj(gfx_syncobj_type type)
 
     HRESULT hr = DXDevice->lpVtbl->CreateFence(DXDevice, 0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS_C(&IID_ID3D12Fence, &backend->fence));
     if (FAILED(hr)) {
-        LOG_ERROR("Failed to create ID3D12Fence");
+        LOG_ERROR("Failed to create ID3D12Fence (HRESULT = 0x%08X)", (unsigned int) hr);
         uuid_destroy(&syncobj.uuid);
         free(backend);
         return syncobj;
@@ -691,7 +690,7 @@ gfx_cmd_pool dx12_create_gfx_cmd_allocator(void)
 
     HRESULT hr = DXDevice->lpVtbl->CreateCommandAllocator(DXDevice, D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS_C(&IID_ID3D12CommandAllocator, &pool.backend));
     if (FAILED(hr)) {
-        LOG_ERROR("Failed to allocate command allocator");
+        LOG_ERROR("Failed to allocate command allocator (HRESULT = 0x%08X)", (unsigned int) hr);
         uuid_destroy(&pool.uuid);
         free(pool.backend);
         return pool;
@@ -719,8 +718,9 @@ gfx_cmd_buf dx12_create_gfx_cmd_buf(gfx_cmd_pool* pool)
     cmd_buf.backend = malloc(sizeof(ID3D12GraphicsCommandList));
 
     HRESULT hr = DXDevice->lpVtbl->CreateCommandList(DXDevice, 0, D3D12_COMMAND_LIST_TYPE_DIRECT, ((ID3D12CommandAllocator*) (pool->backend)), NULL, IID_PPV_ARGS_C(&IID_ID3D12GraphicsCommandList, &cmd_buf.backend));
+    hr         = ((ID3D12GraphicsCommandList*) (cmd_buf.backend))->lpVtbl->Close((ID3D12GraphicsCommandList*) (cmd_buf.backend));
     if (FAILED(hr)) {
-        LOG_ERROR("Failed to allocate command allocator");
+        LOG_ERROR("Failed to allocate command lists (HRESULT = 0x%08X)", (unsigned int) hr);
         uuid_destroy(&cmd_buf.uuid);
         free(cmd_buf.backend);
         return cmd_buf;
