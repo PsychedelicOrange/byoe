@@ -38,10 +38,11 @@
 // - [x] cache the device Features
 // - [x] Debug Layers (D3D12 + DXGI + LiveObjectTracking)
 // - [x] Create swapchain and RTV heaps and extract back buffer
-// - [ ] gfx_syncobj primitives
-// - [ ] Create command allocators
-// - [ ] Create command lists from allocator
-// - [ ] Basic submit/present flow using Fence counting +
+// - [x] gfx_syncobj primitives
+// - [x] Create command allocators
+// - [x] Create command lists from allocator
+// - [ ] Rendering Loop: Basic submit/present flow using Fence counting etc. for Clear color
+//   - [ ] frame_begin & end/wait_on_cmds/submit/present
 // - [ ] Hello Triangle without VB/IB in single shader quad
 //   - [ ] Drawing API
 //   - [ ] Shaders/Loading
@@ -54,7 +55,7 @@
 // - [ ] Barriers API
 // - [ ] Root Constants
 // - [ ] Dispatch API
-// - Restore SDF renderer
+// - [ ] Restore SDF renderer
 
 //--------------------------------------------------------
 const rhi_jumptable dx12_jumptable = {
@@ -64,6 +65,11 @@ const rhi_jumptable dx12_jumptable = {
 
     dx12_create_swapchain,
     dx12_destroy_swapchain,
+    dx12_create_syncobj,
+    dx12_destroy_syncobj,
+    dx12_create_gfx_cmd_allocator,
+    dx12_destroy_gfx_cmd_allocator,
+    dx12_create_gfx_cmd_buf,
 };
 //--------------------------------------------------------
 
@@ -80,6 +86,8 @@ const rhi_jumptable dx12_jumptable = {
         (const IID*) (iid), (void**) (ppType)
 
     #define MAX_DX_SWAPCHAIN_BUFFERS 3
+
+    #define DXDevice s_DXCtx.device
 
 //--------------------------------------------------------
 // Internal Types
@@ -442,7 +450,7 @@ gfx_context dx12_ctx_init(GLFWwindow* window)
     desc.Priority                 = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
     desc.Flags                    = D3D12_COMMAND_QUEUE_FLAG_NONE;
     desc.NodeMask                 = 0;
-    backend->device->lpVtbl->CreateCommandQueue(backend->device, &desc, IID_PPV_ARGS_C(&IID_ID3D12CommandQueue, &backend->direct_queue));
+    DXDevice->lpVtbl->CreateCommandQueue(DXDevice, &desc, IID_PPV_ARGS_C(&IID_ID3D12CommandQueue, &backend->direct_queue));
     if (!backend->direct_queue) {
         LOG_ERROR("Failed to create D3D12 Direct Command Queue");
         dx12_ctx_destroy(&ctx);
@@ -504,7 +512,7 @@ static void dx12_internal_create_backbuffers(gfx_swapchain* sc)
     rtvHeapDesc.NumDescriptors             = MAX_DX_SWAPCHAIN_BUFFERS;
     rtvHeapDesc.Flags                      = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
     rtvHeapDesc.NodeMask                   = 0;
-    HRESULT hr                             = s_DXCtx.device->lpVtbl->CreateDescriptorHeap(s_DXCtx.device, &rtvHeapDesc, IID_PPV_ARGS_C(&IID_ID3D12DescriptorHeap, &backend->rtv_heap));
+    HRESULT hr                             = DXDevice->lpVtbl->CreateDescriptorHeap(DXDevice, &rtvHeapDesc, IID_PPV_ARGS_C(&IID_ID3D12DescriptorHeap, &backend->rtv_heap));
     if (FAILED(hr)) {
         LOG_ERROR("Failed to create RTV Descriptor Heap (HRESULT = 0x%08X)", (unsigned int) hr);
         backend->swapchain->lpVtbl->Release(backend->swapchain);
@@ -534,8 +542,8 @@ static void dx12_internal_create_backbuffers(gfx_swapchain* sc)
 
         // Create RTV for the back buffer
         D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = backend->rtv_handle_start;
-        rtvHandle.ptr += i * s_DXCtx.device->lpVtbl->GetDescriptorHandleIncrementSize(s_DXCtx.device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-        s_DXCtx.device->lpVtbl->CreateRenderTargetView(s_DXCtx.device, backend->backbuffers[i], NULL, rtvHandle);
+        rtvHandle.ptr += i * DXDevice->lpVtbl->GetDescriptorHandleIncrementSize(DXDevice, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+        DXDevice->lpVtbl->CreateRenderTargetView(DXDevice, backend->backbuffers[i], NULL, rtvHandle);
     }
 }
 
@@ -629,7 +637,7 @@ void dx12_destroy_swapchain(gfx_swapchain* sc)
     }
 }
 
-gfx_syncobj dx12_device_create_syncobj(gfx_syncobj_type type)
+gfx_syncobj dx12_create_syncobj(gfx_syncobj_type type)
 {
     gfx_syncobj syncobj = {0};
     uuid_generate(&syncobj.uuid);
@@ -639,9 +647,9 @@ gfx_syncobj dx12_device_create_syncobj(gfx_syncobj_type type)
     syncobj.wait_value       = 0;
     syncobj.backend          = backend;
 
-    HRESULT hr = s_DXCtx.device->lpVtbl->CreateFence(s_DXCtx.device, 0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS_C(&IID_ID3D12Fence, &backend->fence));
+    HRESULT hr = DXDevice->lpVtbl->CreateFence(DXDevice, 0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS_C(&IID_ID3D12Fence, &backend->fence));
     if (FAILED(hr)) {
-        LOG_ERROR("Failed to query IDXGISwapChain4 from IDXGISwapChain1");
+        LOG_ERROR("Failed to create ID3D12Fence");
         uuid_destroy(&syncobj.uuid);
         free(backend);
         return syncobj;
@@ -655,7 +663,7 @@ gfx_syncobj dx12_device_create_syncobj(gfx_syncobj_type type)
     return syncobj;
 }
 
-void dx12_device_destroy_syncobj(gfx_syncobj* syncobj)
+void dx12_destroy_syncobj(gfx_syncobj* syncobj)
 {
     if (!uuid_is_null(&syncobj->uuid)) {
         uuid_destroy(&syncobj->uuid);
@@ -674,4 +682,50 @@ void dx12_device_destroy_syncobj(gfx_syncobj* syncobj)
     }
 }
 
+gfx_cmd_pool dx12_create_gfx_cmd_allocator(void)
+{
+    gfx_cmd_pool pool = {0};
+    uuid_generate(&pool.uuid);
+
+    pool.backend = malloc(sizeof(ID3D12CommandAllocator));
+
+    HRESULT hr = DXDevice->lpVtbl->CreateCommandAllocator(DXDevice, D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS_C(&IID_ID3D12CommandAllocator, &pool.backend));
+    if (FAILED(hr)) {
+        LOG_ERROR("Failed to allocate command allocator");
+        uuid_destroy(&pool.uuid);
+        free(pool.backend);
+        return pool;
+    }
+
+    return pool;
+}
+
+void dx12_destroy_gfx_cmd_allocator(gfx_cmd_pool* pool)
+{
+    if (!uuid_is_null(&pool->uuid)) {
+        uuid_destroy(&pool->uuid);
+        if (pool->backend) {
+            ((ID3D12CommandAllocator*) (pool->backend))->lpVtbl->Release(pool->backend);
+            free(pool->backend);
+            pool->backend = NULL;
+        }
+    }
+}
+
+gfx_cmd_buf dx12_create_gfx_cmd_buf(gfx_cmd_pool* pool)
+{
+    gfx_cmd_buf cmd_buf = {0};
+    uuid_generate(&cmd_buf.uuid);
+    cmd_buf.backend = malloc(sizeof(ID3D12GraphicsCommandList));
+
+    HRESULT hr = DXDevice->lpVtbl->CreateCommandList(DXDevice, 0, D3D12_COMMAND_LIST_TYPE_DIRECT, ((ID3D12CommandAllocator*) (pool->backend)), NULL, IID_PPV_ARGS_C(&IID_ID3D12GraphicsCommandList, &cmd_buf.backend));
+    if (FAILED(hr)) {
+        LOG_ERROR("Failed to allocate command allocator");
+        uuid_destroy(&cmd_buf.uuid);
+        free(cmd_buf.backend);
+        return cmd_buf;
+    }
+
+    return cmd_buf;
+}
 #endif    // _WIN32
