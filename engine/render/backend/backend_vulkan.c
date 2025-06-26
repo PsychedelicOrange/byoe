@@ -1465,7 +1465,6 @@ void vulkan_device_destroy_syncobj(gfx_syncobj* syncobj)
     } else {
         vulkan_internal_destroy_timeline_semaphore(*(VkSemaphore*) (syncobj->backend));
     }
-    // TODO: Handle timeline semaphores
 
     BACKEND_SAFE_FREE(syncobj);
 }
@@ -2489,6 +2488,13 @@ rhi_error_codes vulkan_wait_on_previous_cmds(const gfx_syncobj* in_flight_sync)
 
 rhi_error_codes vulkan_acquire_image(gfx_context* ctx)
 {
+    /**
+    * We give a fresh semaphore each frame using a round-robin index (syncobj_idx).
+    * vkAcquireNextImageKHR returns imageIndex — the actual swapchain image to render.
+    * These indices do not have to match; Vulkan makes no such guarantee.
+    * We must track which semaphore was used for which imageIndex.
+    * Later submits and presents use this mapping for correct synchronization.
+    */
     gfx_syncobj image_ready = ctx->image_ready[ctx->current_syncobj_idx];
     VkResult    result      = vkAcquireNextImageKHR(VKDEVICE, ((swapchain_backend*) (ctx->swapchain.backend))->swapchain, UINT32_MAX, *(VkSemaphore*) (image_ready.backend), NULL, &ctx->swapchain.current_backbuffer_idx);
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {

@@ -79,6 +79,8 @@ const rhi_jumptable dx12_jumptable = {
     #define IID_PPV_ARGS_C(iid, ppType) \
         (const IID*) (iid), (void**) (ppType)
 
+    #define MAX_DX_SWAPCHAIN_BUFFERS 3
+
 //--------------------------------------------------------
 // Internal Types
 //--------------------------------------------------------
@@ -140,7 +142,11 @@ typedef struct swapchain_backend
     uint32_t                    image_count;
 } swapchain_backend;
 
-    #define MAX_DX_SWAPCHAIN_BUFFERS 3
+typedef struct syncobj_backend
+{
+    ID3D12Fence* fence;         // for both CPU/GPU signaling
+    HANDLE       fenceEvent;    // CPU event for wait operations
+} syncobj_backend;
 
 //--------------------------------------------------------
 
@@ -619,6 +625,51 @@ void dx12_destroy_swapchain(gfx_swapchain* sc)
             backend->swapchain = NULL;
             free(backend);
             sc->backend = NULL;
+        }
+    }
+}
+
+gfx_syncobj dx12_device_create_syncobj(gfx_syncobj_type type)
+{
+    gfx_syncobj syncobj = {0};
+    uuid_generate(&syncobj.uuid);
+
+    syncobj_backend* backend = malloc(sizeof(syncobj_backend));
+    syncobj.type             = type;
+    syncobj.wait_value       = 0;
+    syncobj.backend          = backend;
+
+    HRESULT hr = s_DXCtx.device->lpVtbl->CreateFence(s_DXCtx.device, 0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS_C(&IID_ID3D12Fence, &backend->fence));
+    if (FAILED(hr)) {
+        LOG_ERROR("Failed to query IDXGISwapChain4 from IDXGISwapChain1");
+        uuid_destroy(&syncobj.uuid);
+        free(backend);
+        return syncobj;
+    }
+
+    if (type == GFX_SYNCOBJ_TYPE_CPU) {
+        // create a CPU event to wait on
+        backend->fenceEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+    }
+
+    return syncobj;
+}
+
+void dx12_device_destroy_syncobj(gfx_syncobj* syncobj)
+{
+    if (!uuid_is_null(&syncobj->uuid)) {
+        uuid_destroy(&syncobj->uuid);
+        syncobj_backend* backend = syncobj->backend;
+
+        if (backend->fence) {
+            backend->fence->lpVtbl->Release(backend->fence);
+            backend->fence = NULL;
+
+            if (syncobj->type == GFX_SYNCOBJ_TYPE_CPU)
+                CloseHandle(backend->fenceEvent);
+
+            free(backend);
+            syncobj->backend = NULL;
         }
     }
 }
