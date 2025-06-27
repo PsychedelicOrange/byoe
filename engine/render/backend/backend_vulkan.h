@@ -85,11 +85,11 @@ rhi_error_codes vulkan_frame_begin(gfx_context* context);
 rhi_error_codes vulkan_frame_end(gfx_context* context);
 
 rhi_error_codes vulkan_wait_on_previous_cmds(const gfx_syncobj* in_flight_sync);
-rhi_error_codes vulkan_acquire_image(gfx_context* swapchain);
+rhi_error_codes vulkan_acquire_image(gfx_context* context);
 rhi_error_codes vulkan_gfx_cmd_enque_submit(gfx_cmd_queue* cmd_queue, gfx_cmd_buf* cmd_buff);
 rhi_error_codes vulkan_gfx_cmd_submit_queue(const gfx_cmd_queue* cmd_queue, gfx_submit_syncobj submit_sync);
-rhi_error_codes vulkan_gfx_cmd_submit_for_rendering(gfx_context* ctx);
-rhi_error_codes vulkan_present(const gfx_context* swapchain);
+rhi_error_codes vulkan_gfx_cmd_submit_for_rendering(gfx_context* context);
+rhi_error_codes vulkan_present(const gfx_context* context);
 
 rhi_error_codes vulkan_resize_swapchain(gfx_swapchain* swapchain, uint32_t width, uint32_t height);
 

@@ -42,7 +42,9 @@
 // - [x] Create command allocators
 // - [x] Create command lists from allocator
 // - [ ] Rendering Loop: Basic submit/present flow using Fence counting etc. for Clear color
-//   - [ ] frame_begin & end/wait_on_cmds/submit/present
+//   - [x] frame_begin & end/wait_on_cmds/submit/present
+//   - [ ] Create in context! + decide on per-inflight fence or just one global fence
+//   - [ ] Test and resolve issues
 // - [ ] Hello Triangle without VB/IB in single shader quad
 //   - [ ] Drawing API
 //   - [ ] Shaders/Loading
@@ -457,6 +459,8 @@ gfx_context dx12_ctx_init(GLFWwindow* window)
         return ctx;
     }
 
+    // TODO: create frame sync primitives
+
     return ctx;
 }
 
@@ -728,4 +732,75 @@ gfx_cmd_buf dx12_create_gfx_cmd_buf(gfx_cmd_pool* pool)
 
     return cmd_buf;
 }
+
+//--------------------------------------------------------
+
+static void dx12_internal_signal_fence(ID3D12CommandQueue* cmd_queue, ID3D12Fence* fence, uint64_t wait_value)
+{
+    cmd_queue->lpVtbl->Signal(cmd_queue, fence, wait_value);
+}
+
+//--------------------------------------------------------
+
+rhi_error_codes dx12_frame_begin(gfx_context* context)
+{
+    dx12_acquire_image(context);
+    gfx_syncobj rendering_done = context->rendering_done[context->swapchain.current_backbuffer_idx];
+    dx12_wait_on_previous_cmds(&rendering_done);
+
+    memset(context->cmd_queue.cmds, 0, context->cmd_queue.cmds_count * sizeof(gfx_cmd_buf*));
+    context->cmd_queue.cmds_count = 0;
+
+    return Success;
+}
+
+rhi_error_codes dx12_frame_end(gfx_context* context)
+{
+    dx12_present(context);
+
+    gfx_syncobj* rendering_done = &context->rendering_done[context->swapchain.current_backbuffer_idx];
+    uint64_t     signal_value   = ++(context->timeline_syncpoint[context->swapchain.current_backbuffer_idx]);
+    rendering_done->wait_value  = signal_value;
+
+    context->inflight_frame_idx  = context->swapchain.current_backbuffer_idx;
+    context->current_syncobj_idx = context->swapchain.current_backbuffer_idx;
+
+    dx12_internal_signal_fence(((context_backend*) context->backend)->direct_queue, ((syncobj_backend*) (rendering_done->backend))->fence, signal_value);
+
+    return Success;
+}
+
+//--------------------------------------------------------
+
+rhi_error_codes dx12_wait_on_previous_cmds(const gfx_syncobj* in_flight_sync)
+{
+    syncobj_backend* backend = (syncobj_backend*) (in_flight_sync->backend);
+    if (backend->fence->lpVtbl->GetCompletedValue(backend->fence) < in_flight_sync->wait_value) {
+        backend->fence->lpVtbl->SetEventOnCompletion(backend->fence, in_flight_sync->wait_value, backend->fenceEvent);
+        WaitForSingleObject(backend->fenceEvent, UINT64_MAX);
+    }
+
+    return Success;
+}
+
+rhi_error_codes dx12_acquire_image(gfx_context* context)
+{
+    swapchain_backend* sc_backend             = (swapchain_backend*) context->swapchain.backend;
+    context->swapchain.current_backbuffer_idx = sc_backend->swapchain->lpVtbl->GetCurrentBackBufferIndex(sc_backend->swapchain);
+
+    return Success;
+}
+
+rhi_error_codes dx12_present(const gfx_context* context)
+{
+    const swapchain_backend* sc_backend = (const swapchain_backend*) context->swapchain.backend;
+    HRESULT                  hr         = sc_backend->swapchain->lpVtbl->Present(sc_backend->swapchain, DXGI_PRESENT_ALLOW_TEARING, 0);
+    if (FAILED(hr)) {
+        LOG_ERROR("Swapchain failed to present");
+        return FailedPresent;
+    }
+
+    return Success;
+}
+
 #endif    // _WIN32

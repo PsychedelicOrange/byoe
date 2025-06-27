@@ -283,7 +283,7 @@ typedef struct SDF_Node
 //------------------------
 
 #define MAX_BACKBUFFERS         4
-#define MAX_FRAMES_INFLIGHT     2
+#define MAX_FRAMES_INFLIGHT     3    // same as no. of Swapchain images
 #define MAX_CMD_BUFFS_PER_QUEUE 16
 #define MAX_RT                  8
 
@@ -770,7 +770,6 @@ typedef struct gfx_context
     uint32_t      current_syncobj_idx;
     uint32_t      inflight_frame_idx;
     gfx_swapchain swapchain;
-    gfx_syncobj   inflight_syncobj[MAX_FRAMES_INFLIGHT];
     gfx_syncobj   image_ready[MAX_BACKBUFFERS];
     gfx_syncobj   rendering_done[MAX_BACKBUFFERS];
     // NOTE: Add all the command buffers you want here...Draw, Async etc.
@@ -779,6 +778,7 @@ typedef struct gfx_context
     // FIXME: Do we really need 2 of these draw_cmds and queue? can't we collapse and use 1?
     gfx_cmd_buf   draw_cmds[MAX_FRAMES_INFLIGHT];
     gfx_cmd_queue cmd_queue;
+    gfx_syncobj   inflight_syncobj[MAX_FRAMES_INFLIGHT];
     uint64_t      timeline_syncpoint[MAX_FRAMES_INFLIGHT];    // last timeline value signaled
 } gfx_context;
 

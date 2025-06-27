@@ -26,6 +26,7 @@ typedef enum rhi_error_codes
     FailedUnknown,
     FailedMemoryAlloc,
     FailedSwapAcquire,
+    FailedPresent,
     FailedHandleCreation,
     FailedMemoryBarrier,
 } rhi_error_codes;
