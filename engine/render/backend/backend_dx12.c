@@ -34,7 +34,7 @@
 //--------------------------------------------------------
 // TODO:
 // - [x] Use the IDXGIFactory7 to query for the best GPUa and create the IDXGIAdapter4 or use AgilitySDK with DeviceFactory
-//   - [x] Figure out how to replicate COM model in C, use lpvtable and manually release memory for ID3DXXXX/iDXGIXXXX objects
+//   - [x] Figure out how to replicate COM model in C, use lpVtbl and manually release memory for ID3DXXXX/iDXGIXXXX objects
 // - [x] Create the device
 // - [x] cache the device Features
 // - [x] Debug Layers (D3D12 + DXGI + LiveObjectTracking)
@@ -49,6 +49,7 @@
 //   - [x] Swapchain resize
 //   - [x] **SUBMIT** API
 // - [ ] Hello Triangle without VB/IB in single shader quad
+//   - [ ] Begin/End RenderpPass API (dynamic rendering VK) (setup RT/DRT etc. clear them...)
 //   - [ ] Drawing API
 //   - [ ] Shaders/Loading
 //   - [ ] Pipeline API
@@ -114,8 +115,8 @@ const rhi_jumptable dx12_jumptable = {
     dx12_resize_swapchain,
     dx12_begin_gfx_cmd_recording,
     dx12_end_gfx_cmd_recording,
-    NULL,
-    NULL,
+    dx12_begin_render_pass,
+    dx12_end_render_pass,
     NULL,
     NULL,
     NULL,
@@ -947,6 +948,80 @@ rhi_error_codes dx12_end_gfx_cmd_recording(const gfx_cmd_buf* cmd_buf)
         return FailedCommandEnd;
     }
 
+    return Success;
+}
+
+rhi_error_codes dx12_begin_render_pass(const gfx_cmd_buf* cmd_buf, gfx_render_pass render_pass, uint32_t backbuffer_index)
+{
+    UNUSED(backbuffer_index);
+    ID3D12GraphicsCommandList* cmd_list = (ID3D12GraphicsCommandList*) cmd_buf->backend;
+    if (!render_pass.is_compute_pass) {
+        D3D12_CPU_DESCRIPTOR_HANDLE rtvs[MAX_RT] = {0};
+
+        if (render_pass.is_swap_pass) render_pass.color_attachments_count = 1;
+
+        for (uint32_t i = 0; i < render_pass.color_attachments_count; ++i) {
+            gfx_attachment attachment = render_pass.color_attachments[i];
+            UNUSED(attachment);
+
+            if (render_pass.is_swap_pass) {
+                if (!render_pass.swapchain)
+                    LOG_ERROR("[Vulkan] pass is marked as swap pass but swapchain is empty");
+                swapchain_backend* sc_backend = (swapchain_backend*) render_pass.swapchain->backend;
+                UNUSED(sc_backend);
+
+                LOG_ERROR("// TODO: UNIMPLEMENTED");
+                __debugbreak();
+            } else {
+                LOG_ERROR("// TODO: use gfx_texture->backend as imageview");
+            }
+        }
+
+        ID3D12GraphicsCommandList_OMSetRenderTargets(cmd_list, render_pass.color_attachments_count, rtvs, FALSE, NULL);
+
+        for (uint32_t i = 0; i < render_pass.color_attachments_count; ++i) {
+            const gfx_attachment* attachment = &render_pass.color_attachments[i];
+            if (attachment->clear) {
+                FLOAT clear_color[4];
+                memcpy(clear_color, attachment->clear_color.raw, sizeof(float) * 4);
+                ID3D12GraphicsCommandList_ClearRenderTargetView(cmd_list, rtvs[i], clear_color, 0, NULL);
+            }
+        }
+
+        //if (render_pass.depth_attachment.texture) {
+        //    texture_backend*            tex_backend = (texture_backend*) render_pass.depth_attachment.texture->backend;
+        //    D3D12_CPU_DESCRIPTOR_HANDLE dsv         = tex_backend->dsv_handle;
+        //    if (render_pass.depth_attachment.clear) {
+        //        D3D12_CLEAR_FLAGS flags = D3D12_CLEAR_FLAG_DEPTH;
+        //        cmd_list->lpVtbl->ClearDepthStencilView(cmd_list, dsv, flags, 1.0f, 0, 0, NULL);
+        //    }
+        //    cmd_list->lpVtbl->OMSetRenderTargets(cmd_list, render_pass.color_attachments_count, rtvs, FALSE, &dsv);
+        //}
+
+        D3D12_VIEWPORT vp = {
+            .TopLeftX = 0.0f,
+            .TopLeftY = 0.0f,
+            .Width    = (FLOAT) render_pass.extents.x,
+            .Height   = (FLOAT) render_pass.extents.y,
+            .MinDepth = 0.0f,
+            .MaxDepth = 1.0f};
+        D3D12_RECT scissor = {
+            .left   = 0,
+            .top    = 0,
+            .right  = (LONG) render_pass.extents.x,
+            .bottom = (LONG) render_pass.extents.y};
+
+        ID3D12GraphicsCommandList_RSSetViewports(cmd_list, 1, &vp);
+        ID3D12GraphicsCommandList_RSSetScissorRects(cmd_list, 1, &scissor);
+    }
+
+    return Success;
+}
+
+rhi_error_codes dx12_end_render_pass(const gfx_cmd_buf* cmd_buf, gfx_render_pass render_pass)
+{
+    UNUSED(cmd_buf);
+    UNUSED(render_pass);
     return Success;
 }
 

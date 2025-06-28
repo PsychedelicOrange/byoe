@@ -56,6 +56,9 @@ rhi_error_codes dx12_resize_swapchain(gfx_context* context, uint32_t width, uint
 rhi_error_codes dx12_begin_gfx_cmd_recording(const gfx_cmd_pool* allocator, const gfx_cmd_buf* cmd_buf);
 rhi_error_codes dx12_end_gfx_cmd_recording(const gfx_cmd_buf* cmd_buf);
 
+rhi_error_codes dx12_begin_render_pass(const gfx_cmd_buf* cmd_buf, gfx_render_pass render_pass, uint32_t backbuffer_index);
+rhi_error_codes dx12_end_render_pass(const gfx_cmd_buf* cmd_buf, gfx_render_pass render_pass);
+
     // ...
 
 #endif    // _WIN32

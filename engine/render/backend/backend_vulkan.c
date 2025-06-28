@@ -2707,54 +2707,54 @@ rhi_error_codes vulkan_end_gfx_cmd_recording(const gfx_cmd_buf* cmd_buf)
 
 rhi_error_codes vulkan_begin_render_pass(const gfx_cmd_buf* cmd_buf, gfx_render_pass render_pass, uint32_t backbuffer_index)
 {
-    if (render_pass.is_compute_pass) return Success;
+    if (!render_pass.is_compute_pass) {
+        VkRenderingAttachmentInfo color_attachments[MAX_RT] = {0};
 
-    VkRenderingAttachmentInfo color_attachments[MAX_RT] = {0};
+        if (render_pass.is_swap_pass) render_pass.color_attachments_count = 1;
 
-    if (render_pass.is_swap_pass) render_pass.color_attachments_count = 1;
+        for (uint32_t i = 0; i < render_pass.color_attachments_count; i++) {
+            gfx_attachment            col_attach  = render_pass.color_attachments[i];
+            VkRenderingAttachmentInfo attach_info = {
+                .sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+                .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+            memcpy(attach_info.clearValue.color.float32, col_attach.clear_color.raw, sizeof(vec4s));
+            if (col_attach.clear) {
+                attach_info.loadOp  = VK_ATTACHMENT_LOAD_OP_CLEAR;
+                attach_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+            } else {
+                attach_info.loadOp  = VK_ATTACHMENT_LOAD_OP_LOAD;
+                attach_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+            }
+            if (render_pass.is_swap_pass) {
+                if (!render_pass.swapchain)
+                    LOG_ERROR("[Vulkan] pass is marked as swap pass but swapchain is empty");
+                attach_info.imageView = ((swapchain_backend*) (render_pass.swapchain->backend))->backbuffer_views[backbuffer_index];
+            } else {
+                LOG_ERROR("// TODO: use gfx_texture->backend as imageview");
+            }
 
-    for (uint32_t i = 0; i < render_pass.color_attachments_count; i++) {
-        gfx_attachment            col_attach  = render_pass.color_attachments[i];
-        VkRenderingAttachmentInfo attach_info = {
-            .sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-            .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
-        memcpy(attach_info.clearValue.color.float32, col_attach.clear_color.raw, sizeof(vec4s));
-        if (col_attach.clear) {
-            attach_info.loadOp  = VK_ATTACHMENT_LOAD_OP_CLEAR;
-            attach_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        } else {
-            attach_info.loadOp  = VK_ATTACHMENT_LOAD_OP_LOAD;
-            attach_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+            color_attachments[i] = attach_info;
         }
+
+        VkRenderingInfo info = {
+            .sType      = VK_STRUCTURE_TYPE_RENDERING_INFO,
+            .pNext      = NULL,
+            .layerCount = 1,
+            .renderArea = {
+                .offset = {0, 0},
+                .extent = {(uint32_t) render_pass.extents.x, (uint32_t) render_pass.extents.y}},
+            .colorAttachmentCount = render_pass.color_attachments_count,
+            .pColorAttachments    = color_attachments,
+            // TODO: Depth Attachments
+        };
+
         if (render_pass.is_swap_pass) {
-            if (!render_pass.swapchain)
-                LOG_ERROR("[Vulkan] pass is marked as swap pass but swapchain is empty");
-            attach_info.imageView = ((swapchain_backend*) (render_pass.swapchain->backend))->backbuffer_views[backbuffer_index];
-        } else {
-            LOG_ERROR("// TODO: use gfx_texture->backend as imageview");
+            info.colorAttachmentCount = 1;
+            info.pColorAttachments    = color_attachments;
         }
 
-        color_attachments[i] = attach_info;
+        vulkan_internal_cmd_begin_rendering(*(VkCommandBuffer*) cmd_buf->backend, &info);
     }
-
-    VkRenderingInfo info = {
-        .sType      = VK_STRUCTURE_TYPE_RENDERING_INFO,
-        .pNext      = NULL,
-        .layerCount = 1,
-        .renderArea = {
-            .offset = {0, 0},
-            .extent = {(uint32_t) render_pass.extents.x, (uint32_t) render_pass.extents.y}},
-        .colorAttachmentCount = render_pass.color_attachments_count,
-        .pColorAttachments    = color_attachments,
-        // TODO: Depth Attachments
-    };
-
-    if (render_pass.is_swap_pass) {
-        info.colorAttachmentCount = 1;
-        info.pColorAttachments    = color_attachments;
-    }
-
-    vulkan_internal_cmd_begin_rendering(*(VkCommandBuffer*) cmd_buf->backend, &info);
 
     return Success;
 }
