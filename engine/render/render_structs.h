@@ -746,7 +746,7 @@ typedef struct gfx_scissor
 //-----------------------------------
 // High-level structs
 //-----------------------------------
-
+// TODO: get rid of this! or make it vulkan internal
 typedef struct gfx_submit_syncobj
 {
     const gfx_syncobj* wait_synobjs;
@@ -754,12 +754,13 @@ typedef struct gfx_submit_syncobj
     uint32_t           wait_syncobjs_count;
     uint32_t           signal_syncobjs_count;
     // CPU sync primitive to wait on: Fence or Timeline Semaphore
-    gfx_syncobj*    inflight_syncobj;
+    gfx_syncobj* inflight_syncobj;
+    // this is tracked per-in flight frame sync point to wait on CPU
     gfx_sync_point* inflight_syncpoint;
     // Global timeline sync point that will be signaled when the submit operation is completed
-    // Workloads can wait on this or intermediate points,
-    // this is sued to increment Values to signal queue submits
-    // this is tracked per-in flight frame, gfx_context owns This
+    // Workloads can wait on these intermediate points,
+    // This is used to increment Values to signal queue submits
+    // gfx_context owns This
     gfx_sync_point* global_syncpoint;
 } gfx_submit_syncobj;
 

@@ -11,6 +11,7 @@
 // clang-format off
 #ifdef _WIN32 // careful of the order
     #include <windows.h>
+#define COBJMACROS // C Object Macros for DX12
 #ifdef _DEBUG
 #include <dxgidebug.h>
 #endif
@@ -83,9 +84,6 @@ const rhi_jumptable dx12_jumptable = {
                 abort();                                                                                                     \
             }                                                                                                                \
         } while (0)
-
-    #define IID_PPV_ARGS_C(iid, ppType) \
-        (const IID*) (iid), (void**) (ppType)
 
     #define MAX_DX_SWAPCHAIN_BUFFERS 3
 
@@ -172,7 +170,7 @@ static IDXGIAdapter4* dx12_internal_select_best_adapter(IDXGIFactory7* factory, 
         // We use that to inspect the adapter and decide if it's suitable.
         IDXGIAdapter1* adapter1 = NULL;
 
-        HRESULT hr = factory->lpVtbl->EnumAdapters1(factory, i, &adapter1);
+        HRESULT hr = IDXGIFactory7_EnumAdapters1(factory, i, &adapter1);
         if (hr == DXGI_ERROR_NOT_FOUND)
             break;
         if (FAILED(hr))
@@ -180,26 +178,26 @@ static IDXGIAdapter4* dx12_internal_select_best_adapter(IDXGIFactory7* factory, 
 
         // Query for IDXGIAdapter4 to get DXGI_ADAPTER_DESC3
         IDXGIAdapter4* adapter4 = NULL;
-        hr                      = adapter1->lpVtbl->QueryInterface(adapter1, IID_PPV_ARGS_C(&IID_IDXGIAdapter4, &adapter4));
+        hr                      = IDXGIAdapter1_QueryInterface(adapter1, &IID_IDXGIAdapter4, &adapter4);
         if (FAILED(hr)) {
             LOG_ERROR("[DX12] Failed to query IDXGIAdapter4 from IDXGIAdapter1 (HRESULT = 0x%08X)", (unsigned int) hr);
-            adapter1->lpVtbl->Release(adapter1);
+            IDXGIAdapter1_Release(adapter1);
             continue;    // Adapter doesn't support DXGI 1.4+
         }
-        adapter1->lpVtbl->Release(adapter1);    // Done with IDXGIAdapter1
+        IDXGIAdapter1_Release(adapter1);    // Done with IDXGIAdapter1
 
         // Get the adapter description
         DXGI_ADAPTER_DESC3 desc = {0};
-        hr                      = adapter4->lpVtbl->GetDesc3(adapter4, &desc);
+        hr                      = IDXGIAdapter4_GetDesc3(adapter4, &desc);
         if (FAILED(hr)) {
             LOG_ERROR("[DX12] Failed to get DXGI_ADAPTER_DESC3 from IDXGIAdapter4 (HRESULT = 0x%08X)", (unsigned int) hr);
-            adapter4->lpVtbl->Release(adapter4);
+            IDXGIAdapter4_Release(adapter4);
             continue;    // Failed to get description
         }
 
         // Skip software adapters (like WARP)
         if (desc.Flags & DXGI_ADAPTER_FLAG3_SOFTWARE) {
-            adapter4->lpVtbl->Release(adapter4);
+            IDXGIAdapter4_Release(adapter4);
             continue;
         }
 
@@ -207,11 +205,11 @@ static IDXGIAdapter4* dx12_internal_select_best_adapter(IDXGIFactory7* factory, 
 
         if (desc.DedicatedVideoMemory > maxDedicatedVRAM) {
             if (best_adapter)
-                best_adapter->lpVtbl->Release(best_adapter);
+                IDXGIAdapter4_Release(best_adapter);
 
             maxDedicatedVRAM = desc.DedicatedVideoMemory;
             // ++ Also check if the adapter supports min feature level
-            HR_CHECK(D3D12CreateDevice((IUnknown*) adapter4, min_feat_level, IID_PPV_ARGS_C(&IID_ID3D12Device, NULL)));
+            HR_CHECK(D3D12CreateDevice((IUnknown*) adapter4, min_feat_level, &IID_ID3D12Device, NULL));
             best_adapter = adapter4;
             break;
         }
@@ -220,7 +218,7 @@ static IDXGIAdapter4* dx12_internal_select_best_adapter(IDXGIFactory7* factory, 
         if (!best_adapter) {
             best_adapter = adapter4;
         } else {
-            adapter4->lpVtbl->Release(adapter4);
+            IDXGIAdapter4_Release(adapter4);
         }
     }
 
@@ -230,7 +228,7 @@ static IDXGIAdapter4* dx12_internal_select_best_adapter(IDXGIFactory7* factory, 
     } else {
         LOG_INFO("Selected Adapter Info: ");
         DXGI_ADAPTER_DESC3 adapterDesc = {0};
-        best_adapter->lpVtbl->GetDesc3(best_adapter, &adapterDesc);
+        IDXGIAdapter4_GetDesc3(best_adapter, &adapterDesc);
         LOG_INFO("\t -> Name                    : %ls", adapterDesc.Description);
         LOG_INFO("\t -> VendorID                : %u", adapterDesc.VendorId);
         LOG_INFO("\t -> DeviceId                : %u", adapterDesc.DeviceId);
@@ -248,30 +246,30 @@ static void dx12_internal_cache_features(context_backend* backend)
     ID3D12Device10*    device = backend->device;
     D3D12FeatureCache* f      = &backend->features;
 
-    device->lpVtbl->CheckFeatureSupport(device, D3D12_FEATURE_D3D12_OPTIONS, &f->options, sizeof(f->options));
-    device->lpVtbl->CheckFeatureSupport(device, D3D12_FEATURE_D3D12_OPTIONS1, &f->options1, sizeof(f->options1));
-    device->lpVtbl->CheckFeatureSupport(device, D3D12_FEATURE_D3D12_OPTIONS5, &f->options5, sizeof(f->options5));
-    device->lpVtbl->CheckFeatureSupport(device, D3D12_FEATURE_D3D12_OPTIONS10, &f->options10, sizeof(f->options10));
-    device->lpVtbl->CheckFeatureSupport(device, D3D12_FEATURE_D3D12_OPTIONS12, &f->options12, sizeof(f->options12));
+    ID3D12Device10_CheckFeatureSupport(device, D3D12_FEATURE_D3D12_OPTIONS, &f->options, sizeof(f->options));
+    ID3D12Device10_CheckFeatureSupport(device, D3D12_FEATURE_D3D12_OPTIONS1, &f->options1, sizeof(f->options1));
+    ID3D12Device10_CheckFeatureSupport(device, D3D12_FEATURE_D3D12_OPTIONS5, &f->options5, sizeof(f->options5));
+    ID3D12Device10_CheckFeatureSupport(device, D3D12_FEATURE_D3D12_OPTIONS10, &f->options10, sizeof(f->options10));
+    ID3D12Device10_CheckFeatureSupport(device, D3D12_FEATURE_D3D12_OPTIONS12, &f->options12, sizeof(f->options12));
 
     f->architecture.NodeIndex = 0;
-    device->lpVtbl->CheckFeatureSupport(device, D3D12_FEATURE_ARCHITECTURE1, &f->architecture, sizeof(f->architecture));
+    ID3D12Device10_CheckFeatureSupport(device, D3D12_FEATURE_ARCHITECTURE1, &f->architecture, sizeof(f->architecture));
     f->isUMA              = f->architecture.UMA;
     f->isCacheCoherentUMA = f->architecture.CacheCoherentUMA;
 
     f->shaderModel.HighestShaderModel = D3D_SHADER_MODEL_6_7;
-    if (FAILED(device->lpVtbl->CheckFeatureSupport(device, D3D12_FEATURE_SHADER_MODEL, &f->shaderModel, sizeof(f->shaderModel)))) {
+    if (FAILED(ID3D12Device10_CheckFeatureSupport(device, D3D12_FEATURE_SHADER_MODEL, &f->shaderModel, sizeof(f->shaderModel)))) {
         f->shaderModel.HighestShaderModel = D3D_SHADER_MODEL_6_0;
     }
 
     f->rootSig.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_1;
-    if (FAILED(device->lpVtbl->CheckFeatureSupport(device, D3D12_FEATURE_ROOT_SIGNATURE, &f->rootSig, sizeof(f->rootSig)))) {
+    if (FAILED(ID3D12Device10_CheckFeatureSupport(device, D3D12_FEATURE_ROOT_SIGNATURE, &f->rootSig, sizeof(f->rootSig)))) {
         f->rootSig.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
     }
 
-    device->lpVtbl->CheckFeatureSupport(device, D3D12_FEATURE_GPU_VIRTUAL_ADDRESS_SUPPORT, &f->vaSupport, sizeof(f->vaSupport));
+    ID3D12Device10_CheckFeatureSupport(device, D3D12_FEATURE_GPU_VIRTUAL_ADDRESS_SUPPORT, &f->vaSupport, sizeof(f->vaSupport));
 
-    f->nodeCount = device->lpVtbl->GetNodeCount(device);
+    f->nodeCount = ID3D12Device10_GetNodeCount(device);
 }
 
 static void dx12_internal_print_features(const D3D12FeatureCache* f)
@@ -315,8 +313,8 @@ static void dx12_internal_print_features(const D3D12FeatureCache* f)
 static void dx12_internal_register_debug_interface(context_backend* backend)
 {
     if (SUCCEEDED(D3D12GetDebugInterface(&IID_ID3D12Debug3, (void**) &backend->d3d12_debug))) {
-        backend->d3d12_debug->lpVtbl->EnableDebugLayer(backend->d3d12_debug);
-        backend->d3d12_debug->lpVtbl->SetEnableGPUBasedValidation(backend->d3d12_debug, TRUE);
+        ID3D12Debug3_EnableDebugLayer(backend->d3d12_debug);
+        ID3D12Debug3_SetEnableGPUBasedValidation(backend->d3d12_debug, TRUE);
         LOG_INFO("D3D12 debug layer and GPU-based validation enabled");
     } else {
         LOG_WARN("D3D12 debug interface not available. Debug layer not enabled.");
@@ -331,11 +329,11 @@ static void dx12_internal_d3d12_register_info_queue(context_backend* backend)
     }
 
     // This increases the device refcount.
-    if (SUCCEEDED(backend->device->lpVtbl->QueryInterface(backend->device, &IID_ID3D12InfoQueue, (void**) &backend->d3d12_info_queue))) {
+    if (SUCCEEDED(ID3D12InfoQueue_QueryInterface(backend->device, &IID_ID3D12InfoQueue, (void**) &backend->d3d12_info_queue))) {
         ID3D12InfoQueue* q = backend->d3d12_info_queue;
 
-        q->lpVtbl->SetBreakOnSeverity(q, D3D12_MESSAGE_SEVERITY_ERROR, TRUE);
-        q->lpVtbl->SetBreakOnSeverity(q, D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE);
+        ID3D12InfoQueue_SetBreakOnSeverity(q, D3D12_MESSAGE_SEVERITY_ERROR, TRUE);
+        ID3D12InfoQueue_SetBreakOnSeverity(q, D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE);
 
         LOG_INFO("D3D12 info queue registered and debug message filters installed");
     } else {
@@ -348,8 +346,8 @@ static void dx12_internal_dxgi_register_info_queue(context_backend* backend)
     if (SUCCEEDED(DXGIGetDebugInterface1(0, &IID_IDXGIInfoQueue, (void**) &backend->dxgi_info_queue))) {
         IDXGIInfoQueue* q = backend->dxgi_info_queue;
 
-        q->lpVtbl->SetBreakOnSeverity(q, DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_ERROR, TRUE);
-        q->lpVtbl->SetBreakOnSeverity(q, DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_CORRUPTION, TRUE);
+        IDXGIInfoQueue_SetBreakOnSeverity(q, DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_ERROR, TRUE);
+        IDXGIInfoQueue_SetBreakOnSeverity(q, DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_CORRUPTION, TRUE);
 
         LOG_INFO("DXGI debug info queue registered");
     } else {
@@ -361,25 +359,25 @@ static void dx12_internal_track_dxgi_liveobjects(context_backend* backend)
 {
     LOG_WARN("Tracking live DXGI objects. This will report all live objects at the end of the program.");
     if (SUCCEEDED(DXGIGetDebugInterface1(0, &IID_IDXGIDebug, (void**) &backend->dxgi_debug))) {
-        backend->dxgi_debug->lpVtbl->ReportLiveObjects(
+        IDXGIDebug_ReportLiveObjects(
             backend->dxgi_debug,
             DXGI_DEBUG_ALL,
             (DXGI_DEBUG_RLO_FLAGS) (DXGI_DEBUG_RLO_DETAIL | DXGI_DEBUG_RLO_SUMMARY | DXGI_DEBUG_RLO_IGNORE_INTERNAL));
         LOG_INFO("DXGI live object report completed");
-        backend->dxgi_debug->lpVtbl->Release(backend->dxgi_debug);
+        IDXGIDebug_Release(backend->dxgi_debug);
     }
 }
 
 static void dx12_internal_destroy_debug_handles(context_backend* backend)
 {
     if (backend->d3d12_debug)
-        backend->d3d12_debug->lpVtbl->Release(backend->d3d12_debug);
+        ID3D12Debug3_Release(backend->d3d12_debug);
 
     if (backend->d3d12_info_queue)
-        backend->d3d12_info_queue->lpVtbl->Release(backend->d3d12_info_queue);
+        ID3D12InfoQueue_Release(backend->d3d12_info_queue);
 
     if (backend->dxgi_info_queue)
-        backend->dxgi_info_queue->lpVtbl->Release(backend->dxgi_info_queue);
+        IDXGIInfoQueue_Release(backend->dxgi_info_queue);
 }
     #endif
 
@@ -402,7 +400,7 @@ gfx_context dx12_ctx_init(GLFWwindow* window)
     #if defined(_DEBUG)
     createFactoryFlags = DXGI_CREATE_FACTORY_DEBUG;
     #endif
-    HRESULT hr = CreateDXGIFactory2(createFactoryFlags, IID_PPV_ARGS_C(&IID_IDXGIFactory7, &backend->factory));
+    HRESULT hr = CreateDXGIFactory2(createFactoryFlags, &IID_IDXGIFactory7, &backend->factory);
     if (FAILED(hr)) {
         LOG_ERROR("Failed to create DXGI Factory7 (HRESULT = 0x%08X)", (unsigned int) hr);
         uuid_destroy(&ctx.uuid);
@@ -428,10 +426,10 @@ gfx_context dx12_ctx_init(GLFWwindow* window)
     #endif
 
     LOG_INFO("Creating D3D12 Device...");
-    hr = D3D12CreateDevice((IUnknown*) backend->gpu, backend->feat_level, IID_PPV_ARGS_C(&IID_ID3D12Device10, &backend->device));
+    hr = D3D12CreateDevice((IUnknown*) backend->gpu, backend->feat_level, &IID_ID3D12Device10, &backend->device);
     if (FAILED(hr)) {
         LOG_ERROR("Failed to create D3D12 Device (HRESULT = 0x%08X)", (unsigned int) hr);
-        backend->gpu->lpVtbl->Release(backend->gpu);
+        IDXGIAdapter4_Release(backend->gpu);
         uuid_destroy(&ctx.uuid);
         free(backend);
         return ctx;
@@ -452,7 +450,7 @@ gfx_context dx12_ctx_init(GLFWwindow* window)
     desc.Priority                 = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
     desc.Flags                    = D3D12_COMMAND_QUEUE_FLAG_NONE;
     desc.NodeMask                 = 0;
-    DXDevice->lpVtbl->CreateCommandQueue(DXDevice, &desc, IID_PPV_ARGS_C(&IID_ID3D12CommandQueue, &backend->direct_queue));
+    ID3D12Device10_CreateCommandQueue(DXDevice, &desc, &IID_ID3D12CommandQueue, &backend->direct_queue);
     if (!backend->direct_queue) {
         LOG_ERROR("Failed to create D3D12 Direct Command Queue");
         dx12_ctx_destroy(&ctx);
@@ -473,22 +471,22 @@ void dx12_ctx_destroy(gfx_context* ctx)
     context_backend* backend = (context_backend*) ctx->backend;
 
     if (backend->direct_queue) {
-        backend->direct_queue->lpVtbl->Release(backend->direct_queue);
+        ID3D12CommandQueue_Release(backend->direct_queue);
         backend->direct_queue = NULL;
     }
 
     if (backend->device) {
-        backend->device->lpVtbl->Release(backend->device);
+        ID3D12Device10_Release(backend->device);
         backend->device = NULL;
     }
 
     if (backend->gpu) {
-        backend->gpu->lpVtbl->Release(backend->gpu);
+        IDXGIAdapter4_Release(backend->gpu);
         backend->gpu = NULL;
     }
 
     if (backend->factory) {
-        backend->factory->lpVtbl->Release(backend->factory);
+        IDXGIFactory7_Release(backend->factory);
         backend->factory = NULL;
     }
 
@@ -515,29 +513,29 @@ static void dx12_internal_create_backbuffers(gfx_swapchain* sc)
     rtvHeapDesc.NumDescriptors             = MAX_DX_SWAPCHAIN_BUFFERS;
     rtvHeapDesc.Flags                      = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
     rtvHeapDesc.NodeMask                   = 0;
-    HRESULT hr                             = DXDevice->lpVtbl->CreateDescriptorHeap(DXDevice, &rtvHeapDesc, IID_PPV_ARGS_C(&IID_ID3D12DescriptorHeap, &backend->rtv_heap));
+    HRESULT hr                             = ID3D12Device10_CreateDescriptorHeap(DXDevice, &rtvHeapDesc, &IID_ID3D12DescriptorHeap, &backend->rtv_heap);
     if (FAILED(hr)) {
         LOG_ERROR("Failed to create RTV Descriptor Heap (HRESULT = 0x%08X)", (unsigned int) hr);
-        backend->swapchain->lpVtbl->Release(backend->swapchain);
+        IDXGISwapChain4_Release(backend->swapchain);
         uuid_destroy(&sc->uuid);
         free(backend);
         return;
     }
 
     backend->image_count = MAX_DX_SWAPCHAIN_BUFFERS;
-    backend->rtv_heap->lpVtbl->GetCPUDescriptorHandleForHeapStart(backend->rtv_heap, &backend->rtv_handle_start);
+    ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(backend->rtv_heap, &backend->rtv_handle_start);
 
     for (uint32_t i = 0; i < MAX_DX_SWAPCHAIN_BUFFERS; i++) {
-        hr = backend->swapchain->lpVtbl->GetBuffer(backend->swapchain, i, IID_PPV_ARGS_C(&IID_ID3D12Resource, &backend->backbuffers[i]));
+        hr = IDXGISwapChain4_GetBuffer(backend->swapchain, i, &IID_ID3D12Resource, &backend->backbuffers[i]);
         if (FAILED(hr)) {
             LOG_ERROR("Failed to get backbuffer %u from swapchain (HRESULT = 0x%08X)", i, (unsigned int) hr);
             for (uint32_t j = 0; j < i; j++) {
                 if (backend->backbuffers[j]) {
-                    backend->backbuffers[j]->lpVtbl->Release(backend->backbuffers[j]);
+                    ID3D12Resource_Release(backend->backbuffers[j]);
                 }
             }
-            backend->rtv_heap->lpVtbl->Release(backend->rtv_heap);
-            backend->swapchain->lpVtbl->Release(backend->swapchain);
+            ID3D12DescriptorHeap_Release(backend->rtv_heap);
+            IDXGISwapChain4_Release(backend->swapchain);
             uuid_destroy(&sc->uuid);
             free(backend);
             return;
@@ -545,8 +543,8 @@ static void dx12_internal_create_backbuffers(gfx_swapchain* sc)
 
         // Create RTV for the back buffer
         D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = backend->rtv_handle_start;
-        rtvHandle.ptr += i * DXDevice->lpVtbl->GetDescriptorHandleIncrementSize(DXDevice, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-        DXDevice->lpVtbl->CreateRenderTargetView(DXDevice, backend->backbuffers[i], NULL, rtvHandle);
+        rtvHandle.ptr += i * ID3D12Device10_GetDescriptorHandleIncrementSize(DXDevice, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+        ID3D12Device10_CreateRenderTargetView(DXDevice, backend->backbuffers[i], NULL, rtvHandle);
     }
 }
 
@@ -555,13 +553,13 @@ static void dx12_internal_destroy_backbuffers(gfx_swapchain* sc)
     swapchain_backend* backend = (swapchain_backend*) sc->backend;
 
     if (backend->rtv_heap) {
-        backend->rtv_heap->lpVtbl->Release(backend->rtv_heap);
+        ID3D12DescriptorHeap_Release(backend->rtv_heap);
         backend->rtv_heap = NULL;
     }
 
     for (uint32_t i = 0; i < backend->image_count; i++) {
         if (backend->backbuffers[i]) {
-            backend->backbuffers[i]->lpVtbl->Release(backend->backbuffers[i]);
+            ID3D12Resource_Release(backend->backbuffers[i]);
             backend->backbuffers[i] = NULL;
         }
     }
@@ -601,22 +599,22 @@ gfx_swapchain dx12_create_swapchain(uint32_t width, uint32_t height)
     swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
 
     IDXGISwapChain1* swapchain1 = NULL;
-    HRESULT          hr         = s_DXCtx.factory->lpVtbl->CreateSwapChainForHwnd(s_DXCtx.factory, (IUnknown*) s_DXCtx.direct_queue, s_DXCtx.hwnd, &swapChainDesc, NULL, NULL, &swapchain1);
+    HRESULT          hr         = IDXGIFactory7_CreateSwapChainForHwnd(s_DXCtx.factory, (IUnknown*) s_DXCtx.direct_queue, s_DXCtx.hwnd, &swapChainDesc, NULL, NULL, &swapchain1);
     if (FAILED(hr)) {
         LOG_ERROR("Failed to create DXGI Swapchain (HRESULT = 0x%08X)", (unsigned int) hr);
         uuid_destroy(&swapchain.uuid);
         free(backend);
         return swapchain;
     }
-    swapchain1->lpVtbl->QueryInterface(swapchain1, IID_PPV_ARGS_C(&IID_IDXGISwapChain4, &backend->swapchain));
+    IDXGISwapChain1_QueryInterface(swapchain1, &IID_IDXGISwapChain4, &backend->swapchain);
     if (!backend->swapchain) {
         LOG_ERROR("Failed to query IDXGISwapChain4 from IDXGISwapChain1");
-        swapchain1->lpVtbl->Release(swapchain1);
+        IDXGISwapChain1_Release(swapchain1);
         uuid_destroy(&swapchain.uuid);
         free(backend);
         return swapchain;
     }
-    swapchain1->lpVtbl->Release(swapchain1);    // Release IDXGISwapChain1, we only need IDXGISwapChain4 now
+    IDXGISwapChain1_Release(swapchain1);    // Release IDXGISwapChain1, we only need IDXGISwapChain4 now
 
     dx12_internal_create_backbuffers(&swapchain);
 
@@ -632,7 +630,7 @@ void dx12_destroy_swapchain(gfx_swapchain* sc)
         dx12_internal_destroy_backbuffers(sc);
 
         if (backend->swapchain) {
-            backend->swapchain->lpVtbl->Release(backend->swapchain);
+            IDXGISwapChain4_Release(backend->swapchain);
             backend->swapchain = NULL;
             free(backend);
             sc->backend = NULL;
@@ -649,7 +647,7 @@ gfx_syncobj dx12_create_syncobj(gfx_syncobj_type type)
     syncobj.type             = type;
     syncobj.backend          = backend;
 
-    HRESULT hr = DXDevice->lpVtbl->CreateFence(DXDevice, 0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS_C(&IID_ID3D12Fence, &backend->fence));
+    HRESULT hr = ID3D12Device10_CreateFence(DXDevice, 0, D3D12_FENCE_FLAG_NONE, &IID_ID3D12Fence, &backend->fence);
     if (FAILED(hr)) {
         LOG_ERROR("Failed to create ID3D12Fence (HRESULT = 0x%08X)", (unsigned int) hr);
         uuid_destroy(&syncobj.uuid);
@@ -672,7 +670,7 @@ void dx12_destroy_syncobj(gfx_syncobj* syncobj)
         syncobj_backend* backend = syncobj->backend;
 
         if (backend->fence) {
-            backend->fence->lpVtbl->Release(backend->fence);
+            ID3D12Fence_Release(backend->fence);
             backend->fence = NULL;
 
             if (syncobj->type == GFX_SYNCOBJ_TYPE_CPU)
@@ -691,7 +689,7 @@ gfx_cmd_pool dx12_create_gfx_cmd_allocator(void)
 
     pool.backend = malloc(sizeof(ID3D12CommandAllocator));
 
-    HRESULT hr = DXDevice->lpVtbl->CreateCommandAllocator(DXDevice, D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS_C(&IID_ID3D12CommandAllocator, &pool.backend));
+    HRESULT hr = ID3D12Device10_CreateCommandAllocator(DXDevice, D3D12_COMMAND_LIST_TYPE_DIRECT, &IID_ID3D12CommandAllocator, &pool.backend);
     if (FAILED(hr)) {
         LOG_ERROR("Failed to allocate command allocator (HRESULT = 0x%08X)", (unsigned int) hr);
         uuid_destroy(&pool.uuid);
@@ -707,7 +705,7 @@ void dx12_destroy_gfx_cmd_allocator(gfx_cmd_pool* pool)
     if (!uuid_is_null(&pool->uuid)) {
         uuid_destroy(&pool->uuid);
         if (pool->backend) {
-            ((ID3D12CommandAllocator*) (pool->backend))->lpVtbl->Release(pool->backend);
+            ID3D12CommandAllocator_Release((ID3D12CommandAllocator*) pool->backend);
             free(pool->backend);
             pool->backend = NULL;
         }
@@ -720,7 +718,7 @@ gfx_cmd_buf dx12_create_gfx_cmd_buf(gfx_cmd_pool* pool)
     uuid_generate(&cmd_buf.uuid);
     cmd_buf.backend = malloc(sizeof(ID3D12GraphicsCommandList));
 
-    HRESULT hr = DXDevice->lpVtbl->CreateCommandList(DXDevice, 0, D3D12_COMMAND_LIST_TYPE_DIRECT, ((ID3D12CommandAllocator*) (pool->backend)), NULL, IID_PPV_ARGS_C(&IID_ID3D12GraphicsCommandList, &cmd_buf.backend));
+    HRESULT hr = ID3D12Device10_CreateCommandList(DXDevice, 0, D3D12_COMMAND_LIST_TYPE_DIRECT, ((ID3D12CommandAllocator*) (pool->backend)), NULL, &IID_ID3D12GraphicsCommandList, &cmd_buf.backend);
     hr         = ((ID3D12GraphicsCommandList*) (cmd_buf.backend))->lpVtbl->Close((ID3D12GraphicsCommandList*) (cmd_buf.backend));
     if (FAILED(hr)) {
         LOG_ERROR("Failed to allocate command lists (HRESULT = 0x%08X)", (unsigned int) hr);
@@ -736,13 +734,13 @@ gfx_cmd_buf dx12_create_gfx_cmd_buf(gfx_cmd_pool* pool)
 
 static void dx12_internal_signal_fence(ID3D12CommandQueue* cmd_queue, ID3D12Fence* fence, uint64_t wait_value)
 {
-    cmd_queue->lpVtbl->Signal(cmd_queue, fence, wait_value);
+    ID3D12CommandQueue_Signal(cmd_queue, fence, wait_value);
 }
 
-    //--------------------------------------------------------
-    #if 0
+//--------------------------------------------------------
 
-rhi_error_codes dx12_frame_begin(gfx_context* context, gfx_sync_point sync_point)
+    #if 0
+rhi_error_codes dx12_frame_begin(gfx_context* context)
 {
     dx12_acquire_image(context);
     gfx_syncobj rendering_done = context->rendering_done[context->swapchain.current_backbuffer_idx];
@@ -772,7 +770,7 @@ rhi_error_codes dx12_frame_end(gfx_context* context)
 
 //--------------------------------------------------------
 
-rhi_error_codes dx12_wait_on_previous_cmds(const gfx_syncobj* in_flight_sync)
+rhi_error_codes dx12_wait_on_previous_cmds(const gfx_syncobj* in_flight_sync, gfx_sync_point sync_point)
 {
     syncobj_backend* backend = (syncobj_backend*) (in_flight_sync->backend);
     if (backend->fence->lpVtbl->GetCompletedValue(backend->fence) < in_flight_sync->wait_value) {
@@ -803,5 +801,4 @@ rhi_error_codes dx12_present(const gfx_context* context)
     return Success;
 }
     #endif
-
 #endif    // _WIN32
