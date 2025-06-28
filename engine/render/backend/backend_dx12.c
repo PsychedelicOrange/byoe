@@ -647,7 +647,6 @@ gfx_syncobj dx12_create_syncobj(gfx_syncobj_type type)
 
     syncobj_backend* backend = malloc(sizeof(syncobj_backend));
     syncobj.type             = type;
-    syncobj.wait_value       = 0;
     syncobj.backend          = backend;
 
     HRESULT hr = DXDevice->lpVtbl->CreateFence(DXDevice, 0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS_C(&IID_ID3D12Fence, &backend->fence));
@@ -740,9 +739,10 @@ static void dx12_internal_signal_fence(ID3D12CommandQueue* cmd_queue, ID3D12Fenc
     cmd_queue->lpVtbl->Signal(cmd_queue, fence, wait_value);
 }
 
-//--------------------------------------------------------
+    //--------------------------------------------------------
+    #if 0
 
-rhi_error_codes dx12_frame_begin(gfx_context* context)
+rhi_error_codes dx12_frame_begin(gfx_context* context, gfx_sync_point sync_point)
 {
     dx12_acquire_image(context);
     gfx_syncobj rendering_done = context->rendering_done[context->swapchain.current_backbuffer_idx];
@@ -802,5 +802,6 @@ rhi_error_codes dx12_present(const gfx_context* context)
 
     return Success;
 }
+    #endif
 
 #endif    // _WIN32

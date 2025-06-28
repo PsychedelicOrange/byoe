@@ -84,7 +84,7 @@ gfx_texture_readback vulkan_device_readback_swapchain(const gfx_swapchain* swapc
 rhi_error_codes vulkan_frame_begin(gfx_context* context);
 rhi_error_codes vulkan_frame_end(gfx_context* context);
 
-rhi_error_codes vulkan_wait_on_previous_cmds(const gfx_syncobj* in_flight_sync);
+rhi_error_codes vulkan_wait_on_previous_cmds(const gfx_syncobj* in_flight_sync, gfx_sync_point sync_point);
 rhi_error_codes vulkan_acquire_image(gfx_context* context);
 rhi_error_codes vulkan_gfx_cmd_enque_submit(gfx_cmd_queue* cmd_queue, gfx_cmd_buf* cmd_buff);
 rhi_error_codes vulkan_gfx_cmd_submit_queue(const gfx_cmd_queue* cmd_queue, gfx_submit_syncobj submit_sync);

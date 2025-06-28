@@ -1147,23 +1147,23 @@ gfx_context vulkan_ctx_init(GLFWwindow* window)
     s_VkCtx.queues = vulkan_internal_create_queues(s_VkCtx.queue_idxs);
 
     // Create in-flight sync primitives (Fence or TimelimeSemaphores per in-flight frame)
-    for (int i = 0; i < MAX_FRAMES_INFLIGHT; i++) {
-        if (!g_gfxConfig.use_timeline_semaphores) {
-            ctx.inflight_syncobj[i] = vulkan_device_create_syncobj(GFX_SYNCOBJ_TYPE_CPU);
-            VK_TAG_OBJECT("INFLIGHT_FENCE", VK_OBJECT_TYPE_FENCE, *((VkFence*) (ctx.inflight_syncobj[i].backend)));
-        } else {
-            ctx.inflight_syncobj[i] = vulkan_device_create_syncobj(GFX_SYNCOBJ_TYPE_TIMELINE);
-            VK_TAG_OBJECT("INFLIGHT_SEMA", VK_OBJECT_TYPE_SEMAPHORE, *((VkFence*) (ctx.inflight_syncobj[i].backend)));
+    if (!g_gfxConfig.use_timeline_semaphores) {
+        for (int i = 0; i < MAX_FRAMES_INFLIGHT; i++) {
+            ctx.frame_sync.inflight_syncobj[i] = vulkan_device_create_syncobj(GFX_SYNCOBJ_TYPE_CPU);
+            VK_TAG_OBJECT("INFLIGHT_FENCE", VK_OBJECT_TYPE_FENCE, *((VkFence*) (ctx.frame_sync.inflight_syncobj[i].backend)));
         }
+    } else {
+        ctx.frame_sync.timeline_syncobj = vulkan_device_create_syncobj(GFX_SYNCOBJ_TYPE_TIMELINE);
+        VK_TAG_OBJECT("INFLIGHT_TIMELINE_SEMA", VK_OBJECT_TYPE_SEMAPHORE, *((VkFence*) (ctx.frame_sync.timeline_syncobj.backend)));
     }
 
     // Create frame sync primitives per swapchain image
     for (int i = 0; i < MAX_BACKBUFFERS; i++) {
-        ctx.rendering_done[i] = vulkan_device_create_syncobj(GFX_SYNCOBJ_TYPE_GPU);
-        ctx.image_ready[i]    = vulkan_device_create_syncobj(GFX_SYNCOBJ_TYPE_GPU);
+        ctx.present_sync.rendering_done[i] = vulkan_device_create_syncobj(GFX_SYNCOBJ_TYPE_GPU);
+        ctx.present_sync.image_ready[i]    = vulkan_device_create_syncobj(GFX_SYNCOBJ_TYPE_GPU);
 
-        VK_TAG_OBJECT("IMAGE_READY_SEMAPHORE", VK_OBJECT_TYPE_SEMAPHORE, *(VkSemaphore*) (ctx.image_ready[i].backend));
-        VK_TAG_OBJECT("RENDERING_DONE_SEMAPHORE", VK_OBJECT_TYPE_SEMAPHORE, *(VkSemaphore*) (ctx.rendering_done[i].backend));
+        VK_TAG_OBJECT("IMAGE_READY_SEMAPHORE", VK_OBJECT_TYPE_SEMAPHORE, *(VkSemaphore*) (ctx.present_sync.image_ready[i].backend));
+        VK_TAG_OBJECT("RENDERING_DONE_SEMAPHORE", VK_OBJECT_TYPE_SEMAPHORE, *(VkSemaphore*) (ctx.present_sync.rendering_done[i].backend));
     }
 
     VkCommandPoolCreateInfo cmdPoolCI = {0};
@@ -1182,13 +1182,17 @@ void vulkan_ctx_destroy(gfx_context* ctx)
 
     free(s_VkCtx.supported_extensions);
 
-    for (int i = 0; i < MAX_FRAMES_INFLIGHT; i++) {
-        vulkan_device_destroy_syncobj(&ctx->inflight_syncobj[i]);
+    if (g_gfxConfig.use_timeline_semaphores)
+        vulkan_device_destroy_syncobj(&ctx->frame_sync.timeline_syncobj);
+    else {
+        for (int i = 0; i < MAX_FRAMES_INFLIGHT; i++) {
+            vulkan_device_destroy_syncobj(&ctx->frame_sync.inflight_syncobj[i]);
+        }
     }
 
     for (uint32_t i = 0; i < MAX_BACKBUFFERS; i++) {
-        vulkan_device_destroy_syncobj(&ctx->rendering_done[i]);
-        vulkan_device_destroy_syncobj(&ctx->image_ready[i]);
+        vulkan_device_destroy_syncobj(&ctx->present_sync.rendering_done[i]);
+        vulkan_device_destroy_syncobj(&ctx->present_sync.image_ready[i]);
     }
 
     vkDestroyCommandPool(VKDEVICE, s_VkCtx.single_time_cmd_pool.pool, NULL);
@@ -1440,8 +1444,7 @@ gfx_syncobj vulkan_device_create_syncobj(gfx_syncobj_type type)
     gfx_syncobj syncobj = {0};
     uuid_generate(&syncobj.uuid);
 
-    syncobj.type       = type;
-    syncobj.wait_value = 0;
+    syncobj.type = type;
 
     if (type == GFX_SYNCOBJ_TYPE_CPU) {
         syncobj.backend = malloc(sizeof(VkFence));
@@ -2440,14 +2443,19 @@ gfx_texture_readback vulkan_device_readback_swapchain(const gfx_swapchain* swapc
 // RHI
 //--------------------------------------------------------
 
-rhi_error_codes vulkan_frame_begin(gfx_context* context)
+rhi_error_codes vulkan_frame_begin(gfx_context* ctx)
 {
-    gfx_syncobj in_flight_sync = context->inflight_syncobj[context->inflight_frame_idx];
-    vulkan_wait_on_previous_cmds(&in_flight_sync);
-    vulkan_acquire_image(context);
+    gfx_syncobj* in_flight_sync = NULL;
+    if (g_gfxConfig.use_timeline_semaphores) {
+        in_flight_sync = &ctx->frame_sync.timeline_syncobj;
+    } else {
+        in_flight_sync = &ctx->frame_sync.inflight_syncobj[ctx->inflight_frame_idx];
+    }
+    vulkan_wait_on_previous_cmds(in_flight_sync, ctx->frame_sync.frame_syncpoint[ctx->inflight_frame_idx]);
+    vulkan_acquire_image(ctx);
 
-    memset(context->cmd_queue.cmds, 0, context->cmd_queue.cmds_count * sizeof(gfx_cmd_buf*));
-    context->cmd_queue.cmds_count = 0;
+    memset(ctx->cmd_queue.cmds, 0, ctx->cmd_queue.cmds_count * sizeof(gfx_cmd_buf*));
+    ctx->cmd_queue.cmds_count = 0;
 
     return Success;
 }
@@ -2465,7 +2473,7 @@ rhi_error_codes vulkan_frame_end(gfx_context* context)
 //--------------------------------------------------------
 // Synchronization
 
-rhi_error_codes vulkan_wait_on_previous_cmds(const gfx_syncobj* in_flight_sync)
+rhi_error_codes vulkan_wait_on_previous_cmds(const gfx_syncobj* in_flight_sync, gfx_sync_point sync_point)
 {
     if (in_flight_sync->type == GFX_SYNCOBJ_TYPE_CPU) {
         VK_CHECK_RESULT(vkWaitForFences(VKDEVICE, 1, (VkFence*) (in_flight_sync->backend), true, UINT32_MAX), "cannot wait on in-flight fence");
@@ -2478,7 +2486,7 @@ rhi_error_codes vulkan_wait_on_previous_cmds(const gfx_syncobj* in_flight_sync)
              .flags          = 0,
              .semaphoreCount = 1,
              .pSemaphores    = &semaphore,
-             .pValues        = &in_flight_sync->wait_value,
+             .pValues        = &sync_point,
         };
         VK_CHECK_RESULT(vkWaitSemaphores(VKDEVICE, &waitInfo, UINT32_MAX), "cannot wait on in-flight timeline semaphore");
     }
@@ -2495,7 +2503,7 @@ rhi_error_codes vulkan_acquire_image(gfx_context* ctx)
     * We must track which semaphore was used for which imageIndex.
     * Later submits and presents use this mapping for correct synchronization.
     */
-    gfx_syncobj image_ready = ctx->image_ready[ctx->current_syncobj_idx];
+    gfx_syncobj image_ready = ctx->present_sync.image_ready[ctx->current_syncobj_idx];
     VkResult    result      = vkAcquireNextImageKHR(VKDEVICE, ((swapchain_backend*) (ctx->swapchain.backend))->swapchain, UINT32_MAX, *(VkSemaphore*) (image_ready.backend), NULL, &ctx->swapchain.current_backbuffer_idx);
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
         LOG_ERROR("[Vulkan] Swapchain out of date or suboptimal...recreating...");
@@ -2551,7 +2559,9 @@ rhi_error_codes vulkan_gfx_cmd_submit_queue(const gfx_cmd_queue* cmd_queue, gfx_
     } else {
         VkSemaphore inflight = *((VkSemaphore*) (submit_sync.inflight_syncobj->backend));
         // Global tracker to tell where to signal to
-        uint64_t signal_value = ++(*submit_sync.timeline_syncpoint);
+        uint64_t signal_value = ++(*submit_sync.global_syncpoint);
+        // update per frame wait sync points
+        *submit_sync.inflight_syncpoint = *submit_sync.global_syncpoint;
 
         timelineInfo.waitSemaphoreValueCount   = submit_sync.wait_syncobjs_count;
         timelineInfo.signalSemaphoreValueCount = submit_sync.signal_syncobjs_count;
@@ -2563,9 +2573,6 @@ rhi_error_codes vulkan_gfx_cmd_submit_queue(const gfx_cmd_queue* cmd_queue, gfx_
 
         signal_semaphores[submit_sync.signal_syncobjs_count - 1] = inflight;
         signal_values[submit_sync.signal_syncobjs_count - 1]     = signal_value;    // Signal the new value
-
-        // Register syncobj to wait on this timepoint signal
-        submit_sync.inflight_syncobj->wait_value = signal_value;
 
         timelineInfo.pWaitSemaphoreValues   = wait_values;
         timelineInfo.pSignalSemaphoreValues = signal_values;
@@ -2603,19 +2610,27 @@ rhi_error_codes vulkan_gfx_cmd_submit_for_rendering(gfx_context* ctx)
     uint32_t curr_syncobj_idx = ctx->current_syncobj_idx;
     uint32_t inflight_idx     = ctx->inflight_frame_idx;
 
+    gfx_syncobj* in_flight_sync = NULL;
+    if (g_gfxConfig.use_timeline_semaphores) {
+        in_flight_sync = &ctx->frame_sync.timeline_syncobj;
+    } else {
+        in_flight_sync = &ctx->frame_sync.inflight_syncobj[inflight_idx];
+    }
+
     submit_sync.wait_syncobjs_count   = 1;
-    submit_sync.wait_synobjs          = &(ctx->image_ready[curr_syncobj_idx]);
+    submit_sync.wait_synobjs          = &(ctx->present_sync.image_ready[curr_syncobj_idx]);
     submit_sync.signal_syncobjs_count = 1;
-    submit_sync.signal_synobjs        = &(ctx->rendering_done[curr_syncobj_idx]);
-    submit_sync.inflight_syncobj      = &ctx->inflight_syncobj[inflight_idx];
-    submit_sync.timeline_syncpoint    = &ctx->timeline_syncpoint[inflight_idx];
+    submit_sync.signal_synobjs        = &(ctx->present_sync.rendering_done[curr_syncobj_idx]);
+    submit_sync.inflight_syncobj      = in_flight_sync;
+    submit_sync.inflight_syncpoint    = &ctx->frame_sync.frame_syncpoint[inflight_idx];
+    submit_sync.global_syncpoint      = &ctx->frame_sync.global_syncpoint;
 
     return vulkan_gfx_cmd_submit_queue(&ctx->cmd_queue, submit_sync);
 }
 
 rhi_error_codes vulkan_present(const gfx_context* ctx)
 {
-    gfx_syncobj rendering_done = ctx->rendering_done[ctx->current_syncobj_idx];
+    gfx_syncobj rendering_done = ctx->present_sync.rendering_done[ctx->current_syncobj_idx];
 
     VkPresentInfoKHR presentInfo = {
         .sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,

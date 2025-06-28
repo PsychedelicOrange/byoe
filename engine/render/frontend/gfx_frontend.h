@@ -98,7 +98,7 @@ typedef struct rhi_jumptablefrontend
     rhi_error_codes (*frame_begin)(gfx_context*);
     rhi_error_codes (*frame_end)(gfx_context*);
 
-    rhi_error_codes (*wait_on_previous_cmds)(const gfx_syncobj*);
+    rhi_error_codes (*wait_on_previous_cmds)(const gfx_syncobj*, gfx_sync_point);
     rhi_error_codes (*acquire_image)(gfx_context*);
     rhi_error_codes (*gfx_cmd_enque_submit)(gfx_cmd_queue*, gfx_cmd_buf*);
     rhi_error_codes (*gfx_cmd_submit_queue)(const gfx_cmd_queue*, gfx_submit_syncobj);

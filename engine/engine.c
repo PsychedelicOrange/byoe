@@ -25,7 +25,7 @@ void engine_init(struct GLFWwindow** gameWindow, uint32_t width, uint32_t height
     render_utils_init_glfw();
     *gameWindow = render_utils_create_glfw_window("BYOE Game: Spooky Asteroids!", width, height);
 
-    if (gfx_init(D3D12) != Success) {
+    if (gfx_init(Vulkan) != Success) {
         LOG_ERROR("Error initializing gfx");
         gfx_destroy();
         exit(-1);
