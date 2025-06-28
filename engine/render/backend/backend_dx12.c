@@ -46,8 +46,8 @@
 //   - [x] frame_begin & end/wait_on_cmds/submit/present
 //   - [x] Create in context! + decide on per-in flight fence or just one global fence
 //   - [x] Test and resolve issues
-//   - [ ] Swapchain resize
-//   - [ ] **SUBMIT** API
+//   - [x] Swapchain resize
+//   - [x] **SUBMIT** API
 // - [ ] Hello Triangle without VB/IB in single shader quad
 //   - [ ] Drawing API
 //   - [ ] Shaders/Loading
@@ -807,14 +807,6 @@ rhi_error_codes dx12_frame_begin(gfx_context* context)
     memset(context->cmd_queue.cmds, 0, context->cmd_queue.cmds_count * sizeof(gfx_cmd_buf*));
     context->cmd_queue.cmds_count = 0;
 
-    gfx_cmd_pool*           pool         = &context->draw_cmds_pool[frame_idx];
-    ID3D12CommandAllocator* d3dallocator = (ID3D12CommandAllocator*) (pool->backend);
-    HRESULT                 hr           = ID3D12CommandAllocator_Reset(d3dallocator);
-    if (FAILED(hr)) {
-        LOG_ERROR("[D3D12] Failed to reset command allocator for this frame!");
-        return FailedCommandAllocatorReset;
-    }
-
     return Success;
 }
 
@@ -868,15 +860,29 @@ rhi_error_codes dx12_gfx_cmd_enque_submit(gfx_cmd_queue* cmd_queue, gfx_cmd_buf*
 
 rhi_error_codes dx12_gfx_cmd_submit_queue(const gfx_cmd_queue* cmd_queue, gfx_submit_syncobj submit_sync)
 {
-    UNUSED(cmd_queue);
+    // DX12 doesn't do any sync for submission/presentation, so ignored
+    // if want manual points we can insert signal/wait on those time points
+    // This is better done via explicit API, since vulkan requires us to submit
+    // sync points during submission but DX requires API calls to wait/signal
+    // if we go this route, we can enqueue the sync points and pass it off to gfx_submit_syncobj for vulkan
+    // but for simple single queue sync we can ignore it.
     UNUSED(submit_sync);
-    return FailedUnknown;
+
+    ID3D12CommandList** cmd_lists = malloc(cmd_queue->cmds_count * sizeof(ID3D12CommandList*));
+    for (uint32_t i = 0; i < cmd_queue->cmds_count; i++)
+        cmd_lists[i] = ((ID3D12CommandList*) (cmd_queue->cmds[i]->backend));
+
+    ID3D12CommandQueue_ExecuteCommandLists((ID3D12CommandQueue*) (s_DXCtx.direct_queue), cmd_queue->cmds_count, cmd_lists);
+
+    free(cmd_lists);
+
+    return Success;
 }
 
 rhi_error_codes dx12_gfx_cmd_submit_for_rendering(gfx_context* context)
 {
-    UNUSED(context);
-    return FailedUnknown;
+    gfx_submit_syncobj submit_sync = {0};
+    return dx12_gfx_cmd_submit_queue(&context->cmd_queue, submit_sync);
 }
 
 rhi_error_codes dx12_present(const gfx_context* context)
@@ -917,7 +923,13 @@ rhi_error_codes dx12_begin_gfx_cmd_recording(const gfx_cmd_pool* allocator, cons
     ID3D12CommandAllocator*    d3dallocator = (ID3D12CommandAllocator*) (allocator->backend);
     ID3D12GraphicsCommandList* cmd_list     = (ID3D12GraphicsCommandList*) (cmd_buf->backend);
 
-    HRESULT hr = ID3D12GraphicsCommandList_Reset(cmd_list, d3dallocator, NULL);
+    HRESULT hr = ID3D12CommandAllocator_Reset(d3dallocator);
+    if (FAILED(hr)) {
+        LOG_ERROR("[D3D12] Failed to reset command allocator for this frame!");
+        return FailedCommandAllocatorReset;
+    }
+
+    hr = ID3D12GraphicsCommandList_Reset(cmd_list, d3dallocator, NULL);
     if (FAILED(hr)) {
         LOG_ERROR("[D3D12] Failed to reset gfx command list!");
         return FailedCommandBegin;
