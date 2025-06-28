@@ -20,7 +20,9 @@
 // - [x] sdf_storage_image to shader read after sdf_scene pass
 
 // Image memory barrier
-// - [ ] sdf_scene_texture image memory pipeline barrier before screen quad pass
+// - [x] sdf_scene_texture image memory pipeline barrier before screen quad pass
+
+#define CLEAR_TEST 1
 
 typedef struct SDFPushConstant
 {
@@ -450,8 +452,10 @@ bool renderer_sdf_init(renderer_desc desc)
 
     bool success = render_internal_sdf_init_gfx_ctx(desc.width, desc.height);
 
+#if !CLEAR_TEST
     if (success)
         renderer_internal_create_sdf_pass_resources();
+#endif
 
     return success;
 }
@@ -463,7 +467,9 @@ void renderer_sdf_destroy(void)
     free(s_RendererSDFInternalState.lastSwapchainReadback.pixels);
 
     // clean up
+#if !CLEAR_TEST
     renderer_internal_destroy_sdf_pass_resources();
+#endif
 
     renderer_internal_sdf_destroy_gfx_ctx();
 
@@ -611,6 +617,7 @@ void renderer_sdf_draw_scene(const SDF_Scene* scene)
         g_rhi.begin_gfx_cmd_recording(cmd_buff);
 
         {
+#if !CLEAR_TEST
             // Pass_1: SDF Scene Texture clear
             renderer_internal_scene_clear_pass(cmd_buff);
 
@@ -619,6 +626,7 @@ void renderer_sdf_draw_scene(const SDF_Scene* scene)
 
             // Pass_2: draw the sdf scene texture to screen quad
             renderer_internal_sdf_screen_quad_pass(cmd_buff);
+#endif
         }
 
         g_rhi.end_gfx_cmd_recording(cmd_buff);

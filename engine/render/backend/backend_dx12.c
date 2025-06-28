@@ -719,7 +719,7 @@ gfx_cmd_buf dx12_create_gfx_cmd_buf(gfx_cmd_pool* pool)
     cmd_buf.backend = malloc(sizeof(ID3D12GraphicsCommandList));
 
     HRESULT hr = ID3D12Device10_CreateCommandList(DXDevice, 0, D3D12_COMMAND_LIST_TYPE_DIRECT, ((ID3D12CommandAllocator*) (pool->backend)), NULL, &IID_ID3D12GraphicsCommandList, &cmd_buf.backend);
-    hr         = ((ID3D12GraphicsCommandList*) (cmd_buf.backend))->lpVtbl->Close((ID3D12GraphicsCommandList*) (cmd_buf.backend));
+    hr         = ID3D12GraphicsCommandList_Close((ID3D12GraphicsCommandList*) (cmd_buf.backend));
     if (FAILED(hr)) {
         LOG_ERROR("Failed to allocate command lists (HRESULT = 0x%08X)", (unsigned int) hr);
         uuid_destroy(&cmd_buf.uuid);
@@ -739,12 +739,18 @@ static void dx12_internal_signal_fence(ID3D12CommandQueue* cmd_queue, ID3D12Fenc
 
 //--------------------------------------------------------
 
-    #if 0
+    #define WIP 0
+    #if !WIP
 rhi_error_codes dx12_frame_begin(gfx_context* context)
 {
+    // This is reverse to what Vulkan does, we first wait for previous work to be done
+    // and then acquire a new back buffer, because acquire is a GPU operation in vulkan, 
+    // here we just ask for index and wait on GPU until work is done and that back buffer is free to use
     dx12_acquire_image(context);
-    gfx_syncobj rendering_done = context->rendering_done[context->swapchain.current_backbuffer_idx];
-    dx12_wait_on_previous_cmds(&rendering_done);
+    uint32_t       frame_idx          = context->swapchain.current_backbuffer_idx;
+    gfx_syncobj    frame_fence        = context->frame_sync.timeline_syncobj;
+    gfx_sync_point current_sync_point = context->frame_sync.frame_syncpoint[frame_idx];
+    dx12_wait_on_previous_cmds(&frame_fence, current_sync_point);
 
     memset(context->cmd_queue.cmds, 0, context->cmd_queue.cmds_count * sizeof(gfx_cmd_buf*));
     context->cmd_queue.cmds_count = 0;
@@ -756,12 +762,15 @@ rhi_error_codes dx12_frame_end(gfx_context* context)
 {
     dx12_present(context);
 
-    gfx_syncobj* rendering_done = &context->rendering_done[context->swapchain.current_backbuffer_idx];
-    uint64_t     signal_value   = ++(context->timeline_syncpoint[context->swapchain.current_backbuffer_idx]);
-    rendering_done->wait_value  = signal_value;
+    uint32_t frame_idx = context->swapchain.current_backbuffer_idx;
 
-    context->inflight_frame_idx  = context->swapchain.current_backbuffer_idx;
-    context->current_syncobj_idx = context->swapchain.current_backbuffer_idx;
+    gfx_syncobj* rendering_done                    = &context->frame_sync.timeline_syncobj;
+    uint64_t     signal_value                      = ++(context->frame_sync.global_syncpoint);
+    context->frame_sync.frame_syncpoint[frame_idx] = signal_value;
+
+    // for API completion sake
+    context->inflight_frame_idx  = frame_idx;
+    context->current_syncobj_idx = frame_idx;
 
     dx12_internal_signal_fence(((context_backend*) context->backend)->direct_queue, ((syncobj_backend*) (rendering_done->backend))->fence, signal_value);
 
@@ -770,21 +779,21 @@ rhi_error_codes dx12_frame_end(gfx_context* context)
 
 //--------------------------------------------------------
 
-rhi_error_codes dx12_wait_on_previous_cmds(const gfx_syncobj* in_flight_sync, gfx_sync_point sync_point)
+rhi_error_codes dx12_acquire_image(gfx_context* context)
 {
-    syncobj_backend* backend = (syncobj_backend*) (in_flight_sync->backend);
-    if (backend->fence->lpVtbl->GetCompletedValue(backend->fence) < in_flight_sync->wait_value) {
-        backend->fence->lpVtbl->SetEventOnCompletion(backend->fence, in_flight_sync->wait_value, backend->fenceEvent);
-        WaitForSingleObject(backend->fenceEvent, UINT64_MAX);
-    }
+    swapchain_backend* sc_backend             = (swapchain_backend*) context->swapchain.backend;
+    context->swapchain.current_backbuffer_idx = IDXGISwapChain4_GetCurrentBackBufferIndex(sc_backend->swapchain);
 
     return Success;
 }
 
-rhi_error_codes dx12_acquire_image(gfx_context* context)
+rhi_error_codes dx12_wait_on_previous_cmds(const gfx_syncobj* in_flight_sync, gfx_sync_point sync_point)
 {
-    swapchain_backend* sc_backend             = (swapchain_backend*) context->swapchain.backend;
-    context->swapchain.current_backbuffer_idx = sc_backend->swapchain->lpVtbl->GetCurrentBackBufferIndex(sc_backend->swapchain);
+    syncobj_backend* backend = (syncobj_backend*) (in_flight_sync->backend);
+    if (ID3D12Fence_GetCompletedValue(backend->fence) < sync_point) {
+        ID3D12Fence_SetEventOnCompletion(backend->fence, sync_point, backend->fenceEvent);
+        WaitForSingleObject(backend->fenceEvent, UINT64_MAX);
+    }
 
     return Success;
 }
@@ -792,7 +801,7 @@ rhi_error_codes dx12_acquire_image(gfx_context* context)
 rhi_error_codes dx12_present(const gfx_context* context)
 {
     const swapchain_backend* sc_backend = (const swapchain_backend*) context->swapchain.backend;
-    HRESULT                  hr         = sc_backend->swapchain->lpVtbl->Present(sc_backend->swapchain, DXGI_PRESENT_ALLOW_TEARING, 0);
+    HRESULT                  hr         = IDXGISwapChain4_Present(sc_backend->swapchain, DXGI_PRESENT_ALLOW_TEARING, 0);
     if (FAILED(hr)) {
         LOG_ERROR("Swapchain failed to present");
         return FailedPresent;
