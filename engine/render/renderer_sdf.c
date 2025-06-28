@@ -99,9 +99,9 @@ static void renderer_internal_sdf_resize(GLFWwindow* window, int width, int heig
     s_RendererSDFInternalState.frameCount       = 0;
     s_RendererSDFInternalState.captureSwapchain = false;
 
-    g_rhi.flush_gpu_work();
+    g_rhi.flush_gpu_work(&s_RendererSDFInternalState.gfxcontext);
 
-    g_rhi.resize_swapchain(&s_RendererSDFInternalState.gfxcontext.swapchain, width, height);
+    g_rhi.resize_swapchain(&s_RendererSDFInternalState.gfxcontext, width, height);
 }
 
 static void renderer_internal_create_shaders(void)
@@ -359,7 +359,7 @@ static void renderer_internal_create_screen_pass_descriptor_table(void)
 
 static void renderer_internal_hot_reload_shaders(void)
 {
-    g_rhi.flush_gpu_work();
+    g_rhi.flush_gpu_work(&s_RendererSDFInternalState.gfxcontext);
 
     renderer_internal_destroy_shaders();
     renderer_internal_destroy_pipelines();
@@ -367,7 +367,7 @@ static void renderer_internal_hot_reload_shaders(void)
     renderer_internal_create_shaders();
     renderer_internal_create_pipelines();
 
-    g_rhi.flush_gpu_work();
+    g_rhi.flush_gpu_work(&s_RendererSDFInternalState.gfxcontext);
 }
 
 static bool render_internal_sdf_init_gfx_ctx(uint32_t width, uint32_t height)
@@ -416,7 +416,7 @@ static void renderer_internal_create_sdf_pass_resources(void)
     renderer_internal_create_clear_tex_pass_descriptor_table();
     renderer_internal_create_screen_pass_descriptor_table();
 
-    g_rhi.flush_gpu_work();
+    g_rhi.flush_gpu_work(&s_RendererSDFInternalState.gfxcontext);
 }
 
 static void renderer_internal_destroy_sdf_pass_resources(void)
@@ -465,7 +465,7 @@ bool renderer_sdf_init(renderer_desc desc)
 
 void renderer_sdf_destroy(void)
 {
-    g_rhi.flush_gpu_work();
+    g_rhi.flush_gpu_work(&s_RendererSDFInternalState.gfxcontext);
 
     free(s_RendererSDFInternalState.lastSwapchainReadback.pixels);
 

@@ -15,7 +15,7 @@ extern const rhi_jumptable vulkan_jumptable;
 gfx_context vulkan_ctx_init(GLFWwindow* window);
 void        vulkan_ctx_destroy(gfx_context* ctx);
 
-void vulkan_flush_gpu_work(void);
+void vulkan_flush_gpu_work(gfx_context* context);
 
 //------------------------------------------
 // Debug
@@ -92,7 +92,7 @@ rhi_error_codes vulkan_gfx_cmd_submit_queue(const gfx_cmd_queue* cmd_queue, gfx_
 rhi_error_codes vulkan_gfx_cmd_submit_for_rendering(gfx_context* context);
 rhi_error_codes vulkan_present(const gfx_context* context);
 
-rhi_error_codes vulkan_resize_swapchain(gfx_swapchain* swapchain, uint32_t width, uint32_t height);
+rhi_error_codes vulkan_resize_swapchain(gfx_context* context, uint32_t width, uint32_t height);
 
 rhi_error_codes vulkan_begin_gfx_cmd_recording(const gfx_cmd_pool* allocator, const gfx_cmd_buf* cmd_buf);
 rhi_error_codes vulkan_end_gfx_cmd_recording(const gfx_cmd_buf* cmd_buf);

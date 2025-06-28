@@ -17,7 +17,7 @@ extern const rhi_jumptable dx12_jumptable;
 gfx_context dx12_ctx_init(GLFWwindow* window);
 void        dx12_ctx_destroy(gfx_context* ctx);
 
-void dx12_flush_gpu_work(void);
+void dx12_flush_gpu_work(gfx_context* context);
 
 //------------------------------------------
 // Device
@@ -33,7 +33,7 @@ gfx_cmd_pool dx12_create_gfx_cmd_allocator(void);
 void         dx12_destroy_gfx_cmd_allocator(gfx_cmd_pool* pool);
 
 gfx_cmd_buf dx12_create_gfx_cmd_buf(gfx_cmd_pool* pool);
-void dx12_free_gfx_cmd_buf(gfx_cmd_buf* cmd_buf);
+void        dx12_free_gfx_cmd_buf(gfx_cmd_buf* cmd_buf);
 
 // ...
 
@@ -51,7 +51,7 @@ rhi_error_codes dx12_gfx_cmd_submit_queue(const gfx_cmd_queue* cmd_queue, gfx_su
 rhi_error_codes dx12_gfx_cmd_submit_for_rendering(gfx_context* context);
 rhi_error_codes dx12_present(const gfx_context* context);
 
-// ...
+rhi_error_codes dx12_resize_swapchain(gfx_context* context, uint32_t width, uint32_t height);
 
 rhi_error_codes dx12_begin_gfx_cmd_recording(const gfx_cmd_pool* allocator, const gfx_cmd_buf* cmd_buf);
 rhi_error_codes dx12_end_gfx_cmd_recording(const gfx_cmd_buf* cmd_buf);

@@ -1203,8 +1203,9 @@ void vulkan_ctx_destroy(gfx_context* ctx)
     vkDestroyInstance(VKINSTANCE, NULL);
 }
 
-void vulkan_flush_gpu_work(void)
+void vulkan_flush_gpu_work(gfx_context* context)
 {
+    UNUSED(context);
     vkDeviceWaitIdle(VKDEVICE);
 }
 
@@ -2519,7 +2520,7 @@ rhi_error_codes vulkan_acquire_image(gfx_context* ctx)
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
         LOG_ERROR("[Vulkan] Swapchain out of date or suboptimal...recreating...");
         vkDeviceWaitIdle(VKDEVICE);
-        vulkan_resize_swapchain(&ctx->swapchain, ctx->swapchain.width, ctx->swapchain.height);
+        vulkan_resize_swapchain(ctx, ctx->swapchain.width, ctx->swapchain.height);
     }
     if (result == VK_SUCCESS)
         return Success;
@@ -2667,10 +2668,11 @@ rhi_error_codes vulkan_present(const gfx_context* ctx)
     return Success;
 }
 
-rhi_error_codes vulkan_resize_swapchain(gfx_swapchain* swapchain, uint32_t width, uint32_t height)
+rhi_error_codes vulkan_resize_swapchain(gfx_context* context, uint32_t width, uint32_t height)
 {
-    swapchain_backend* backend = (swapchain_backend*) (swapchain->backend);
-    backend->old_swapchain     = backend->swapchain;
+    gfx_swapchain*     swapchain = &context->swapchain;
+    swapchain_backend* backend   = (swapchain_backend*) (swapchain->backend);
+    backend->old_swapchain       = backend->swapchain;
     vulkan_device_destroy_swapchain(swapchain);
 
     backend->swapchain = VK_NULL_HANDLE;    // THIS SHOULD CAUSE A CRASH, since backend is NULL

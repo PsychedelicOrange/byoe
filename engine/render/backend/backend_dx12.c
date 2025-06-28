@@ -44,8 +44,10 @@
 // - [x] Create command lists from allocator
 // - [ ] Rendering Loop: Basic submit/present flow using Fence counting etc. for Clear color
 //   - [x] frame_begin & end/wait_on_cmds/submit/present
-//   - [ ] Create in context! + decide on per-inflight fence or just one global fence
-//   - [ ] Test and resolve issues
+//   - [x] Create in context! + decide on per-in flight fence or just one global fence
+//   - [x] Test and resolve issues
+//   - [ ] Swapchain resize
+//   - [ ] **SUBMIT** API
 // - [ ] Hello Triangle without VB/IB in single shader quad
 //   - [ ] Drawing API
 //   - [ ] Shaders/Loading
@@ -109,7 +111,7 @@ const rhi_jumptable dx12_jumptable = {
     dx12_gfx_cmd_submit_queue,
     dx12_gfx_cmd_submit_for_rendering,
     dx12_present,
-    NULL,
+    dx12_resize_swapchain,
     dx12_begin_gfx_cmd_recording,
     dx12_end_gfx_cmd_recording,
     NULL,
@@ -548,8 +550,14 @@ void dx12_ctx_destroy(gfx_context* ctx)
     uuid_destroy(&ctx->uuid);
 }
 
-void dx12_flush_gpu_work(void)
+void dx12_flush_gpu_work(gfx_context* context)
 {
+    gfx_syncobj* timeline_syncobj = &context->frame_sync.timeline_syncobj;
+
+    uint64_t signal_value = ++(context->frame_sync.global_syncpoint);
+    ID3D12CommandQueue_Signal(((context_backend*) context->backend)->direct_queue, ((syncobj_backend*) (timeline_syncobj->backend))->fence, signal_value);
+
+    dx12_wait_on_previous_cmds(timeline_syncobj, context->frame_sync.global_syncpoint);
 }
 
 static void dx12_internal_create_backbuffers(gfx_swapchain* sc)
@@ -601,16 +609,16 @@ static void dx12_internal_destroy_backbuffers(gfx_swapchain* sc)
 {
     swapchain_backend* backend = (swapchain_backend*) sc->backend;
 
-    if (backend->rtv_heap) {
-        ID3D12DescriptorHeap_Release(backend->rtv_heap);
-        backend->rtv_heap = NULL;
-    }
-
     for (uint32_t i = 0; i < backend->image_count; i++) {
         if (backend->backbuffers[i]) {
             ID3D12Resource_Release(backend->backbuffers[i]);
             backend->backbuffers[i] = NULL;
         }
+    }
+
+    if (backend->rtv_heap) {
+        ID3D12DescriptorHeap_Release(backend->rtv_heap);
+        backend->rtv_heap = NULL;
     }
 
     backend->image_count = 0;
@@ -816,7 +824,7 @@ rhi_error_codes dx12_frame_end(gfx_context* context)
 
     uint32_t frame_idx = context->swapchain.current_backbuffer_idx;
 
-    gfx_syncobj* rendering_done                    = &context->frame_sync.timeline_syncobj;
+    gfx_syncobj* timeline_syncobj                  = &context->frame_sync.timeline_syncobj;
     uint64_t     signal_value                      = ++(context->frame_sync.global_syncpoint);
     context->frame_sync.frame_syncpoint[frame_idx] = signal_value;
 
@@ -824,7 +832,8 @@ rhi_error_codes dx12_frame_end(gfx_context* context)
     context->inflight_frame_idx  = frame_idx;
     context->current_syncobj_idx = frame_idx;
 
-    ID3D12CommandQueue_Signal(((context_backend*) context->backend)->direct_queue, ((syncobj_backend*) (rendering_done->backend))->fence, signal_value);
+    ID3D12CommandQueue_Signal(((context_backend*) context->backend)->direct_queue, ((syncobj_backend*) (timeline_syncobj->backend))->fence, signal_value);
+
     return Success;
 }
 
@@ -878,6 +887,26 @@ rhi_error_codes dx12_present(const gfx_context* context)
         LOG_ERROR("[D3D12] Swapchain failed to present (HRESULT = 0x%08X)", (unsigned int) hr);
         return FailedPresent;
     }
+
+    return Success;
+}
+
+rhi_error_codes dx12_resize_swapchain(gfx_context* context, uint32_t width, uint32_t height)
+{
+    gfx_swapchain* swapchain = &context->swapchain;
+
+    dx12_flush_gpu_work(context);
+
+    dx12_internal_destroy_backbuffers(swapchain);
+
+    for (int i = 0; i < MAX_DX_SWAPCHAIN_BUFFERS; ++i) {
+        context->frame_sync.frame_syncpoint[i] = context->frame_sync.global_syncpoint;
+    }
+
+    swapchain->width = width;
+    swapchain->width = height;
+
+    dx12_internal_create_backbuffers(swapchain);
 
     return Success;
 }

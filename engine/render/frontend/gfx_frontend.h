@@ -45,7 +45,7 @@ typedef struct rhi_jumptablefrontend
 {
     gfx_context (*ctx_init)(GLFWwindow*);
     void        (*ctx_destroy)(gfx_context*);
-    void        (*flush_gpu_work)(void);
+    void        (*flush_gpu_work)(gfx_context*);
 
     gfx_swapchain (*create_swapchain)(uint32_t, uint32_t);
     void          (*destroy_swapchain)(gfx_swapchain*);
@@ -109,7 +109,7 @@ typedef struct rhi_jumptablefrontend
     rhi_error_codes (*gfx_cmd_submit_for_rendering)(gfx_context*);
     rhi_error_codes (*present)(const gfx_context*);
 
-    rhi_error_codes (*resize_swapchain)(gfx_swapchain*, uint32_t, uint32_t);
+    rhi_error_codes (*resize_swapchain)(gfx_context*, uint32_t, uint32_t);
 
     rhi_error_codes (*begin_gfx_cmd_recording)(const gfx_cmd_pool* allocator, const gfx_cmd_buf*);
     rhi_error_codes (*end_gfx_cmd_recording)(const gfx_cmd_buf*);
