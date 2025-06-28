@@ -35,6 +35,7 @@ gfx_cmd_pool vulkan_device_create_gfx_cmd_pool(void);
 void         vulkan_device_destroy_gfx_cmd_pool(gfx_cmd_pool* pool);
 
 gfx_cmd_buf vulkan_device_create_gfx_cmd_buf(gfx_cmd_pool* pool);
+void        vulkan_device_free_gfx_cmd_buf(gfx_cmd_buf* cmd_buf);
 
 // TODO: Use a Span DS to make this more intuitive
 gfx_shader vulkan_device_create_compute_shader(const char* spv_file_path);

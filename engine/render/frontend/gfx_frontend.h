@@ -57,6 +57,7 @@ typedef struct rhi_jumptablefrontend
     void         (*destroy_gfx_cmd_pool)(gfx_cmd_pool*);
 
     gfx_cmd_buf (*create_gfx_cmd_buf)(gfx_cmd_pool*);
+    void        (*free_gfx_cmd_buf)(gfx_cmd_buf*);
 
     gfx_shader (*create_compute_shader)(const char*);
     void       (*destroy_compute_shader)(gfx_shader*);

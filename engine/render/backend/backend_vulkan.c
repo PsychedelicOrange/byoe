@@ -35,6 +35,7 @@ const rhi_jumptable vulkan_jumptable = {
     vulkan_device_create_gfx_cmd_pool,
     vulkan_device_destroy_gfx_cmd_pool,
     vulkan_device_create_gfx_cmd_buf,
+    vulkan_device_free_gfx_cmd_buf,
     vulkan_device_create_compute_shader,
     vulkan_device_destroy_compute_shader,
     vulkan_device_create_vs_ps_shader,
@@ -1519,6 +1520,12 @@ gfx_cmd_buf vulkan_device_create_gfx_cmd_buf(gfx_cmd_pool* pool)
 
     VK_CHECK_RESULT(vkAllocateCommandBuffers(VKDEVICE, &alloc, cmd_buf.backend), "[Vulkan] cannot allocate frame buffers");
     return cmd_buf;
+}
+
+void vulkan_device_free_gfx_cmd_buf(gfx_cmd_buf* cmd_buf)
+{
+    // Since freeing pool will take care of this we ignore it
+    UNUSED(cmd_buf);
 }
 
 static VkShaderModule vulkan_internal_create_shader_handle(const char* spv_file_path)

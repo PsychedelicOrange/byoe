@@ -73,6 +73,7 @@ const rhi_jumptable dx12_jumptable = {
     dx12_create_gfx_cmd_allocator,
     dx12_destroy_gfx_cmd_allocator,
     dx12_create_gfx_cmd_buf,
+    dx12_free_gfx_cmd_buf,
     NULL,
     NULL,
     NULL,
@@ -754,7 +755,6 @@ void dx12_destroy_gfx_cmd_allocator(gfx_cmd_pool* pool)
         uuid_destroy(&pool->uuid);
         if (pool->backend) {
             ID3D12CommandAllocator_Release((ID3D12CommandAllocator*) pool->backend);
-            free(pool->backend);
             pool->backend = NULL;
         }
     }
@@ -778,11 +778,9 @@ gfx_cmd_buf dx12_create_gfx_cmd_buf(gfx_cmd_pool* pool)
     return cmd_buf;
 }
 
-//--------------------------------------------------------
-
-static void dx12_internal_signal_fence(ID3D12CommandQueue* cmd_queue, ID3D12Fence* fence, uint64_t wait_value)
+void dx12_free_gfx_cmd_buf(gfx_cmd_buf* cmd_buf)
 {
-    ID3D12CommandQueue_Signal(cmd_queue, fence, wait_value);
+    ID3D12GraphicsCommandList_Release((ID3D12GraphicsCommandList*) (cmd_buf->backend));
 }
 
 //--------------------------------------------------------
@@ -826,7 +824,7 @@ rhi_error_codes dx12_frame_end(gfx_context* context)
     context->inflight_frame_idx  = frame_idx;
     context->current_syncobj_idx = frame_idx;
 
-    dx12_internal_signal_fence(((context_backend*) context->backend)->direct_queue, ((syncobj_backend*) (rendering_done->backend))->fence, signal_value);
+    ID3D12CommandQueue_Signal(((context_backend*) context->backend)->direct_queue, ((syncobj_backend*) (rendering_done->backend))->fence, signal_value);
     return Success;
 }
 

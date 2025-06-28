@@ -33,6 +33,7 @@ gfx_cmd_pool dx12_create_gfx_cmd_allocator(void);
 void         dx12_destroy_gfx_cmd_allocator(gfx_cmd_pool* pool);
 
 gfx_cmd_buf dx12_create_gfx_cmd_buf(gfx_cmd_pool* pool);
+void dx12_free_gfx_cmd_buf(gfx_cmd_buf* cmd_buf);
 
 // ...
 

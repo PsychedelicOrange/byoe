@@ -399,6 +399,7 @@ static void renderer_internal_sdf_destroy_gfx_ctx(void)
 {
     for (uint32_t i = 0; i < MAX_FRAMES_INFLIGHT; i++) {
         g_rhi.destroy_gfx_cmd_pool(&s_RendererSDFInternalState.gfxcontext.draw_cmds_pool[i]);
+        g_rhi.free_gfx_cmd_buf(&s_RendererSDFInternalState.gfxcontext.draw_cmds[i]);
     }
 }
 
