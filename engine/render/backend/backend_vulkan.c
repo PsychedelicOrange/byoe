@@ -2683,7 +2683,7 @@ rhi_error_codes vulkan_resize_swapchain(gfx_swapchain* swapchain, uint32_t width
 
 rhi_error_codes vulkan_begin_gfx_cmd_recording(const gfx_cmd_pool* allocator, const gfx_cmd_buf* cmd_buf)
 {
-    (void*) allocator;    //  UNUSED
+    UNUSED(allocator);    //  UNUSED
 
     VkCommandBufferBeginInfo begin = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
