@@ -2498,7 +2498,7 @@ rhi_error_codes vulkan_acquire_image(gfx_context* ctx)
 {
     /**
     * We give a fresh semaphore each frame using a round-robin index (syncobj_idx).
-    * vkAcquireNextImageKHR returns imageIndex — the actual swapchain image to render.
+    * vkAcquireNextImageKHR returns imageIndex, the actual swapchain image to render.
     * These indices do not have to match; Vulkan makes no such guarantee.
     * We must track which semaphore was used for which imageIndex.
     * Later submits and presents use this mapping for correct synchronization.
