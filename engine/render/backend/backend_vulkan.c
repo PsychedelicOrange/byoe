@@ -2541,6 +2541,7 @@ rhi_error_codes vulkan_gfx_cmd_submit_queue(const gfx_cmd_queue* cmd_queue, gfx_
     for (uint32_t i = 0; i < cmd_queue->cmds_count; i++)
         vk_cmd_buffs[i] = *((VkCommandBuffer*) (cmd_queue->cmds[i]->backend));
 
+    uint32_t signal_syncobjs_count = submit_sync.signal_syncobjs_count;
     if (g_gfxConfig.use_timeline_semaphores)
         submit_sync.signal_syncobjs_count++;
 
@@ -2550,7 +2551,7 @@ rhi_error_codes vulkan_gfx_cmd_submit_queue(const gfx_cmd_queue* cmd_queue, gfx_
     for (uint32_t i = 0; i < submit_sync.wait_syncobjs_count; ++i)
         wait_semaphores[i] = *((VkSemaphore*) (submit_sync.wait_synobjs[i].backend));
 
-    for (uint32_t i = 0; i < submit_sync.signal_syncobjs_count - 1; ++i)
+    for (uint32_t i = 0; i < signal_syncobjs_count; ++i)
         signal_semaphores[i] = *((VkSemaphore*) (submit_sync.signal_synobjs[i].backend));
 
     VkPipelineStageFlags waitStages[1] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
