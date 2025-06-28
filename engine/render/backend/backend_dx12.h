@@ -45,8 +45,15 @@ rhi_error_codes dx12_frame_end(gfx_context* context);
 
 rhi_error_codes dx12_wait_on_previous_cmds(const gfx_syncobj* in_flight_sync, gfx_sync_point sync_point);
 rhi_error_codes dx12_acquire_image(gfx_context* context);
-// ...
+rhi_error_codes dx12_gfx_cmd_enque_submit(gfx_cmd_queue* cmd_queue, gfx_cmd_buf* cmd_buff);
+rhi_error_codes dx12_gfx_cmd_submit_queue(const gfx_cmd_queue* cmd_queue, gfx_submit_syncobj submit_sync);
+rhi_error_codes dx12_gfx_cmd_submit_for_rendering(gfx_context* context);
 rhi_error_codes dx12_present(const gfx_context* context);
+
+// ...
+
+rhi_error_codes dx12_begin_gfx_cmd_recording(const gfx_cmd_pool* allocator, const gfx_cmd_buf* cmd_buf);
+rhi_error_codes dx12_end_gfx_cmd_recording(const gfx_cmd_buf* cmd_buf);
 
     // ...
 

@@ -29,6 +29,9 @@ typedef enum rhi_error_codes
     FailedPresent,
     FailedHandleCreation,
     FailedMemoryBarrier,
+    FailedCommandAllocatorReset,
+    FailedCommandBegin,
+    FailedCommandEnd,
 } rhi_error_codes;
 
 //------------------------------------------
@@ -107,7 +110,7 @@ typedef struct rhi_jumptablefrontend
 
     rhi_error_codes (*resize_swapchain)(gfx_swapchain*, uint32_t, uint32_t);
 
-    rhi_error_codes (*begin_gfx_cmd_recording)(const gfx_cmd_buf*);
+    rhi_error_codes (*begin_gfx_cmd_recording)(const gfx_cmd_pool* allocator, const gfx_cmd_buf*);
     rhi_error_codes (*end_gfx_cmd_recording)(const gfx_cmd_buf*);
 
     rhi_error_codes (*begin_render_pass)(const gfx_cmd_buf*, gfx_render_pass, uint32_t);

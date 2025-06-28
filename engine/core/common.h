@@ -17,6 +17,7 @@
 #endif
 
 #define MAYBE_UNUSED __attribute__((unused))
+#define UNUSED(x)    (void)x
 
 // Maximum number of game Object Instances in the game world at any moment
 #define MAX_OBJECTS 256

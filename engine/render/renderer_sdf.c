@@ -382,10 +382,10 @@ static bool render_internal_sdf_init_gfx_ctx(uint32_t width, uint32_t height)
         }
 
         // command pool: only per thread and 2 in-flight command buffers per pool
-        s_RendererSDFInternalState.gfxcontext.draw_cmds_pool = g_rhi.create_gfx_cmd_pool();
         for (uint32_t i = 0; i < MAX_FRAMES_INFLIGHT; i++) {
-            // Allocate and create the command buffers
-            s_RendererSDFInternalState.gfxcontext.draw_cmds[i] = g_rhi.create_gfx_cmd_buf(&s_RendererSDFInternalState.gfxcontext.draw_cmds_pool);
+            // Allocate and create the command buffers (1 per pool per in-flight frame now)
+            s_RendererSDFInternalState.gfxcontext.draw_cmds_pool[i] = g_rhi.create_gfx_cmd_pool();
+            s_RendererSDFInternalState.gfxcontext.draw_cmds[i]      = g_rhi.create_gfx_cmd_buf(&s_RendererSDFInternalState.gfxcontext.draw_cmds_pool[i]);
         }
 
         return true;
@@ -397,7 +397,9 @@ static bool render_internal_sdf_init_gfx_ctx(uint32_t width, uint32_t height)
 
 static void renderer_internal_sdf_destroy_gfx_ctx(void)
 {
-    g_rhi.destroy_gfx_cmd_pool(&s_RendererSDFInternalState.gfxcontext.draw_cmds_pool);
+    for (uint32_t i = 0; i < MAX_FRAMES_INFLIGHT; i++) {
+        g_rhi.destroy_gfx_cmd_pool(&s_RendererSDFInternalState.gfxcontext.draw_cmds_pool[i]);
+    }
 }
 
 //----------------------------------------------------------------
@@ -612,9 +614,10 @@ void renderer_sdf_draw_scene(const SDF_Scene* scene)
 
     g_rhi.frame_begin(&s_RendererSDFInternalState.gfxcontext);
     {
-        gfx_cmd_buf* cmd_buff = &s_RendererSDFInternalState.gfxcontext.draw_cmds[s_RendererSDFInternalState.gfxcontext.inflight_frame_idx];
+        gfx_cmd_pool* cmd_pool = &s_RendererSDFInternalState.gfxcontext.draw_cmds_pool[s_RendererSDFInternalState.gfxcontext.inflight_frame_idx];
+        gfx_cmd_buf*  cmd_buff = &s_RendererSDFInternalState.gfxcontext.draw_cmds[s_RendererSDFInternalState.gfxcontext.inflight_frame_idx];
 
-        g_rhi.begin_gfx_cmd_recording(cmd_buff);
+        g_rhi.begin_gfx_cmd_recording(cmd_pool, cmd_buff);
 
         {
 #if !CLEAR_TEST
@@ -636,10 +639,12 @@ void renderer_sdf_draw_scene(const SDF_Scene* scene)
         // This is for submitting rendering commands that takes presentation into account for sync
         g_rhi.gfx_cmd_submit_for_rendering(&s_RendererSDFInternalState.gfxcontext);
 
+#if !CLEAR_TEST
         if (s_RendererSDFInternalState.captureSwapchain) {
             s_RendererSDFInternalState.lastSwapchainReadback = g_rhi.readback_swapchain(&s_RendererSDFInternalState.gfxcontext.swapchain);
             s_RendererSDFInternalState.captureSwapchain      = false;
         }
+#endif
     }
     g_rhi.frame_end(&s_RendererSDFInternalState.gfxcontext);
 }

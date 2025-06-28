@@ -73,16 +73,67 @@ const rhi_jumptable dx12_jumptable = {
     dx12_create_gfx_cmd_allocator,
     dx12_destroy_gfx_cmd_allocator,
     dx12_create_gfx_cmd_buf,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    dx12_frame_begin,
+    dx12_frame_end,
+    dx12_wait_on_previous_cmds,
+    dx12_acquire_image,
+    dx12_gfx_cmd_enque_submit,
+    dx12_gfx_cmd_submit_queue,
+    dx12_gfx_cmd_submit_for_rendering,
+    dx12_present,
+    NULL,
+    dx12_begin_gfx_cmd_recording,
+    dx12_end_gfx_cmd_recording,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
 };
 //--------------------------------------------------------
 
-    #define HR_CHECK(x)                                                                                                      \
-        do {                                                                                                                 \
-            HRESULT hr__ = (x);                                                                                              \
-            if (FAILED(hr__)) {                                                                                              \
-                LOG_ERROR("[DX12] %s:%d\n ==> %s failed (HRESULT = 0x%08X)\n", __FILE__, __LINE__, #x, (unsigned int) hr__); \
-                abort();                                                                                                     \
-            }                                                                                                                \
+    #define HR_CHECK(x)                                                                                                              \
+        do {                                                                                                                         \
+            HRESULT hr__ = (x);                                                                                                      \
+            if (FAILED(hr__)) {                                                                                                      \
+                LOG_ERROR("[D3D12] [DX12] %s:%d\n ==> %s failed (HRESULT = 0x%08X)\n", __FILE__, __LINE__, #x, (unsigned int) hr__); \
+                abort();                                                                                                             \
+            }                                                                                                                        \
         } while (0)
 
     #define MAX_DX_SWAPCHAIN_BUFFERS 3
@@ -176,32 +227,27 @@ static IDXGIAdapter4* dx12_internal_select_best_adapter(IDXGIFactory7* factory, 
         if (FAILED(hr))
             continue;
 
-        // Query for IDXGIAdapter4 to get DXGI_ADAPTER_DESC3
         IDXGIAdapter4* adapter4 = NULL;
         hr                      = IDXGIAdapter1_QueryInterface(adapter1, &IID_IDXGIAdapter4, &adapter4);
         if (FAILED(hr)) {
-            LOG_ERROR("[DX12] Failed to query IDXGIAdapter4 from IDXGIAdapter1 (HRESULT = 0x%08X)", (unsigned int) hr);
+            LOG_ERROR("[D3D12] [DX12] Failed to query IDXGIAdapter4 from IDXGIAdapter1 (HRESULT = 0x%08X)", (unsigned int) hr);
             IDXGIAdapter1_Release(adapter1);
-            continue;    // Adapter doesn't support DXGI 1.4+
+            continue;
         }
-        IDXGIAdapter1_Release(adapter1);    // Done with IDXGIAdapter1
+        IDXGIAdapter1_Release(adapter1);
 
-        // Get the adapter description
         DXGI_ADAPTER_DESC3 desc = {0};
         hr                      = IDXGIAdapter4_GetDesc3(adapter4, &desc);
         if (FAILED(hr)) {
-            LOG_ERROR("[DX12] Failed to get DXGI_ADAPTER_DESC3 from IDXGIAdapter4 (HRESULT = 0x%08X)", (unsigned int) hr);
-            IDXGIAdapter4_Release(adapter4);
-            continue;    // Failed to get description
-        }
-
-        // Skip software adapters (like WARP)
-        if (desc.Flags & DXGI_ADAPTER_FLAG3_SOFTWARE) {
+            LOG_ERROR("[D3D12] [DX12] Failed to get DXGI_ADAPTER_DESC3 from IDXGIAdapter4 (HRESULT = 0x%08X)", (unsigned int) hr);
             IDXGIAdapter4_Release(adapter4);
             continue;
         }
 
-        // Select adapter with highest VRAM
+        if (desc.Flags & DXGI_ADAPTER_FLAG3_SOFTWARE) {
+            IDXGIAdapter4_Release(adapter4);
+            continue;
+        }
 
         if (desc.DedicatedVideoMemory > maxDedicatedVRAM) {
             if (best_adapter)
@@ -214,7 +260,6 @@ static IDXGIAdapter4* dx12_internal_select_best_adapter(IDXGIFactory7* factory, 
             break;
         }
 
-        // Fallback - keep first hardware adapter if no discrete GPU is found
         if (!best_adapter) {
             best_adapter = adapter4;
         } else {
@@ -223,7 +268,7 @@ static IDXGIAdapter4* dx12_internal_select_best_adapter(IDXGIFactory7* factory, 
     }
 
     if (!best_adapter) {
-        LOG_ERROR("[DX12] No suitable GPU found for D3D12");
+        LOG_ERROR("[D3D12] [DX12] No suitable GPU found for D3D12");
         return NULL;
     } else {
         LOG_INFO("Selected Adapter Info: ");
@@ -324,7 +369,7 @@ static void dx12_internal_register_debug_interface(context_backend* backend)
 static void dx12_internal_d3d12_register_info_queue(context_backend* backend)
 {
     if (!backend->device) {
-        LOG_ERROR("D3D12 device is NULL; can't register info queue.");
+        LOG_ERROR("[D3D12] D3D12 device is NULL; can't register info queue.");
         return;
     }
 
@@ -402,7 +447,7 @@ gfx_context dx12_ctx_init(GLFWwindow* window)
     #endif
     HRESULT hr = CreateDXGIFactory2(createFactoryFlags, &IID_IDXGIFactory7, &backend->factory);
     if (FAILED(hr)) {
-        LOG_ERROR("Failed to create DXGI Factory7 (HRESULT = 0x%08X)", (unsigned int) hr);
+        LOG_ERROR("[D3D12] Failed to create DXGI Factory7 (HRESULT = 0x%08X)", (unsigned int) hr);
         uuid_destroy(&ctx.uuid);
         free(backend);
         return ctx;
@@ -414,7 +459,7 @@ gfx_context dx12_ctx_init(GLFWwindow* window)
 
     // Now create the logical device from the Adapter
     if (!backend->gpu) {
-        LOG_ERROR("Failed to select a suitable GPU for D3D12");
+        LOG_ERROR("[D3D12] Failed to select a suitable GPU for D3D12");
         uuid_destroy(&ctx.uuid);
         free(backend);
         return ctx;
@@ -428,7 +473,7 @@ gfx_context dx12_ctx_init(GLFWwindow* window)
     LOG_INFO("Creating D3D12 Device...");
     hr = D3D12CreateDevice((IUnknown*) backend->gpu, backend->feat_level, &IID_ID3D12Device10, &backend->device);
     if (FAILED(hr)) {
-        LOG_ERROR("Failed to create D3D12 Device (HRESULT = 0x%08X)", (unsigned int) hr);
+        LOG_ERROR("[D3D12] Failed to create D3D12 Device (HRESULT = 0x%08X)", (unsigned int) hr);
         IDXGIAdapter4_Release(backend->gpu);
         uuid_destroy(&ctx.uuid);
         free(backend);
@@ -452,12 +497,13 @@ gfx_context dx12_ctx_init(GLFWwindow* window)
     desc.NodeMask                 = 0;
     ID3D12Device10_CreateCommandQueue(DXDevice, &desc, &IID_ID3D12CommandQueue, &backend->direct_queue);
     if (!backend->direct_queue) {
-        LOG_ERROR("Failed to create D3D12 Direct Command Queue");
+        LOG_ERROR("[D3D12] Failed to create D3D12 Direct Command Queue");
         dx12_ctx_destroy(&ctx);
         return ctx;
     }
 
-    // TODO: create frame sync primitives
+    // Create frame sync primitives
+    ctx.frame_sync.timeline_syncobj = dx12_create_syncobj(GFX_SYNCOBJ_TYPE_TIMELINE);
 
     return ctx;
 }
@@ -465,9 +511,12 @@ gfx_context dx12_ctx_init(GLFWwindow* window)
 void dx12_ctx_destroy(gfx_context* ctx)
 {
     if (!ctx || !ctx->backend) {
-        LOG_ERROR("Context or backend is NULL, cannot destroy D3D12 context");
+        LOG_ERROR("[D3D12] Context or backend is NULL, cannot destroy D3D12 context");
         return;
     }
+
+    dx12_destroy_syncobj(&ctx->frame_sync.timeline_syncobj);
+
     context_backend* backend = (context_backend*) ctx->backend;
 
     if (backend->direct_queue) {
@@ -500,7 +549,6 @@ void dx12_ctx_destroy(gfx_context* ctx)
 
 void dx12_flush_gpu_work(void)
 {
-    // No exact equivalent, we need to do this on a per-queue basis
 }
 
 static void dx12_internal_create_backbuffers(gfx_swapchain* sc)
@@ -515,7 +563,7 @@ static void dx12_internal_create_backbuffers(gfx_swapchain* sc)
     rtvHeapDesc.NodeMask                   = 0;
     HRESULT hr                             = ID3D12Device10_CreateDescriptorHeap(DXDevice, &rtvHeapDesc, &IID_ID3D12DescriptorHeap, &backend->rtv_heap);
     if (FAILED(hr)) {
-        LOG_ERROR("Failed to create RTV Descriptor Heap (HRESULT = 0x%08X)", (unsigned int) hr);
+        LOG_ERROR("[D3D12] Failed to create RTV Descriptor Heap (HRESULT = 0x%08X)", (unsigned int) hr);
         IDXGISwapChain4_Release(backend->swapchain);
         uuid_destroy(&sc->uuid);
         free(backend);
@@ -528,7 +576,7 @@ static void dx12_internal_create_backbuffers(gfx_swapchain* sc)
     for (uint32_t i = 0; i < MAX_DX_SWAPCHAIN_BUFFERS; i++) {
         hr = IDXGISwapChain4_GetBuffer(backend->swapchain, i, &IID_ID3D12Resource, &backend->backbuffers[i]);
         if (FAILED(hr)) {
-            LOG_ERROR("Failed to get backbuffer %u from swapchain (HRESULT = 0x%08X)", i, (unsigned int) hr);
+            LOG_ERROR("[D3D12] Failed to get backbuffer %u from swapchain (HRESULT = 0x%08X)", i, (unsigned int) hr);
             for (uint32_t j = 0; j < i; j++) {
                 if (backend->backbuffers[j]) {
                     ID3D12Resource_Release(backend->backbuffers[j]);
@@ -577,7 +625,7 @@ gfx_swapchain dx12_create_swapchain(uint32_t width, uint32_t height)
 
     swapchain_backend* backend = malloc(sizeof(swapchain_backend));
     if (!backend) {
-        LOG_ERROR("error malloc swapchain_backend");
+        LOG_ERROR("[D3D12] error malloc swapchain_backend");
         uuid_destroy(&swapchain.uuid);
         return swapchain;
     }
@@ -601,14 +649,14 @@ gfx_swapchain dx12_create_swapchain(uint32_t width, uint32_t height)
     IDXGISwapChain1* swapchain1 = NULL;
     HRESULT          hr         = IDXGIFactory7_CreateSwapChainForHwnd(s_DXCtx.factory, (IUnknown*) s_DXCtx.direct_queue, s_DXCtx.hwnd, &swapChainDesc, NULL, NULL, &swapchain1);
     if (FAILED(hr)) {
-        LOG_ERROR("Failed to create DXGI Swapchain (HRESULT = 0x%08X)", (unsigned int) hr);
+        LOG_ERROR("[D3D12] Failed to create DXGI Swapchain (HRESULT = 0x%08X)", (unsigned int) hr);
         uuid_destroy(&swapchain.uuid);
         free(backend);
         return swapchain;
     }
     IDXGISwapChain1_QueryInterface(swapchain1, &IID_IDXGISwapChain4, &backend->swapchain);
     if (!backend->swapchain) {
-        LOG_ERROR("Failed to query IDXGISwapChain4 from IDXGISwapChain1");
+        LOG_ERROR("[D3D12] Failed to query IDXGISwapChain4 from IDXGISwapChain1");
         IDXGISwapChain1_Release(swapchain1);
         uuid_destroy(&swapchain.uuid);
         free(backend);
@@ -649,7 +697,7 @@ gfx_syncobj dx12_create_syncobj(gfx_syncobj_type type)
 
     HRESULT hr = ID3D12Device10_CreateFence(DXDevice, 0, D3D12_FENCE_FLAG_NONE, &IID_ID3D12Fence, &backend->fence);
     if (FAILED(hr)) {
-        LOG_ERROR("Failed to create ID3D12Fence (HRESULT = 0x%08X)", (unsigned int) hr);
+        LOG_ERROR("[D3D12] Failed to create ID3D12Fence (HRESULT = 0x%08X)", (unsigned int) hr);
         uuid_destroy(&syncobj.uuid);
         free(backend);
         return syncobj;
@@ -691,7 +739,7 @@ gfx_cmd_pool dx12_create_gfx_cmd_allocator(void)
 
     HRESULT hr = ID3D12Device10_CreateCommandAllocator(DXDevice, D3D12_COMMAND_LIST_TYPE_DIRECT, &IID_ID3D12CommandAllocator, &pool.backend);
     if (FAILED(hr)) {
-        LOG_ERROR("Failed to allocate command allocator (HRESULT = 0x%08X)", (unsigned int) hr);
+        LOG_ERROR("[D3D12] Failed to allocate command allocator (HRESULT = 0x%08X)", (unsigned int) hr);
         uuid_destroy(&pool.uuid);
         free(pool.backend);
         return pool;
@@ -721,7 +769,7 @@ gfx_cmd_buf dx12_create_gfx_cmd_buf(gfx_cmd_pool* pool)
     HRESULT hr = ID3D12Device10_CreateCommandList(DXDevice, 0, D3D12_COMMAND_LIST_TYPE_DIRECT, ((ID3D12CommandAllocator*) (pool->backend)), NULL, &IID_ID3D12GraphicsCommandList, &cmd_buf.backend);
     hr         = ID3D12GraphicsCommandList_Close((ID3D12GraphicsCommandList*) (cmd_buf.backend));
     if (FAILED(hr)) {
-        LOG_ERROR("Failed to allocate command lists (HRESULT = 0x%08X)", (unsigned int) hr);
+        LOG_ERROR("[D3D12] Failed to allocate command lists (HRESULT = 0x%08X)", (unsigned int) hr);
         uuid_destroy(&cmd_buf.uuid);
         free(cmd_buf.backend);
         return cmd_buf;
@@ -739,12 +787,10 @@ static void dx12_internal_signal_fence(ID3D12CommandQueue* cmd_queue, ID3D12Fenc
 
 //--------------------------------------------------------
 
-    #define WIP 0
-    #if !WIP
 rhi_error_codes dx12_frame_begin(gfx_context* context)
 {
     // This is reverse to what Vulkan does, we first wait for previous work to be done
-    // and then acquire a new back buffer, because acquire is a GPU operation in vulkan, 
+    // and then acquire a new back buffer, because acquire is a GPU operation in vulkan,
     // here we just ask for index and wait on GPU until work is done and that back buffer is free to use
     dx12_acquire_image(context);
     uint32_t       frame_idx          = context->swapchain.current_backbuffer_idx;
@@ -754,6 +800,14 @@ rhi_error_codes dx12_frame_begin(gfx_context* context)
 
     memset(context->cmd_queue.cmds, 0, context->cmd_queue.cmds_count * sizeof(gfx_cmd_buf*));
     context->cmd_queue.cmds_count = 0;
+
+    gfx_cmd_pool*           pool         = &context->draw_cmds_pool[frame_idx];
+    ID3D12CommandAllocator* d3dallocator = (ID3D12CommandAllocator*) (pool->backend);
+    HRESULT                 hr           = ID3D12CommandAllocator_Reset(d3dallocator);
+    if (FAILED(hr)) {
+        LOG_ERROR("[D3D12] Failed to reset command allocator for this frame!");
+        return FailedCommandAllocatorReset;
+    }
 
     return Success;
 }
@@ -773,19 +827,10 @@ rhi_error_codes dx12_frame_end(gfx_context* context)
     context->current_syncobj_idx = frame_idx;
 
     dx12_internal_signal_fence(((context_backend*) context->backend)->direct_queue, ((syncobj_backend*) (rendering_done->backend))->fence, signal_value);
-
     return Success;
 }
 
 //--------------------------------------------------------
-
-rhi_error_codes dx12_acquire_image(gfx_context* context)
-{
-    swapchain_backend* sc_backend             = (swapchain_backend*) context->swapchain.backend;
-    context->swapchain.current_backbuffer_idx = IDXGISwapChain4_GetCurrentBackBufferIndex(sc_backend->swapchain);
-
-    return Success;
-}
 
 rhi_error_codes dx12_wait_on_previous_cmds(const gfx_syncobj* in_flight_sync, gfx_sync_point sync_point)
 {
@@ -798,16 +843,72 @@ rhi_error_codes dx12_wait_on_previous_cmds(const gfx_syncobj* in_flight_sync, gf
     return Success;
 }
 
+rhi_error_codes dx12_acquire_image(gfx_context* context)
+{
+    swapchain_backend* sc_backend             = (swapchain_backend*) context->swapchain.backend;
+    context->swapchain.current_backbuffer_idx = IDXGISwapChain4_GetCurrentBackBufferIndex(sc_backend->swapchain);
+
+    return Success;
+}
+
+rhi_error_codes dx12_gfx_cmd_enque_submit(gfx_cmd_queue* cmd_queue, gfx_cmd_buf* cmd_buff)
+{
+    cmd_queue->cmds[cmd_queue->cmds_count] = cmd_buff;
+    cmd_queue->cmds_count++;
+
+    return Success;
+}
+
+rhi_error_codes dx12_gfx_cmd_submit_queue(const gfx_cmd_queue* cmd_queue, gfx_submit_syncobj submit_sync)
+{
+    UNUSED(cmd_queue);
+    UNUSED(submit_sync);
+    return FailedUnknown;
+}
+
+rhi_error_codes dx12_gfx_cmd_submit_for_rendering(gfx_context* context)
+{
+    UNUSED(context);
+    return FailedUnknown;
+}
+
 rhi_error_codes dx12_present(const gfx_context* context)
 {
     const swapchain_backend* sc_backend = (const swapchain_backend*) context->swapchain.backend;
-    HRESULT                  hr         = IDXGISwapChain4_Present(sc_backend->swapchain, DXGI_PRESENT_ALLOW_TEARING, 0);
+    HRESULT                  hr         = IDXGISwapChain4_Present(sc_backend->swapchain, 0, DXGI_PRESENT_ALLOW_TEARING);
     if (FAILED(hr)) {
-        LOG_ERROR("Swapchain failed to present");
+        LOG_ERROR("[D3D12] Swapchain failed to present (HRESULT = 0x%08X)", (unsigned int) hr);
         return FailedPresent;
     }
 
     return Success;
 }
-    #endif
+
+rhi_error_codes dx12_begin_gfx_cmd_recording(const gfx_cmd_pool* allocator, const gfx_cmd_buf* cmd_buf)
+{
+    // Don't reset allocator, we use a persistent design
+    ID3D12CommandAllocator*    d3dallocator = (ID3D12CommandAllocator*) (allocator->backend);
+    ID3D12GraphicsCommandList* cmd_list     = (ID3D12GraphicsCommandList*) (cmd_buf->backend);
+
+    HRESULT hr = ID3D12GraphicsCommandList_Reset(cmd_list, d3dallocator, NULL);
+    if (FAILED(hr)) {
+        LOG_ERROR("[D3D12] Failed to reset gfx command list!");
+        return FailedCommandBegin;
+    }
+
+    return Success;
+}
+
+rhi_error_codes dx12_end_gfx_cmd_recording(const gfx_cmd_buf* cmd_buf)
+{
+    ID3D12GraphicsCommandList* cmd_list = (ID3D12GraphicsCommandList*) (cmd_buf->backend);
+    HRESULT                    hr       = ID3D12GraphicsCommandList_Close(cmd_list);
+    if (FAILED(hr)) {
+        LOG_ERROR("[D3D12] Failed to close gfx command list!");
+        return FailedCommandEnd;
+    }
+
+    return Success;
+}
+
 #endif    // _WIN32

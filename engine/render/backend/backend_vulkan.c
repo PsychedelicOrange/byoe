@@ -2446,16 +2446,20 @@ gfx_texture_readback vulkan_device_readback_swapchain(const gfx_swapchain* swapc
 rhi_error_codes vulkan_frame_begin(gfx_context* ctx)
 {
     gfx_syncobj* in_flight_sync = NULL;
+    uint32_t     inflight_idx   = ctx->inflight_frame_idx;
     if (g_gfxConfig.use_timeline_semaphores) {
         in_flight_sync = &ctx->frame_sync.timeline_syncobj;
     } else {
-        in_flight_sync = &ctx->frame_sync.inflight_syncobj[ctx->inflight_frame_idx];
+        in_flight_sync = &ctx->frame_sync.inflight_syncobj[inflight_idx];
     }
-    vulkan_wait_on_previous_cmds(in_flight_sync, ctx->frame_sync.frame_syncpoint[ctx->inflight_frame_idx]);
+    vulkan_wait_on_previous_cmds(in_flight_sync, ctx->frame_sync.frame_syncpoint[inflight_idx]);
     vulkan_acquire_image(ctx);
 
     memset(ctx->cmd_queue.cmds, 0, ctx->cmd_queue.cmds_count * sizeof(gfx_cmd_buf*));
     ctx->cmd_queue.cmds_count = 0;
+
+    gfx_cmd_pool* pool = &ctx->draw_cmds_pool[inflight_idx];
+    VK_CHECK_RESULT(vkResetCommandPool(VKDEVICE, *((VkCommandPool*) (pool->backend)), 0), "[Vulkan] Failed to reset command pool for this frame!");
 
     return Success;
 }
@@ -2670,14 +2674,15 @@ rhi_error_codes vulkan_resize_swapchain(gfx_swapchain* swapchain, uint32_t width
     return Success;
 }
 
-rhi_error_codes vulkan_begin_gfx_cmd_recording(const gfx_cmd_buf* cmd_buf)
+rhi_error_codes vulkan_begin_gfx_cmd_recording(const gfx_cmd_pool* allocator, const gfx_cmd_buf* cmd_buf)
 {
+    (void*) allocator;    //  UNUSED
+
     VkCommandBufferBeginInfo begin = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
         .pNext = NULL,
         .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT};
 
-    vkResetCommandBuffer(*(VkCommandBuffer*) cmd_buf->backend, /*VkCommandBufferResetFlagBits*/ 0);
     VK_CHECK_RESULT(vkBeginCommandBuffer(*(VkCommandBuffer*) cmd_buf->backend, &begin), "[Vulkan] Failed to start recoding command buffer");
     return Success;
 }
