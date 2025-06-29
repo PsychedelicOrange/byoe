@@ -58,9 +58,9 @@
 //   - [x] Swapchain resize
 //   - [x] **SUBMIT** API
 // - [ ] Hello Triangle without VB/IB in single shader quad
-//   - [ ] Begin/End RenderpPass API (dynamic rendering VK) (setup RT/DRT etc. clear them...)
-//   - [ ] Drawing API
-//   - [ ] Shaders/Loading
+//   - [x] Begin/End RenderpPass API (dynamic rendering VK) (setup RT/DRT etc. clear them...)
+//   - [x] Drawing API
+//   - [ ] Shaders/Loading (re-use the spv compiled, and GLSL as source for DX no HLSL!)
 //   - [ ] Pipeline API
 //   - [ ] Root Signature
 //   - [ ] Hello Triangle Shader + Draw loop
@@ -133,8 +133,8 @@ const rhi_jumptable dx12_jumptable = {
     NULL,
     NULL,
     NULL,
-    NULL,
-    NULL,
+    dx12_draw,
+    dx12_dispatch,
     NULL,
     NULL,
 };
@@ -991,6 +991,7 @@ rhi_error_codes dx12_begin_render_pass(const gfx_cmd_buf* cmd_buf, gfx_render_pa
     ID3D12GraphicsCommandList* cmd_list = (ID3D12GraphicsCommandList*) cmd_buf->backend;
     if (!render_pass.is_compute_pass) {
         D3D12_CPU_DESCRIPTOR_HANDLE rtvs[MAX_RT] = {0};
+        D3D12_CPU_DESCRIPTOR_HANDLE dsv          = {0};
 
         if (render_pass.is_swap_pass) render_pass.color_attachments_count = 1;
 
@@ -1001,27 +1002,26 @@ rhi_error_codes dx12_begin_render_pass(const gfx_cmd_buf* cmd_buf, gfx_render_pa
             if (render_pass.is_swap_pass) {
                 if (!render_pass.swapchain)
                     LOG_ERROR("[Vulkan] pass is marked as swap pass but swapchain is empty");
-                swapchain_backend* sc_backend = (swapchain_backend*) render_pass.swapchain->backend;
-                UNUSED(sc_backend);
+                swapchain_backend*          sc_backend = (swapchain_backend*) render_pass.swapchain->backend;
+                D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle  = sc_backend->rtv_handle_start;
+                rtvHandle.ptr += backbuffer_index * ID3D12Device10_GetDescriptorHandleIncrementSize(DXDevice, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+                // store the correct back buffer offset RTV handle
+                rtvs[i] = rtvHandle;
+                // clear it
+                if (attachment.clear)
+                    ID3D12GraphicsCommandList_ClearRenderTargetView(cmd_list, rtvHandle, attachment.clear_color.raw, 0, NULL);
 
                 LOG_ERROR("// TODO: UNIMPLEMENTED");
+    #ifdef _MSC_VER
                 __debugbreak();
+    #endif
             } else {
                 LOG_ERROR("// TODO: use gfx_texture->backend as imageview");
             }
         }
 
-        ID3D12GraphicsCommandList_OMSetRenderTargets(cmd_list, render_pass.color_attachments_count, rtvs, FALSE, NULL);
-
-        for (uint32_t i = 0; i < render_pass.color_attachments_count; ++i) {
-            const gfx_attachment* attachment = &render_pass.color_attachments[i];
-            if (attachment->clear) {
-                FLOAT clear_color[4];
-                memcpy(clear_color, attachment->clear_color.raw, sizeof(float) * 4);
-                ID3D12GraphicsCommandList_ClearRenderTargetView(cmd_list, rtvs[i], clear_color, 0, NULL);
-            }
-        }
-
+        UNUSED(dsv);
+        // TODO: Depth attachments, the SDF renderer doesn't need this yet!
         //if (render_pass.depth_attachment.texture) {
         //    texture_backend*            tex_backend = (texture_backend*) render_pass.depth_attachment.texture->backend;
         //    D3D12_CPU_DESCRIPTOR_HANDLE dsv         = tex_backend->dsv_handle;
@@ -1031,6 +1031,8 @@ rhi_error_codes dx12_begin_render_pass(const gfx_cmd_buf* cmd_buf, gfx_render_pa
         //    }
         //    cmd_list->lpVtbl->OMSetRenderTargets(cmd_list, render_pass.color_attachments_count, rtvs, FALSE, &dsv);
         //}
+
+        ID3D12GraphicsCommandList_OMSetRenderTargets(cmd_list, render_pass.color_attachments_count, rtvs, FALSE, NULL);
 
         D3D12_VIEWPORT vp = {
             .TopLeftX = 0.0f,
@@ -1059,6 +1061,28 @@ rhi_error_codes dx12_end_render_pass(const gfx_cmd_buf* cmd_buf, gfx_render_pass
     TracyCZoneNC(ctx, "Begin Render Pass", COLOR_ACQUIRE, true);
     TracyCZoneEnd(ctx);
 
+    return Success;
+}
+
+rhi_error_codes dx12_draw(const gfx_cmd_buf* cmd_buf, uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance)
+{
+    TracyCZoneNC(ctx, "DrawAuto", COLOR_ACQUIRE, true);
+
+    ID3D12GraphicsCommandList* cmd_list = (ID3D12GraphicsCommandList*) (cmd_buf->backend);
+    ID3D12GraphicsCommandList_DrawInstanced(cmd_list, vertex_count, instance_count, first_vertex, first_instance);
+
+    TracyCZoneEnd(ctx);
+    return Success;
+}
+
+rhi_error_codes dx12_dispatch(const gfx_cmd_buf* cmd_buf, uint32_t dimX, uint32_t dimY, uint32_t dimZ)
+{
+    TracyCZoneNC(ctx, "Dispatch", COLOR_ACQUIRE, true);
+
+    ID3D12GraphicsCommandList* cmd_list = (ID3D12GraphicsCommandList*) (cmd_buf->backend);
+    ID3D12GraphicsCommandList_Dispatch(cmd_list, dimX, dimY, dimZ);
+
+    TracyCZoneEnd(ctx);
     return Success;
 }
 
