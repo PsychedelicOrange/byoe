@@ -619,9 +619,9 @@ typedef struct gfx_cmd_buf
 
 typedef struct gfx_cmd_queue
 {
-    gfx_cmd_buf* cmds[MAX_CMD_BUFFS_PER_QUEUE];
-    uint32_t     cmds_count;
-    uint32_t     _pad0[3];
+    void*    cmds[MAX_CMD_BUFFS_PER_QUEUE];
+    uint32_t cmds_count;
+    uint32_t _pad0[3];
 } gfx_cmd_queue;
 
 typedef struct gfx_shader
@@ -791,7 +791,7 @@ typedef struct gfx_context
     // NOTE: Add all the command buffers you want here...Draw, Async etc.
     // 1 per thread, only single threaded for now
     // IN DX12 we need one per frame to reset memory when we are done with a command buffer recording and need to reset
-    // If we use a single pool, DX12 would never be able to re-use memory that was used by the command buffer even if 
+    // If we use a single pool, DX12 would never be able to re-use memory that was used by the command buffer even if
     // we reset it, so vulkan should also suffer this wrath of multiple pools per frame in flight
     gfx_cmd_pool draw_cmds_pool[MAX_FRAMES_INFLIGHT];
     // FIXME: Do we really need 2 of these draw_cmds and queue? can't we collapse and use 1?

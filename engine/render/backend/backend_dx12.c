@@ -31,6 +31,15 @@
     #include <stdlib.h>
     #include <string.h>    // memset
 
+    #define COLOR_ACQUIRE     0xFF8800    // Orange
+    #define COLOR_WAIT        0xFF4444    // Red
+    #define COLOR_PRESENT     0x00CCFF    // Light Blue
+    #define COLOR_CMD_SUBMIT  0x00FF00    // Green
+    #define COLOR_CMD_RECORD  0xCCCC00    // Yellow
+    #define COLOR_RENDER_PASS 0xAA88FF    // Violet
+
+    #include <tracy/TracyC.h>
+
 //--------------------------------------------------------
 // TODO:
 // - [x] Use the IDXGIFactory7 to query for the best GPUa and create the IDXGIAdapter4 or use AgilitySDK with DeviceFactory
@@ -509,6 +518,8 @@ gfx_context dx12_ctx_init(GLFWwindow* window)
     // Create frame sync primitives
     ctx.frame_sync.timeline_syncobj = dx12_create_syncobj(GFX_SYNCOBJ_TYPE_TIMELINE);
 
+    // Cache CommandListSubmission commands
+
     return ctx;
 }
 
@@ -553,12 +564,13 @@ void dx12_ctx_destroy(gfx_context* ctx)
 
 void dx12_flush_gpu_work(gfx_context* context)
 {
-    gfx_syncobj* timeline_syncobj = &context->frame_sync.timeline_syncobj;
+    UNUSED(context);
+    //gfx_syncobj* timeline_syncobj = &context->frame_sync.timeline_syncobj;
 
-    uint64_t signal_value = ++(context->frame_sync.global_syncpoint);
-    ID3D12CommandQueue_Signal(((context_backend*) context->backend)->direct_queue, ((syncobj_backend*) (timeline_syncobj->backend))->fence, signal_value);
-
-    dx12_wait_on_previous_cmds(timeline_syncobj, context->frame_sync.global_syncpoint);
+    //uint64_t signal_value = ++(context->frame_sync.global_syncpoint);
+    //ID3D12CommandQueue_Signal(((context_backend*) context->backend)->direct_queue, ((syncobj_backend*) (timeline_syncobj->backend))->fence, signal_value);
+    //
+    //dx12_wait_on_previous_cmds(timeline_syncobj, context->frame_sync.global_syncpoint);
 }
 
 static void dx12_internal_create_backbuffers(gfx_swapchain* sc)
@@ -796,6 +808,8 @@ void dx12_free_gfx_cmd_buf(gfx_cmd_buf* cmd_buf)
 
 rhi_error_codes dx12_frame_begin(gfx_context* context)
 {
+    TracyCFrameMarkStart("MainFrame");
+
     // This is reverse to what Vulkan does, we first wait for previous work to be done
     // and then acquire a new back buffer, because acquire is a GPU operation in vulkan,
     // here we just ask for index and wait on GPU until work is done and that back buffer is free to use
@@ -804,6 +818,10 @@ rhi_error_codes dx12_frame_begin(gfx_context* context)
     gfx_syncobj    frame_fence        = context->frame_sync.timeline_syncobj;
     gfx_sync_point current_sync_point = context->frame_sync.frame_syncpoint[frame_idx];
     dx12_wait_on_previous_cmds(&frame_fence, current_sync_point);
+
+    // for API completion sake
+    context->inflight_frame_idx  = frame_idx;
+    context->current_syncobj_idx = frame_idx;
 
     memset(context->cmd_queue.cmds, 0, context->cmd_queue.cmds_count * sizeof(gfx_cmd_buf*));
     context->cmd_queue.cmds_count = 0;
@@ -821,12 +839,9 @@ rhi_error_codes dx12_frame_end(gfx_context* context)
     uint64_t     signal_value                      = ++(context->frame_sync.global_syncpoint);
     context->frame_sync.frame_syncpoint[frame_idx] = signal_value;
 
-    // for API completion sake
-    context->inflight_frame_idx  = frame_idx;
-    context->current_syncobj_idx = frame_idx;
-
     ID3D12CommandQueue_Signal(((context_backend*) context->backend)->direct_queue, ((syncobj_backend*) (timeline_syncobj->backend))->fence, signal_value);
 
+    TracyCFrameMarkEnd("MainFrame");
     return Success;
 }
 
@@ -834,27 +849,36 @@ rhi_error_codes dx12_frame_end(gfx_context* context)
 
 rhi_error_codes dx12_wait_on_previous_cmds(const gfx_syncobj* in_flight_sync, gfx_sync_point sync_point)
 {
+    TracyCZoneNC(ctx, "Wait on Prev Frame Image", COLOR_WAIT, true);
+
     syncobj_backend* backend = (syncobj_backend*) (in_flight_sync->backend);
     if (ID3D12Fence_GetCompletedValue(backend->fence) < sync_point) {
         ID3D12Fence_SetEventOnCompletion(backend->fence, sync_point, backend->fenceEvent);
         WaitForSingleObject(backend->fenceEvent, UINT64_MAX);
     }
-
+    TracyCZoneEnd(ctx);
     return Success;
 }
 
 rhi_error_codes dx12_acquire_image(gfx_context* context)
 {
+    TracyCZoneNC(ctx, "Acquire Image", COLOR_ACQUIRE, true);
+
     swapchain_backend* sc_backend             = (swapchain_backend*) context->swapchain.backend;
     context->swapchain.current_backbuffer_idx = IDXGISwapChain4_GetCurrentBackBufferIndex(sc_backend->swapchain);
+
+    TracyCZoneEnd(ctx);
 
     return Success;
 }
 
 rhi_error_codes dx12_gfx_cmd_enque_submit(gfx_cmd_queue* cmd_queue, gfx_cmd_buf* cmd_buff)
 {
-    cmd_queue->cmds[cmd_queue->cmds_count] = cmd_buff;
+    TracyCZoneN(ctx, "dx12_gfx_cmd_enque_submit", true);
+
+    cmd_queue->cmds[cmd_queue->cmds_count] = (ID3D12GraphicsCommandList*) (cmd_buff->backend);
     cmd_queue->cmds_count++;
+    TracyCZoneEnd(ctx);
 
     return Success;
 }
@@ -868,14 +892,12 @@ rhi_error_codes dx12_gfx_cmd_submit_queue(const gfx_cmd_queue* cmd_queue, gfx_su
     // if we go this route, we can enqueue the sync points and pass it off to gfx_submit_syncobj for vulkan
     // but for simple single queue sync we can ignore it.
     UNUSED(submit_sync);
+    UNUSED(cmd_queue);
+    TracyCZoneNC(ctx, "ExecuteCommandLists", COLOR_CMD_SUBMIT, true);
 
-    ID3D12CommandList** cmd_lists = malloc(cmd_queue->cmds_count * sizeof(ID3D12CommandList*));
-    for (uint32_t i = 0; i < cmd_queue->cmds_count; i++)
-        cmd_lists[i] = ((ID3D12CommandList*) (cmd_queue->cmds[i]->backend));
-
-    ID3D12CommandQueue_ExecuteCommandLists((ID3D12CommandQueue*) (s_DXCtx.direct_queue), cmd_queue->cmds_count, cmd_lists);
-
-    free(cmd_lists);
+    if (cmd_queue->cmds_count > 0)
+        ID3D12CommandQueue_ExecuteCommandLists((ID3D12CommandQueue*) (s_DXCtx.direct_queue), cmd_queue->cmds_count, (ID3D12CommandList**) cmd_queue->cmds);
+    TracyCZoneEnd(ctx);
 
     return Success;
 }
@@ -888,12 +910,16 @@ rhi_error_codes dx12_gfx_cmd_submit_for_rendering(gfx_context* context)
 
 rhi_error_codes dx12_present(const gfx_context* context)
 {
+    TracyCZoneNC(ctx, "Present", COLOR_PRESENT, true);
+
     const swapchain_backend* sc_backend = (const swapchain_backend*) context->swapchain.backend;
     HRESULT                  hr         = IDXGISwapChain4_Present(sc_backend->swapchain, 0, DXGI_PRESENT_ALLOW_TEARING);
     if (FAILED(hr)) {
         LOG_ERROR("[D3D12] Swapchain failed to present (HRESULT = 0x%08X)", (unsigned int) hr);
         return FailedPresent;
     }
+
+    TracyCZoneEnd(ctx);
 
     return Success;
 }
@@ -920,6 +946,8 @@ rhi_error_codes dx12_resize_swapchain(gfx_context* context, uint32_t width, uint
 
 rhi_error_codes dx12_begin_gfx_cmd_recording(const gfx_cmd_pool* allocator, const gfx_cmd_buf* cmd_buf)
 {
+    TracyCZoneNC(ctx, "Begin Cmd Recording", COLOR_CMD_RECORD, true);
+
     // Don't reset allocator, we use a persistent design
     ID3D12CommandAllocator*    d3dallocator = (ID3D12CommandAllocator*) (allocator->backend);
     ID3D12GraphicsCommandList* cmd_list     = (ID3D12GraphicsCommandList*) (cmd_buf->backend);
@@ -935,24 +963,30 @@ rhi_error_codes dx12_begin_gfx_cmd_recording(const gfx_cmd_pool* allocator, cons
         LOG_ERROR("[D3D12] Failed to reset gfx command list!");
         return FailedCommandBegin;
     }
+    TracyCZoneEnd(ctx);
 
     return Success;
 }
 
 rhi_error_codes dx12_end_gfx_cmd_recording(const gfx_cmd_buf* cmd_buf)
 {
+    TracyCZoneNC(ctx, "End Cmd Recording", COLOR_CMD_RECORD, true);
+
     ID3D12GraphicsCommandList* cmd_list = (ID3D12GraphicsCommandList*) (cmd_buf->backend);
     HRESULT                    hr       = ID3D12GraphicsCommandList_Close(cmd_list);
     if (FAILED(hr)) {
         LOG_ERROR("[D3D12] Failed to close gfx command list!");
         return FailedCommandEnd;
     }
+    TracyCZoneEnd(ctx);
 
     return Success;
 }
 
 rhi_error_codes dx12_begin_render_pass(const gfx_cmd_buf* cmd_buf, gfx_render_pass render_pass, uint32_t backbuffer_index)
 {
+    TracyCZoneNC(ctx, "Begin Render Pass", COLOR_ACQUIRE, true);
+
     UNUSED(backbuffer_index);
     ID3D12GraphicsCommandList* cmd_list = (ID3D12GraphicsCommandList*) cmd_buf->backend;
     if (!render_pass.is_compute_pass) {
@@ -1014,7 +1048,7 @@ rhi_error_codes dx12_begin_render_pass(const gfx_cmd_buf* cmd_buf, gfx_render_pa
         ID3D12GraphicsCommandList_RSSetViewports(cmd_list, 1, &vp);
         ID3D12GraphicsCommandList_RSSetScissorRects(cmd_list, 1, &scissor);
     }
-
+    TracyCZoneEnd(ctx);
     return Success;
 }
 
@@ -1022,6 +1056,9 @@ rhi_error_codes dx12_end_render_pass(const gfx_cmd_buf* cmd_buf, gfx_render_pass
 {
     UNUSED(cmd_buf);
     UNUSED(render_pass);
+    TracyCZoneNC(ctx, "Begin Render Pass", COLOR_ACQUIRE, true);
+    TracyCZoneEnd(ctx);
+
     return Success;
 }
 

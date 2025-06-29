@@ -2463,7 +2463,6 @@ rhi_error_codes vulkan_frame_begin(gfx_context* ctx)
     vulkan_wait_on_previous_cmds(in_flight_sync, ctx->frame_sync.frame_syncpoint[inflight_idx]);
     vulkan_acquire_image(ctx);
 
-    memset(ctx->cmd_queue.cmds, 0, ctx->cmd_queue.cmds_count * sizeof(gfx_cmd_buf*));
     ctx->cmd_queue.cmds_count = 0;
 
     gfx_cmd_pool* pool = &ctx->draw_cmds_pool[inflight_idx];
@@ -2530,7 +2529,7 @@ rhi_error_codes vulkan_acquire_image(gfx_context* ctx)
 
 rhi_error_codes vulkan_gfx_cmd_enque_submit(gfx_cmd_queue* cmd_queue, gfx_cmd_buf* cmd_buff)
 {
-    cmd_queue->cmds[cmd_queue->cmds_count] = cmd_buff;
+    cmd_queue->cmds[cmd_queue->cmds_count] = *(VkCommandBuffer*) (cmd_buff->backend);
     cmd_queue->cmds_count++;
 
     return Success;
@@ -2538,10 +2537,6 @@ rhi_error_codes vulkan_gfx_cmd_enque_submit(gfx_cmd_queue* cmd_queue, gfx_cmd_bu
 
 rhi_error_codes vulkan_gfx_cmd_submit_queue(const gfx_cmd_queue* cmd_queue, gfx_submit_syncobj submit_sync)
 {
-    VkCommandBuffer* vk_cmd_buffs = malloc(cmd_queue->cmds_count * sizeof(VkCommandBuffer));
-    for (uint32_t i = 0; i < cmd_queue->cmds_count; i++)
-        vk_cmd_buffs[i] = *((VkCommandBuffer*) (cmd_queue->cmds[i]->backend));
-
     uint32_t signal_syncobjs_count = submit_sync.signal_syncobjs_count;
     if (g_gfxConfig.use_timeline_semaphores)
         submit_sync.signal_syncobjs_count++;
@@ -2595,7 +2590,7 @@ rhi_error_codes vulkan_gfx_cmd_submit_queue(const gfx_cmd_queue* cmd_queue, gfx_
         .sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO,
         .pNext                = g_gfxConfig.use_timeline_semaphores ? &timelineInfo : NULL,
         .commandBufferCount   = cmd_queue->cmds_count,
-        .pCommandBuffers      = vk_cmd_buffs,
+        .pCommandBuffers      = (VkCommandBuffer*) cmd_queue->cmds,
         .waitSemaphoreCount   = submit_sync.wait_syncobjs_count,
         .pWaitSemaphores      = wait_semaphores,
         .pWaitDstStageMask    = waitStages,
@@ -2604,7 +2599,6 @@ rhi_error_codes vulkan_gfx_cmd_submit_queue(const gfx_cmd_queue* cmd_queue, gfx_
     };
     VK_CHECK_RESULT(vkQueueSubmit(s_VkCtx.queues.gfx, 1, &submitInfo, signal_fence), "Failed to submit command buffers");
 
-    free(vk_cmd_buffs);
     free(wait_semaphores);
     free(signal_semaphores);
 
