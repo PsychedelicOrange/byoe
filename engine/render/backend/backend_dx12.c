@@ -565,12 +565,12 @@ void dx12_ctx_destroy(gfx_context* ctx)
 void dx12_flush_gpu_work(gfx_context* context)
 {
     UNUSED(context);
-    //gfx_syncobj* timeline_syncobj = &context->frame_sync.timeline_syncobj;
+    gfx_syncobj* timeline_syncobj = &context->frame_sync.timeline_syncobj;
 
-    //uint64_t signal_value = ++(context->frame_sync.global_syncpoint);
-    //ID3D12CommandQueue_Signal(((context_backend*) context->backend)->direct_queue, ((syncobj_backend*) (timeline_syncobj->backend))->fence, signal_value);
-    //
-    //dx12_wait_on_previous_cmds(timeline_syncobj, context->frame_sync.global_syncpoint);
+    uint64_t signal_value = ++(context->frame_sync.global_syncpoint);
+    ID3D12CommandQueue_Signal(((context_backend*) context->backend)->direct_queue, ((syncobj_backend*) (timeline_syncobj->backend))->fence, signal_value);
+
+    dx12_wait_on_previous_cmds(timeline_syncobj, context->frame_sync.global_syncpoint);
 }
 
 static void dx12_internal_create_backbuffers(gfx_swapchain* sc)
