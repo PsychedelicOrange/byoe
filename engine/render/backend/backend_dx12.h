@@ -41,6 +41,9 @@ void       dx12_destroy_compute_shader(gfx_shader* shader);
 gfx_shader dx12_create_vs_ps_shader(const char* cso_file_path_vs, const char* cso_file_path_ps);
 void       dx12_destroy_vs_ps_shader(gfx_shader* shader);
 
+gfx_pipeline dx12_create_pipeline(gfx_pipeline_create_info info);
+void         dx12_destroy_pipeline(gfx_pipeline* pipeline);
+
 // ...
 
 //------------------------------------------

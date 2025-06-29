@@ -214,11 +214,6 @@ typedef struct shader_backend
     } modules;
 } shader_backend;
 
-typedef struct pipeline_backend
-{
-    VkPipeline pipeline;
-} pipeline_backend;
-
 typedef struct descriptor_table_backend
 {
     VkPipelineLayout pipeline_layout_ref_handle;
@@ -1582,7 +1577,7 @@ gfx_shader vulkan_device_create_vs_ps_shader(const char* spv_file_path_vs, const
 {
     gfx_shader shader = {0};
     uuid_generate(&shader.uuid);
-   
+
     shader_backend* backend_vs = malloc(sizeof(shader_backend));
     if (backend_vs) {
         shader.stages.VS  = backend_vs;
@@ -1633,9 +1628,6 @@ static gfx_pipeline vulkan_internal_create_compute_pipeline(gfx_pipeline_create_
     gfx_pipeline pipeline = {0};
     uuid_generate(&pipeline.uuid);
 
-    pipeline_backend* backend = malloc(sizeof(pipeline_backend));
-    memset(backend, 0, sizeof(pipeline_backend));
-
     shader_backend* cs_backend = (shader_backend*) info.shader.stages.CS;
 
     VkComputePipelineCreateInfo computePipelineCI = {
@@ -1645,9 +1637,10 @@ static gfx_pipeline vulkan_internal_create_compute_pipeline(gfx_pipeline_create_
         .stage  = cs_backend->stage_ci,
     };
 
-    VK_CHECK_RESULT(vkCreateComputePipelines(VKDEVICE, VK_NULL_HANDLE, 1, &computePipelineCI, NULL, &backend->pipeline), "[Vulkan] Cannot create compute graphics pipeline");
+    VkPipeline vk_pipeline = VK_NULL_HANDLE;
+    VK_CHECK_RESULT(vkCreateComputePipelines(VKDEVICE, VK_NULL_HANDLE, 1, &computePipelineCI, NULL, &vk_pipeline), "[Vulkan] Cannot create compute graphics pipeline");
 
-    pipeline.backend = backend;
+    pipeline.backend = &vk_pipeline;
     return pipeline;
 }
 
@@ -1657,9 +1650,6 @@ static gfx_pipeline vulkan_internal_create_gfx_pipeline(gfx_pipeline_create_info
 {
     gfx_pipeline pipeline = {0};
     uuid_generate(&pipeline.uuid);
-
-    pipeline_backend* backend = malloc(sizeof(pipeline_backend));
-    memset(backend, 0, sizeof(pipeline_backend));
 
     //----------------------------
     // Vertex Input Layout Stage
@@ -1840,11 +1830,12 @@ static gfx_pipeline vulkan_internal_create_gfx_pipeline(gfx_pipeline_create_info
         .stageCount          = stage_count,
         .renderPass          = VK_NULL_HANDLE};    // renderPass is NULL since we are using VK_KHR_dynamic_rendering extension
 
-    VK_CHECK_RESULT(vkCreateGraphicsPipelines(VKDEVICE, VK_NULL_HANDLE, 1, &graphics_pipeline_ci, NULL, &backend->pipeline), "[Vulkan] could not create graphics pipeline");
+    VkPipeline vk_pipeline = VK_NULL_HANDLE;
+    VK_CHECK_RESULT(vkCreateGraphicsPipelines(VKDEVICE, VK_NULL_HANDLE, 1, &graphics_pipeline_ci, NULL, &vk_pipeline), "[Vulkan] could not create graphics pipeline");
 
     free(stages);
 
-    pipeline.backend = backend;
+    pipeline.backend = vk_pipeline;
 
     return pipeline;
 }
@@ -1859,8 +1850,7 @@ gfx_pipeline vulkan_device_create_pipeline(gfx_pipeline_create_info info)
 void vulkan_device_destroy_pipeline(gfx_pipeline* pipeline)
 {
     uuid_destroy(&pipeline->uuid);
-    vkDestroyPipeline(VKDEVICE, ((pipeline_backend*) (pipeline->backend))->pipeline, NULL);
-    free(pipeline->backend);
+    vkDestroyPipeline(VKDEVICE, *(VkPipeline*) (pipeline->backend), NULL);
     pipeline->backend = NULL;
 }
 
@@ -2790,13 +2780,13 @@ rhi_error_codes vulkan_set_scissor(const gfx_cmd_buf* cmd_buf, gfx_scissor sciss
 
 rhi_error_codes vulkan_bind_gfx_pipeline(const gfx_cmd_buf* cmd_buf, gfx_pipeline pipeline)
 {
-    vkCmdBindPipeline(*(VkCommandBuffer*) cmd_buf->backend, VK_PIPELINE_BIND_POINT_GRAPHICS, ((pipeline_backend*) (pipeline.backend))->pipeline);
+    vkCmdBindPipeline(*(VkCommandBuffer*) cmd_buf->backend, VK_PIPELINE_BIND_POINT_GRAPHICS, *(VkPipeline*) (pipeline.backend));
     return Success;
 }
 
 rhi_error_codes vulkan_bind_compute_pipeline(const gfx_cmd_buf* cmd_buf, gfx_pipeline pipeline)
 {
-    vkCmdBindPipeline(*(VkCommandBuffer*) cmd_buf->backend, VK_PIPELINE_BIND_POINT_COMPUTE, ((pipeline_backend*) (pipeline.backend))->pipeline);
+    vkCmdBindPipeline(*(VkCommandBuffer*) cmd_buf->backend, VK_PIPELINE_BIND_POINT_COMPUTE, *(VkPipeline*) (pipeline.backend));
     return Success;
 }
 

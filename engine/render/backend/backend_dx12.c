@@ -60,7 +60,7 @@
 // - [ ] Hello Triangle without VB/IB in single shader quad
 //   - [x] Begin/End RenderpPass API (dynamic rendering VK) (setup RT/DRT etc. clear them...)
 //   - [x] Drawing API
-//   - [ ] Shaders/Loading (re-use the SPIRV compiled, and GLSL as source for DX no HLSL!)
+//   - [x] Shaders/Loading (re-use the SPIRV compiled, and GLSL as source for DX no HLSL!)
 //   - [ ] Pipeline API
 //   - [ ] Root Signature
 //   - [ ] Hello Triangle Shader + Draw loop
@@ -899,6 +899,20 @@ void dx12_destroy_vs_ps_shader(gfx_shader* shader)
         free(backend);
         shader->stages.PS = NULL;
     }
+}
+
+gfx_pipeline dx12_create_pipeline(gfx_pipeline_create_info info)
+{
+    gfx_pipeline pipeline = {0};
+    uuid_generate(&pipeline.uuid);
+    UNUSED(info);
+
+    return pipeline;
+}
+
+void dx12_destroy_pipeline(gfx_pipeline* pipeline)
+{
+    uuid_destroy(&pipeline->uuid);
 }
 
 //--------------------------------------------------------

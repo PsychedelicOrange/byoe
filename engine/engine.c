@@ -28,7 +28,7 @@ void engine_init(struct GLFWwindow** gameWindow, uint32_t width, uint32_t height
 #ifdef __APPLE__
     rhi_api api = Vulkan;
 #elif defined _WIN32
-    rhi_api api = Vulkan;    // TODO: can use vulkan too, maybe check with command line options?
+    rhi_api api = D3D12;    // TODO: can use vulkan too, maybe check with command line options?
 #endif
 
     if (gfx_init(api) != Success) {
