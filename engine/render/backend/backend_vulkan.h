@@ -12,10 +12,10 @@ extern const rhi_jumptable vulkan_jumptable;
 //------------------------------------------
 // Context
 //------------------------------------------
-gfx_context vulkan_ctx_init(GLFWwindow* window, uint32_t width, uint32_t height);
+gfx_context vulkan_ctx_init(GLFWwindow* window);
 void        vulkan_ctx_destroy(gfx_context* ctx);
 
-void vulkan_flush_gpu_work(void);
+void vulkan_flush_gpu_work(gfx_context* context);
 
 //------------------------------------------
 // Debug
@@ -28,10 +28,14 @@ void vulkan_flush_gpu_work(void);
 gfx_swapchain vulkan_device_create_swapchain(uint32_t width, uint32_t height);
 void          vulkan_device_destroy_swapchain(gfx_swapchain* sc);
 
+gfx_syncobj vulkan_device_create_syncobj(gfx_syncobj_type type);
+void        vulkan_device_destroy_syncobj(gfx_syncobj* syncobj);
+
 gfx_cmd_pool vulkan_device_create_gfx_cmd_pool(void);
 void         vulkan_device_destroy_gfx_cmd_pool(gfx_cmd_pool* pool);
 
 gfx_cmd_buf vulkan_device_create_gfx_cmd_buf(gfx_cmd_pool* pool);
+void        vulkan_device_free_gfx_cmd_buf(gfx_cmd_buf* cmd_buf);
 
 // TODO: Use a Span DS to make this more intuitive
 gfx_shader vulkan_device_create_compute_shader(const char* spv_file_path);
@@ -72,9 +76,6 @@ void              vulkan_device_destroy_uniform_buffer_resource_view(gfx_resourc
 gfx_cmd_buf vulkan_device_create_single_time_command_buffer(void);
 void        vulkan_device_destroy_single_time_command_buffer(gfx_cmd_buf* cmd_buf);
 
-gfx_syncobj vulkan_device_create_syncobj(gfx_syncobj_type type);
-void        vulkan_device_destroy_syncobj(gfx_syncobj* syncobj);
-
 gfx_texture_readback vulkan_device_readback_swapchain(const gfx_swapchain* swapchain);
 
 //------------------------------------------
@@ -84,16 +85,16 @@ gfx_texture_readback vulkan_device_readback_swapchain(const gfx_swapchain* swapc
 rhi_error_codes vulkan_frame_begin(gfx_context* context);
 rhi_error_codes vulkan_frame_end(gfx_context* context);
 
-rhi_error_codes vulkan_wait_on_previous_cmds(const gfx_syncobj* in_flight_sync);
-rhi_error_codes vulkan_acquire_image(gfx_context* swapchain);
+rhi_error_codes vulkan_wait_on_previous_cmds(const gfx_syncobj* in_flight_sync, gfx_sync_point sync_point);
+rhi_error_codes vulkan_acquire_image(gfx_context* context);
 rhi_error_codes vulkan_gfx_cmd_enque_submit(gfx_cmd_queue* cmd_queue, gfx_cmd_buf* cmd_buff);
 rhi_error_codes vulkan_gfx_cmd_submit_queue(const gfx_cmd_queue* cmd_queue, gfx_submit_syncobj submit_sync);
-rhi_error_codes vulkan_gfx_cmd_submit_for_rendering(gfx_context* ctx);
-rhi_error_codes vulkan_present(const gfx_context* swapchain);
+rhi_error_codes vulkan_gfx_cmd_submit_for_rendering(gfx_context* context);
+rhi_error_codes vulkan_present(const gfx_context* context);
 
-rhi_error_codes vulkan_resize_swapchain(gfx_swapchain* swapchain, uint32_t width, uint32_t height);
+rhi_error_codes vulkan_resize_swapchain(gfx_context* context, uint32_t width, uint32_t height);
 
-rhi_error_codes vulkan_begin_gfx_cmd_recording(const gfx_cmd_buf* cmd_buf);
+rhi_error_codes vulkan_begin_gfx_cmd_recording(const gfx_cmd_pool* allocator, const gfx_cmd_buf* cmd_buf);
 rhi_error_codes vulkan_end_gfx_cmd_recording(const gfx_cmd_buf* cmd_buf);
 
 rhi_error_codes vulkan_begin_render_pass(const gfx_cmd_buf* cmd_buf, gfx_render_pass render_pass, uint32_t backbuffer_index);

@@ -25,7 +25,13 @@ void engine_init(struct GLFWwindow** gameWindow, uint32_t width, uint32_t height
     render_utils_init_glfw();
     *gameWindow = render_utils_create_glfw_window("BYOE Game: Spooky Asteroids!", width, height);
 
-    if (gfx_init(Vulkan) != Success) {
+#ifdef __APPLE__
+    rhi_api api = Vulkan;
+#elif defined _WIN32
+    rhi_api api = D3D12;    // TODO: can use vulkan too, maybe check with command line options?
+#endif
+
+    if (gfx_init(api) != Success) {
         LOG_ERROR("Error initializing gfx");
         gfx_destroy();
         exit(-1);

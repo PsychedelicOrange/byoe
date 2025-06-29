@@ -75,6 +75,11 @@ if(WIN32)
     set(VULKAN_SDK $ENV{VULKAN_SDK})
     include_directories(${VULKAN_SDK}/Include)
     link_directories(${VULKAN_SDK}/Lib)
+    target_link_libraries(engine PRIVATE
+        d3d12
+        dxgi
+        dxguid
+    )
 elseif(APPLE)
     set(VULKAN_SDK $ENV{VULKAN_SDK})
     include_directories(${VULKAN_SDK}/include)
@@ -96,7 +101,7 @@ target_include_directories(engine PUBLIC
 )
 
 # Engine linking
-target_link_libraries(engine PRIVATE glfw cglm volk)
+target_link_libraries(engine PRIVATE glfw cglm volk TracyClient)
 
 # export DLL symbols
 if(WIN32 AND BUILD_SHARED_ENGINE)
