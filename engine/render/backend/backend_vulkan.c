@@ -1582,7 +1582,7 @@ gfx_shader vulkan_device_create_vs_ps_shader(const char* spv_file_path_vs, const
 {
     gfx_shader shader = {0};
     uuid_generate(&shader.uuid);
-    (void) spv_file_path_vs;
+   
     shader_backend* backend_vs = malloc(sizeof(shader_backend));
     if (backend_vs) {
         shader.stages.VS  = backend_vs;

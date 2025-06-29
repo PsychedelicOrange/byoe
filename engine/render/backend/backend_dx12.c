@@ -15,10 +15,10 @@
 #ifdef _DEBUG
 #include <dxgidebug.h>
 #endif
-    #include <d3d12.h>
-    #include <d3d12sdklayers.h>
-    #include <dxgi1_6.h>
-
+#include <d3d12.h>
+#include <d3d12sdklayers.h>
+#include <dxgi1_6.h>
+#include <d3dcompiler.h>
 #endif
 
 #define GLFW_EXPOSE_NATIVE_WIN32
@@ -60,16 +60,15 @@
 // - [ ] Hello Triangle without VB/IB in single shader quad
 //   - [x] Begin/End RenderpPass API (dynamic rendering VK) (setup RT/DRT etc. clear them...)
 //   - [x] Drawing API
-//   - [ ] Shaders/Loading (re-use the spv compiled, and GLSL as source for DX no HLSL!)
+//   - [ ] Shaders/Loading (re-use the SPIRV compiled, and GLSL as source for DX no HLSL!)
 //   - [ ] Pipeline API
 //   - [ ] Root Signature
 //   - [ ] Hello Triangle Shader + Draw loop
-// - [ ] Descriptor Heaps API
 // - [ ] Create Texture/Buffer resources
 // - [ ] Resource Views API
+// - [ ] Descriptor Heaps/tables API + root signature hookup
 // - [ ] Barriers API
 // - [ ] Root Constants
-// - [ ] Dispatch API
 // - [ ] Restore SDF renderer
 
 //--------------------------------------------------------
@@ -219,6 +218,12 @@ typedef struct syncobj_backend
     ID3D12Fence* fence;         // for both CPU/GPU signaling
     HANDLE       fenceEvent;    // CPU event for wait operations
 } syncobj_backend;
+
+typedef struct shader_backend
+{
+    gfx_shader_stage stage;
+    ID3DBlob*        bytecode;
+} shader_backend;
 
 //--------------------------------------------------------
 
@@ -802,6 +807,98 @@ gfx_cmd_buf dx12_create_gfx_cmd_buf(gfx_cmd_pool* pool)
 void dx12_free_gfx_cmd_buf(gfx_cmd_buf* cmd_buf)
 {
     ID3D12GraphicsCommandList_Release((ID3D12GraphicsCommandList*) (cmd_buf->backend));
+    uuid_destroy(&cmd_buf->uuid);
+}
+
+gfx_shader dx12_create_compute_shader(const char* cso_file_path)
+{
+    gfx_shader shader = {0};
+    uuid_generate(&shader.uuid);
+
+    shader_backend* backend = malloc(sizeof(shader_backend));
+    if (backend) {
+        shader.stages.CS = backend;
+        backend->stage   = GFX_SHADER_STAGE_CS;
+        HRESULT hr       = D3DReadFileToBlob((LPCWSTR) cso_file_path, &backend->bytecode);
+        if (FAILED(hr)) {
+            LOG_ERROR("Failed to load shader blob from file: %s (HRESULT = 0x%08X)", cso_file_path, hr);
+            uuid_destroy(&shader.uuid);
+            return shader;
+        }
+    }
+
+    return shader;
+}
+
+void dx12_destroy_compute_shader(gfx_shader* shader)
+{
+    uuid_destroy(&shader->uuid);
+    if (shader->stages.CS) {
+        shader_backend* backend = (shader_backend*) (shader->stages.CS);
+
+        ID3D10Blob_Release((ID3DBlob*) (backend)->bytecode);
+        (ID3DBlob*) (backend)->bytecode = NULL;
+
+        free(backend);
+        shader->stages.CS = NULL;
+    }
+}
+
+gfx_shader dx12_create_vs_ps_shader(const char* cso_file_path_vs, const char* cso_file_path_ps)
+{
+    gfx_shader shader = {0};
+    uuid_generate(&shader.uuid);
+
+    shader_backend* backend_vs = malloc(sizeof(shader_backend));
+    if (backend_vs) {
+        shader.stages.CS  = backend_vs;
+        backend_vs->stage = GFX_SHADER_STAGE_CS;
+        HRESULT hr        = D3DReadFileToBlob((LPCWSTR) cso_file_path_vs, &backend_vs->bytecode);
+        if (FAILED(hr)) {
+            LOG_ERROR("Failed to load shader blob from file: %s (HRESULT = 0x%08X)", cso_file_path_vs, hr);
+            uuid_destroy(&shader.uuid);
+            return shader;
+        }
+    }
+
+    shader_backend* backend_ps = malloc(sizeof(shader_backend));
+    if (backend_ps) {
+        shader.stages.CS  = backend_ps;
+        backend_ps->stage = GFX_SHADER_STAGE_PS;
+        HRESULT hr        = D3DReadFileToBlob((LPCWSTR) cso_file_path_ps, &backend_ps->bytecode);
+        if (FAILED(hr)) {
+            LOG_ERROR("Failed to load shader blob from file: %s (HRESULT = 0x%08X)", cso_file_path_ps, hr);
+            uuid_destroy(&shader.uuid);
+            return shader;
+        }
+    }
+
+    return shader;
+}
+
+void dx12_destroy_vs_ps_shader(gfx_shader* shader)
+{
+    uuid_destroy(&shader->uuid);
+
+    if (shader->stages.VS) {
+        shader_backend* backend = (shader_backend*) (shader->stages.VS);
+
+        ID3D10Blob_Release((ID3DBlob*) (backend)->bytecode);
+        (ID3DBlob*) (backend)->bytecode = NULL;
+
+        free(backend);
+        shader->stages.VS = NULL;
+    }
+
+    if (shader->stages.PS) {
+        shader_backend* backend = (shader_backend*) (shader->stages.PS);
+
+        ID3D10Blob_Release((ID3DBlob*) (backend)->bytecode);
+        (ID3DBlob*) (backend)->bytecode = NULL;
+
+        free(backend);
+        shader->stages.PS = NULL;
+    }
 }
 
 //--------------------------------------------------------

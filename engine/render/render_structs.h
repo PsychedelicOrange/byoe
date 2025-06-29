@@ -624,6 +624,9 @@ typedef struct gfx_cmd_queue
     uint32_t _pad0[3];
 } gfx_cmd_queue;
 
+// Since each stages is a pointer to backend
+// We store the gfx_shader_type along with 
+// it's corresponding backend stage
 typedef struct gfx_shader
 {
     random_uuid_t uuid;
