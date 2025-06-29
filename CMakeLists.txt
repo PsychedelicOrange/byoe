@@ -71,10 +71,12 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(volk)
 ##############################
 # Tracy Profiler
+if(WIN32)
 FetchContent_Declare(
     tracy
     GIT_REPOSITORY https://github.com/wolfpld/tracy.git
     GIT_TAG v0.11.1
 )
 FetchContent_MakeAvailable(tracy)
+endif()
 ####################################################################

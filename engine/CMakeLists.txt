@@ -154,7 +154,9 @@ target_include_directories(engine PUBLIC
 )
 
 # Engine linking
+if(WIN32)
 target_link_libraries(engine PRIVATE glfw cglm volk TracyClient)
+endif()
 
 # export DLL symbols
 if(WIN32 AND BUILD_SHARED_ENGINE)
