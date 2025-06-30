@@ -61,7 +61,7 @@
 //   - [x] Begin/End RenderpPass API (dynamic rendering VK) (setup RT/DRT etc. clear them...)
 //   - [x] Drawing API
 //   - [x] Shaders/Loading (re-use the SPIRV compiled, and GLSL as source for DX no HLSL!)
-//   - [ ] Root Signature
+//   - [x] Root Signature
 //   - [ ] Pipeline API
 //   - [ ] Hello Triangle Shader + Draw loop
 // - [ ] Create Texture/Buffer resources
@@ -152,6 +152,10 @@ const rhi_jumptable dx12_jumptable = {
 
     #define DXDevice s_DXCtx.device
 
+    #define SIZE_DWORD            4
+    #define MAX_ROOT_PARAMS       16
+    #define MAX_DESCRIPTOR_RANGES 32
+
 //--------------------------------------------------------
 // Internal Types
 //--------------------------------------------------------
@@ -225,6 +229,28 @@ typedef struct shader_backend
     ID3DBlob*        bytecode;
 } shader_backend;
 
+//--------------------------------------------------------
+
+static D3D12_DESCRIPTOR_RANGE_TYPE dx12_util_descriptor_type_translate(gfx_resource_type res_type)
+{
+    switch (res_type) {
+        case GFX_RESOURCE_TYPE_SAMPLER:
+            return D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
+        case GFX_RESOURCE_TYPE_SAMPLED_IMAGE:
+        case GFX_RESOURCE_TYPE_UNIFORM_TEXEL_BUFFER:
+            return D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+        case GFX_RESOURCE_TYPE_STORAGE_IMAGE:
+        case GFX_RESOURCE_TYPE_STORAGE_TEXEL_BUFFER:
+        case GFX_RESOURCE_TYPE_STORAGE_BUFFER:
+            return D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+        case GFX_RESOURCE_TYPE_UNIFORM_BUFFER:
+            return D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+        // Note: INPUT_ATTACHMENT doesn't have a direct DX12 equivalent;
+        case GFX_RESOURCE_TYPE_INPUT_ATTACHMENT:
+        default:
+            return (D3D12_DESCRIPTOR_RANGE_TYPE) -1;    // Invalid/unsupported
+    }
+}
 //--------------------------------------------------------
 
 static IDXGIAdapter4* dx12_internal_select_best_adapter(IDXGIFactory7* factory, D3D_FEATURE_LEVEL min_feat_level)
@@ -570,12 +596,12 @@ void dx12_ctx_destroy(gfx_context* ctx)
 void dx12_flush_gpu_work(gfx_context* context)
 {
     UNUSED(context);
-    gfx_syncobj* timeline_syncobj = &context->frame_sync.timeline_syncobj;
-
-    uint64_t signal_value = ++(context->frame_sync.global_syncpoint);
-    ID3D12CommandQueue_Signal(((context_backend*) context->backend)->direct_queue, ((syncobj_backend*) (timeline_syncobj->backend))->fence, signal_value);
-
-    dx12_wait_on_previous_cmds(timeline_syncobj, context->frame_sync.global_syncpoint);
+    //gfx_syncobj* timeline_syncobj = &context->frame_sync.timeline_syncobj;
+    //
+    //uint64_t signal_value = ++(context->frame_sync.global_syncpoint);
+    //ID3D12CommandQueue_Signal(((context_backend*) context->backend)->direct_queue, ((syncobj_backend*) (timeline_syncobj->backend))->fence, signal_value);
+    //
+    //dx12_wait_on_previous_cmds(timeline_syncobj, context->frame_sync.global_syncpoint);
 }
 
 static void dx12_internal_create_backbuffers(gfx_swapchain* sc)
@@ -898,6 +924,99 @@ void dx12_destroy_vs_ps_shader(gfx_shader* shader)
 
         free(backend);
         shader->stages.PS = NULL;
+    }
+}
+
+gfx_root_signature dx12_create_root_signature(const gfx_descriptor_set_layout* set_layouts, uint32_t set_layout_count, const gfx_push_constant_range* push_constants, uint32_t push_constant_count)
+{
+    gfx_root_signature root_sig = {0};
+    uuid_generate(&root_sig.uuid);
+
+    UNUSED(set_layouts);
+    UNUSED(set_layout_count);
+    UNUSED(push_constants);
+    UNUSED(push_constant_count);
+
+    D3D12_ROOT_SIGNATURE_DESC desc                         = {0};
+    D3D12_ROOT_PARAMETER      root_params[MAX_ROOT_PARAMS] = {0};
+
+    desc.NumParameters = set_layout_count + push_constant_count;
+    desc.pParameters   = root_params;
+
+    // Each set is a table entry
+    for (uint32_t i = 0; i < set_layout_count; ++i) {
+        const gfx_descriptor_set_layout* set_layout = &set_layouts[i];
+
+        D3D12_ROOT_DESCRIPTOR_TABLE table_entry                   = {0};
+        D3D12_DESCRIPTOR_RANGE      ranges[MAX_DESCRIPTOR_RANGES] = {0};
+
+        table_entry.NumDescriptorRanges = set_layout->binding_count;
+        table_entry.pDescriptorRanges   = ranges;
+
+        for (uint32_t j = 0; j < table_entry.NumDescriptorRanges; ++j) {
+            const gfx_descriptor_binding binding = set_layout->bindings[j];
+            // Add a range into descriptor table
+            ranges[j].RangeType                         = dx12_util_descriptor_type_translate(binding.type);
+            ranges[j].NumDescriptors                    = binding.count;
+            ranges[j].BaseShaderRegister                = binding.location.binding;
+            ranges[j].RegisterSpace                     = binding.location.set;
+            ranges[j].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+        }
+
+        root_params[i].ParameterType   = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+        root_params[i].DescriptorTable = table_entry;
+        // TODO: Implement shader visibility for each table in a more granular fashion
+        root_params[i].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;    // Currently ALL!
+    }
+
+    for (uint32_t i = 0; i < push_constant_count; ++i) {
+        const gfx_push_constant_range pc    = push_constants[i];
+        D3D12_ROOT_PARAMETER*         param = &root_params[set_layout_count + i];
+
+        param->ParameterType            = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+        param->Constants.Num32BitValues = pc.size / SIZE_DWORD;
+        param->Constants.ShaderRegister = 0;    // or we can (pc.offset / 4) encode offset in register this way
+        param->Constants.RegisterSpace  = 0;
+        param->ShaderVisibility         = D3D12_SHADER_VISIBILITY_ALL;    // Currently ALL!
+    }
+
+    // Serialize root signature
+    ID3DBlob* signature_blob = NULL;
+    ID3DBlob* error_blob     = NULL;
+
+    HRESULT hr = D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1, &signature_blob, &error_blob);
+    if (FAILED(hr)) {
+        LOG_ERROR("Failed to serializwe root signature (HRESULT = 0x%08X)", hr);
+        uuid_destroy(&root_sig.uuid);
+    }
+
+    ID3D12RootSignature* d3d_root_sig = NULL;
+    hr                                = ID3D12Device10_CreateRootSignature(DXDevice, 0, ID3D10Blob_GetBufferPointer(signature_blob), ID3D10Blob_GetBufferSize(signature_blob), &IID_ID3D12RootSignature, &d3d_root_sig);
+    if (FAILED(hr)) {
+        LOG_ERROR("Failed to serializwe root signature (HRESULT = 0x%08X)", hr);
+        uuid_destroy(&root_sig.uuid);
+        ID3D10Blob_Release(signature_blob);
+        ID3D10Blob_Release(error_blob);
+    }
+
+    ID3D10Blob_Release(signature_blob);
+    ID3D10Blob_Release(error_blob);
+
+    root_sig.backend                 = d3d_root_sig;
+    root_sig.descriptor_set_layouts  = (gfx_descriptor_set_layout*) set_layouts;
+    root_sig.descriptor_layout_count = set_layout_count;
+    root_sig.push_constants          = (gfx_push_constant_range*) push_constants;
+    root_sig.push_constant_count     = push_constant_count;
+    return root_sig;
+}
+
+void dx12_destroy_root_signature(gfx_root_signature* root_sig)
+{
+    uuid_destroy(&root_sig->uuid);
+
+    if (root_sig->backend) {
+        ID3D12RootSignature_Release((ID3D12RootSignature*) (root_sig->backend));
+        root_sig->backend = NULL;
     }
 }
 
