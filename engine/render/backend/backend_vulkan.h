@@ -44,11 +44,11 @@ void       vulkan_device_destroy_compute_shader(gfx_shader* shader);
 gfx_shader vulkan_device_create_vs_ps_shader(const char* spv_file_path_vs, const char* spv_file_path_ps);
 void       vulkan_device_destroy_vs_ps_shader(gfx_shader* shader);
 
-gfx_pipeline vulkan_device_create_pipeline(gfx_pipeline_create_info info);
-void         vulkan_device_destroy_pipeline(gfx_pipeline* pipeline);
-
 gfx_root_signature vulkan_device_create_root_signature(const gfx_descriptor_set_layout* set_layouts, uint32_t set_layout_count, const gfx_push_constant_range* push_constants, uint32_t push_constant_count);
 void               vulkan_device_destroy_root_signature(gfx_root_signature* root_sig);
+
+gfx_pipeline vulkan_device_create_pipeline(gfx_pipeline_create_info info);
+void         vulkan_device_destroy_pipeline(gfx_pipeline* pipeline);
 
 gfx_descriptor_table vulkan_device_create_descriptor_table(const gfx_root_signature* root_signature);
 void                 vulkan_device_destroy_descriptor_table(gfx_descriptor_table* descriptor_table);

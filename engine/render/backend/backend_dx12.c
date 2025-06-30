@@ -61,8 +61,8 @@
 //   - [x] Begin/End RenderpPass API (dynamic rendering VK) (setup RT/DRT etc. clear them...)
 //   - [x] Drawing API
 //   - [x] Shaders/Loading (re-use the SPIRV compiled, and GLSL as source for DX no HLSL!)
-//   - [ ] Pipeline API
 //   - [ ] Root Signature
+//   - [ ] Pipeline API
 //   - [ ] Hello Triangle Shader + Draw loop
 // - [ ] Create Texture/Buffer resources
 // - [ ] Resource Views API

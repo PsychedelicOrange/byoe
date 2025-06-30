@@ -65,11 +65,11 @@ typedef struct rhi_jumptablefrontend
     gfx_shader (*create_vs_ps_shader)(const char*, const char*);
     void       (*destroy_vs_ps_shader)(gfx_shader*);
 
-    gfx_pipeline (*create_pipeline)(gfx_pipeline_create_info);
-    void         (*destroy_pipeline)(gfx_pipeline*);
-
     gfx_root_signature (*create_root_signature)(const gfx_descriptor_set_layout*, uint32_t, const gfx_push_constant_range*, uint32_t);
     void               (*destroy_root_signature)(gfx_root_signature*);
+
+    gfx_pipeline (*create_pipeline)(gfx_pipeline_create_info);
+    void         (*destroy_pipeline)(gfx_pipeline*);
 
     gfx_descriptor_table (*create_descriptor_table)(const gfx_root_signature*);
     void                 (*destroy_descriptor_table)(gfx_descriptor_table*);

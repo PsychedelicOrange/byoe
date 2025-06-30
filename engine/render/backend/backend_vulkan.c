@@ -40,10 +40,10 @@ const rhi_jumptable vulkan_jumptable = {
     vulkan_device_destroy_compute_shader,
     vulkan_device_create_vs_ps_shader,
     vulkan_device_destroy_vs_ps_shader,
-    vulkan_device_create_pipeline,
-    vulkan_device_destroy_pipeline,
     vulkan_device_create_root_signature,
     vulkan_device_destroy_root_signature,
+    vulkan_device_create_pipeline,
+    vulkan_device_destroy_pipeline,
 
     vulkan_device_create_descriptor_table,
     vulkan_device_destroy_descriptor_table,
@@ -1623,6 +1623,92 @@ void vulkan_device_destroy_vs_ps_shader(gfx_shader* shader)
     free(backend_ps);
 }
 
+gfx_root_signature vulkan_device_create_root_signature(const gfx_descriptor_set_layout* set_layouts, uint32_t set_layout_count, const gfx_push_constant_range* push_constants, uint32_t push_constant_count)
+{
+    gfx_root_signature root_sig = {0};
+    uuid_generate(&root_sig.uuid);
+    root_signature_backend* backend = malloc(sizeof(root_signature_backend));
+    root_sig.backend                = backend;
+
+    backend->vk_descriptor_set_layouts = malloc(sizeof(VkDescriptorSetLayout) * set_layout_count);
+    for (uint32_t i = 0; i < set_layout_count; ++i) {
+        const gfx_descriptor_set_layout* set_layout = &set_layouts[i];
+
+        VkDescriptorSetLayoutBinding* vk_bindings = malloc(sizeof(VkDescriptorSetLayoutBinding) * set_layout->binding_count);
+
+        for (uint32_t j = 0; j < set_layout->binding_count; ++j) {
+            const gfx_descriptor_binding binding = set_layout->bindings[j];
+            vk_bindings[j]                       = (VkDescriptorSetLayoutBinding){
+                                      .binding            = binding.location.binding,
+                                      .descriptorType     = vulkan_util_descriptor_type_translate(binding.type),
+                                      .descriptorCount    = binding.count,
+                                      .stageFlags         = vulkan_util_shader_stage_bits(binding.stage_flags),
+                                      .pImmutableSamplers = NULL,
+            };
+        }
+
+        VkDescriptorSetLayoutCreateInfo set_layout_ci = {
+            .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+            .pNext        = NULL,
+            .flags        = 0,
+            .bindingCount = set_layout->binding_count,
+            .pBindings    = vk_bindings,
+        };
+
+        VK_CHECK_RESULT(vkCreateDescriptorSetLayout(VKDEVICE, &set_layout_ci, NULL, &backend->vk_descriptor_set_layouts[i]), "[Vulkan] cannot create descriptor set layout");
+        free(vk_bindings);
+    }
+
+    VkPushConstantRange* vk_push_constants = NULL;
+    if (push_constant_count > 0) {
+        vk_push_constants = malloc(sizeof(VkPushConstantRange) * push_constant_count);
+
+        for (uint32_t i = 0; i < push_constant_count; ++i) {
+            const gfx_push_constant_range push_constant = push_constants[i];
+            vk_push_constants[i]                        = (VkPushConstantRange){
+                                       .offset     = push_constant.offset,
+                                       .size       = push_constant.size,
+                                       .stageFlags = vulkan_util_shader_stage_bits(push_constant.stage),
+            };
+        }
+    }
+
+    VkPipelineLayoutCreateInfo pipeline_layout_ci = {
+        .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .pNext                  = NULL,
+        .flags                  = 0,
+        .setLayoutCount         = set_layout_count,
+        .pSetLayouts            = backend->vk_descriptor_set_layouts,
+        .pushConstantRangeCount = push_constant_count,
+        .pPushConstantRanges    = vk_push_constants,
+    };
+
+    VK_CHECK_RESULT(vkCreatePipelineLayout(VKDEVICE, &pipeline_layout_ci, NULL, &((root_signature_backend*) root_sig.backend)->pipeline_layout), "[Vulkan] cannot create pipeline layout");
+    free(vk_push_constants);
+
+    root_sig.descriptor_set_layouts  = (gfx_descriptor_set_layout*) set_layouts;
+    root_sig.descriptor_layout_count = set_layout_count;
+    root_sig.push_constants          = (gfx_push_constant_range*) push_constants;
+    root_sig.push_constant_count     = push_constant_count;
+
+    return root_sig;
+}
+
+void vulkan_device_destroy_root_signature(gfx_root_signature* root_sig)
+{
+    uuid_destroy(&root_sig->uuid);
+    for (uint32_t i = 0; i < root_sig->descriptor_layout_count; i++) {
+        vkDestroyDescriptorSetLayout(VKDEVICE, ((root_signature_backend*) (root_sig->backend))->vk_descriptor_set_layouts[i], NULL);
+    }
+
+    vkDestroyPipelineLayout(VKDEVICE, ((root_signature_backend*) (root_sig->backend))->pipeline_layout, NULL);
+    VkDescriptorSetLayout* layouts = ((root_signature_backend*) (root_sig->backend))->vk_descriptor_set_layouts;
+    if (layouts)
+        free(layouts);
+    free(root_sig->backend);
+    root_sig->backend = NULL;
+}
+
 static gfx_pipeline vulkan_internal_create_compute_pipeline(gfx_pipeline_create_info info)
 {
     gfx_pipeline pipeline = {0};
@@ -1852,92 +1938,6 @@ void vulkan_device_destroy_pipeline(gfx_pipeline* pipeline)
     uuid_destroy(&pipeline->uuid);
     vkDestroyPipeline(VKDEVICE, *(VkPipeline*) (pipeline->backend), NULL);
     pipeline->backend = NULL;
-}
-
-gfx_root_signature vulkan_device_create_root_signature(const gfx_descriptor_set_layout* set_layouts, uint32_t set_layout_count, const gfx_push_constant_range* push_constants, uint32_t push_constant_count)
-{
-    gfx_root_signature root_sig = {0};
-    uuid_generate(&root_sig.uuid);
-    root_signature_backend* backend = malloc(sizeof(root_signature_backend));
-    root_sig.backend                = backend;
-
-    backend->vk_descriptor_set_layouts = malloc(sizeof(VkDescriptorSetLayout) * set_layout_count);
-    for (uint32_t i = 0; i < set_layout_count; ++i) {
-        const gfx_descriptor_set_layout* set_layout = &set_layouts[i];
-
-        VkDescriptorSetLayoutBinding* vk_bindings = malloc(sizeof(VkDescriptorSetLayoutBinding) * set_layout->binding_count);
-
-        for (uint32_t j = 0; j < set_layout->binding_count; ++j) {
-            const gfx_descriptor_binding binding = set_layout->bindings[j];
-            vk_bindings[j]                       = (VkDescriptorSetLayoutBinding){
-                                      .binding            = binding.location.binding,
-                                      .descriptorType     = vulkan_util_descriptor_type_translate(binding.type),
-                                      .descriptorCount    = binding.count,
-                                      .stageFlags         = vulkan_util_shader_stage_bits(binding.stage_flags),
-                                      .pImmutableSamplers = NULL,
-            };
-        }
-
-        VkDescriptorSetLayoutCreateInfo set_layout_ci = {
-            .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-            .pNext        = NULL,
-            .flags        = 0,
-            .bindingCount = set_layout->binding_count,
-            .pBindings    = vk_bindings,
-        };
-
-        VK_CHECK_RESULT(vkCreateDescriptorSetLayout(VKDEVICE, &set_layout_ci, NULL, &backend->vk_descriptor_set_layouts[i]), "[Vulkan] cannot create descriptor set layout");
-        free(vk_bindings);
-    }
-
-    VkPushConstantRange* vk_push_constants = NULL;
-    if (push_constant_count > 0) {
-        vk_push_constants = malloc(sizeof(VkPushConstantRange) * push_constant_count);
-
-        for (uint32_t i = 0; i < push_constant_count; ++i) {
-            const gfx_push_constant_range push_constant = push_constants[i];
-            vk_push_constants[i]                        = (VkPushConstantRange){
-                                       .offset     = push_constant.offset,
-                                       .size       = push_constant.size,
-                                       .stageFlags = vulkan_util_shader_stage_bits(push_constant.stage),
-            };
-        }
-    }
-
-    VkPipelineLayoutCreateInfo pipeline_layout_ci = {
-        .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-        .pNext                  = NULL,
-        .flags                  = 0,
-        .setLayoutCount         = set_layout_count,
-        .pSetLayouts            = backend->vk_descriptor_set_layouts,
-        .pushConstantRangeCount = push_constant_count,
-        .pPushConstantRanges    = vk_push_constants,
-    };
-
-    VK_CHECK_RESULT(vkCreatePipelineLayout(VKDEVICE, &pipeline_layout_ci, NULL, &((root_signature_backend*) root_sig.backend)->pipeline_layout), "[Vulkan] cannot create pipeline layout");
-    free(vk_push_constants);
-
-    root_sig.descriptor_set_layouts  = (gfx_descriptor_set_layout*) set_layouts;
-    root_sig.descriptor_layout_count = set_layout_count;
-    root_sig.push_constants          = (gfx_push_constant_range*) push_constants;
-    root_sig.push_constant_count     = push_constant_count;
-
-    return root_sig;
-}
-
-void vulkan_device_destroy_root_signature(gfx_root_signature* root_sig)
-{
-    uuid_destroy(&root_sig->uuid);
-    for (uint32_t i = 0; i < root_sig->descriptor_layout_count; i++) {
-        vkDestroyDescriptorSetLayout(VKDEVICE, ((root_signature_backend*) (root_sig->backend))->vk_descriptor_set_layouts[i], NULL);
-    }
-
-    vkDestroyPipelineLayout(VKDEVICE, ((root_signature_backend*) (root_sig->backend))->pipeline_layout, NULL);
-    VkDescriptorSetLayout* layouts = ((root_signature_backend*) (root_sig->backend))->vk_descriptor_set_layouts;
-    if (layouts)
-        free(layouts);
-    free(root_sig->backend);
-    root_sig->backend = NULL;
 }
 
 gfx_descriptor_table vulkan_device_create_descriptor_table(const gfx_root_signature* root_signature)
