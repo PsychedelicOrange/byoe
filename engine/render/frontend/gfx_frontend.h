@@ -130,6 +130,7 @@ typedef struct rhi_jumptablefrontend
     rhi_error_codes (*dispatch)(const gfx_cmd_buf*, uint32_t, uint32_t, uint32_t);
 
     rhi_error_codes (*insert_image_layout_barrier)(const gfx_cmd_buf*, const gfx_resource*, gfx_image_layout, gfx_image_layout);
+    rhi_error_codes (*insert_swapchain_layout_barrier)(const gfx_cmd_buf*, const gfx_swapchain*, gfx_image_layout, gfx_image_layout);
     rhi_error_codes (*clear_image)(const gfx_cmd_buf*, const gfx_resource*);
 } rhi_jumptable;
 

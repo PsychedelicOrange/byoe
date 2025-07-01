@@ -484,6 +484,7 @@ void renderer_sdf_destroy(void)
     glfwTerminate();
 }
 
+#if !CLEAR_TEST
 static void renderer_internal_scene_clear_pass(gfx_cmd_buf* cmd_buff)
 {
     const SDF_Scene* scene = s_RendererSDFInternalState.scene;
@@ -576,6 +577,35 @@ static void renderer_internal_sdf_screen_quad_pass(gfx_cmd_buf* cmd_buff)
 
     g_rhi.insert_image_layout_barrier(cmd_buff, &s_RendererSDFInternalState.sdfscene_resources.scene_texture, GFX_IMAGE_LAYOUT_SHADER_READ_ONLY, GFX_IMAGE_LAYOUT_GENERAL);
 }
+#else
+static void renderer_internal_clear_screen_no_rendering(gfx_cmd_buf* cmd_buff)
+{
+    g_rhi.insert_swapchain_layout_barrier(cmd_buff, &s_RendererSDFInternalState.gfxcontext.swapchain, GFX_IMAGE_LAYOUT_PRESENTATION, GFX_IMAGE_LAYOUT_COLOR_ATTACHMENT);
+
+    color_rgba      clear_color       = {{
+        0.5f + 0.5f * sinf(0.003f * s_RendererSDFInternalState.frameCount + 0.0f),
+        0.5f + 0.5f * sinf(0.004f * s_RendererSDFInternalState.frameCount + 2.0f),
+        0.5f + 0.5f * sinf(0.005f * s_RendererSDFInternalState.frameCount + 4.0f),
+        1.0f                                                                      
+    }};
+    gfx_render_pass clear_screen_pass = {
+        .is_swap_pass            = true,
+        .swapchain               = &s_RendererSDFInternalState.gfxcontext.swapchain,
+        .extents                 = {{(float) s_RendererSDFInternalState.width, (float) s_RendererSDFInternalState.height}},
+        .color_attachments_count = 1,
+        .color_attachments[0]    = {
+               .clear       = true,
+               .clear_color = clear_color}};
+    g_rhi.begin_render_pass(cmd_buff, clear_screen_pass, s_RendererSDFInternalState.gfxcontext.swapchain.current_backbuffer_idx);
+    {
+        //g_rhi.set_viewport(cmd_buff, (gfx_viewport){.x = 0, .y = 0, .width = s_RendererSDFInternalState.width, .height = s_RendererSDFInternalState.height, .min_depth = 0, .max_depth = 1});
+        //g_rhi.set_scissor(cmd_buff, (gfx_scissor){.x = 0, .y = 0, .width = s_RendererSDFInternalState.width, .height = s_RendererSDFInternalState.height});
+    }
+    g_rhi.end_render_pass(cmd_buff, clear_screen_pass);
+
+    g_rhi.insert_swapchain_layout_barrier(cmd_buff, &s_RendererSDFInternalState.gfxcontext.swapchain, GFX_IMAGE_LAYOUT_COLOR_ATTACHMENT, GFX_IMAGE_LAYOUT_PRESENTATION);
+}
+#endif
 
 void renderer_sdf_render(void)
 {
@@ -620,8 +650,8 @@ void renderer_sdf_draw_scene(const SDF_Scene* scene)
 
         g_rhi.begin_gfx_cmd_recording(cmd_pool, cmd_buff);
 
-        {
 #if !CLEAR_TEST
+        {
             // Pass_1: SDF Scene Texture clear
             renderer_internal_scene_clear_pass(cmd_buff);
 
@@ -630,8 +660,10 @@ void renderer_sdf_draw_scene(const SDF_Scene* scene)
 
             // Pass_2: draw the sdf scene texture to screen quad
             renderer_internal_sdf_screen_quad_pass(cmd_buff);
-#endif
         }
+#else
+        renderer_internal_clear_screen_no_rendering(cmd_buff);
+#endif
 
         g_rhi.end_gfx_cmd_recording(cmd_buff);
 

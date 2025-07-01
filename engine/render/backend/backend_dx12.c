@@ -134,7 +134,8 @@ const rhi_jumptable dx12_jumptable = {
     NULL,
     dx12_draw,
     dx12_dispatch,
-    NULL,
+    dx12_transition_image_layout,
+    dx12_transition_swapchain_layout,
     NULL,
 };
 //--------------------------------------------------------
@@ -230,6 +231,7 @@ typedef struct shader_backend
 } shader_backend;
 
 //--------------------------------------------------------
+// Util functions
 
 static D3D12_DESCRIPTOR_RANGE_TYPE dx12_util_descriptor_type_translate(gfx_resource_type res_type)
 {
@@ -251,6 +253,43 @@ static D3D12_DESCRIPTOR_RANGE_TYPE dx12_util_descriptor_type_translate(gfx_resou
             return (D3D12_DESCRIPTOR_RANGE_TYPE) -1;    // Invalid/unsupported
     }
 }
+
+static D3D12_RESOURCE_STATES dx12_util_translate_image_layout(gfx_image_layout layout)
+{
+    switch (layout) {
+        case GFX_IMAGE_LAYOUT_UNDEFINED:
+            // No access intended, map to COMMON
+            return D3D12_RESOURCE_STATE_COMMON;
+
+        case GFX_IMAGE_LAYOUT_GENERAL:
+            // Most general usage
+            return D3D12_RESOURCE_STATE_GENERIC_READ;
+
+        case GFX_IMAGE_LAYOUT_COLOR_ATTACHMENT:
+            return D3D12_RESOURCE_STATE_RENDER_TARGET;
+
+        case GFX_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT:
+            return D3D12_RESOURCE_STATE_DEPTH_WRITE;
+
+        case GFX_IMAGE_LAYOUT_TRANSFER_DST:
+            return D3D12_RESOURCE_STATE_COPY_DEST;
+
+        case GFX_IMAGE_LAYOUT_TRANSFER_SRC:
+            return D3D12_RESOURCE_STATE_COPY_SOURCE;
+
+        case GFX_IMAGE_LAYOUT_SHADER_READ_ONLY:
+            // For textures bound as SRV in shaders
+            return D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+
+        case GFX_IMAGE_LAYOUT_PRESENTATION:
+            return D3D12_RESOURCE_STATE_PRESENT;
+
+        default:
+            LOG_ERROR("[D3D12] Unsupported gfx_image_layout!");
+            return D3D12_RESOURCE_STATE_COMMON;
+    }
+}
+
 //--------------------------------------------------------
 
 static IDXGIAdapter4* dx12_internal_select_best_adapter(IDXGIFactory7* factory, D3D_FEATURE_LEVEL min_feat_level)
@@ -404,6 +443,8 @@ static void dx12_internal_register_debug_interface(context_backend* backend)
     if (SUCCEEDED(D3D12GetDebugInterface(&IID_ID3D12Debug3, (void**) &backend->d3d12_debug))) {
         ID3D12Debug3_EnableDebugLayer(backend->d3d12_debug);
         ID3D12Debug3_SetEnableGPUBasedValidation(backend->d3d12_debug, TRUE);
+        //ID3D12Debug3_SetEnableSynchronizedCommandQueueValidation(backend->d3d12_debug, TRUE);
+
         LOG_INFO("D3D12 debug layer and GPU-based validation enabled");
     } else {
         LOG_WARN("D3D12 debug interface not available. Debug layer not enabled.");
@@ -487,7 +528,7 @@ gfx_context dx12_ctx_init(GLFWwindow* window)
     LOG_INFO("Creating DXGI Factory7");
     UINT createFactoryFlags = 0;
     #if defined(_DEBUG)
-    createFactoryFlags = DXGI_CREATE_FACTORY_DEBUG;
+    createFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
     #endif
     HRESULT hr = CreateDXGIFactory2(createFactoryFlags, &IID_IDXGIFactory7, &backend->factory);
     if (FAILED(hr)) {
@@ -1040,20 +1081,12 @@ rhi_error_codes dx12_frame_begin(gfx_context* context)
 {
     TracyCFrameMarkStart("MainFrame");
 
-    // This is reverse to what Vulkan does, we first wait for previous work to be done
-    // and then acquire a new back buffer, because acquire is a GPU operation in vulkan,
-    // here we just ask for index and wait on GPU until work is done and that back buffer is free to use
-    dx12_acquire_image(context);
-    uint32_t       frame_idx          = context->swapchain.current_backbuffer_idx;
-    gfx_syncobj    frame_fence        = context->frame_sync.timeline_syncobj;
-    gfx_sync_point current_sync_point = context->frame_sync.frame_syncpoint[frame_idx];
-    dx12_wait_on_previous_cmds(&frame_fence, current_sync_point);
+    uint32_t frame_idx = context->swapchain.current_backbuffer_idx;
 
     // for API completion sake
     context->inflight_frame_idx  = frame_idx;
     context->current_syncobj_idx = frame_idx;
 
-    memset(context->cmd_queue.cmds, 0, context->cmd_queue.cmds_count * sizeof(gfx_cmd_buf*));
     context->cmd_queue.cmds_count = 0;
 
     return Success;
@@ -1063,13 +1096,28 @@ rhi_error_codes dx12_frame_end(gfx_context* context)
 {
     dx12_present(context);
 
-    uint32_t frame_idx = context->swapchain.current_backbuffer_idx;
+    uint32_t       curr_frame_idx    = context->swapchain.current_backbuffer_idx;
+    gfx_syncobj*   timeline_syncobj  = &context->frame_sync.timeline_syncobj;
+    gfx_sync_point current_syncpoint = context->frame_sync.frame_syncpoint[curr_frame_idx];
 
-    gfx_syncobj* timeline_syncobj                  = &context->frame_sync.timeline_syncobj;
-    uint64_t     signal_value                      = ++(context->frame_sync.global_syncpoint);
-    context->frame_sync.frame_syncpoint[frame_idx] = signal_value;
+    // Signal the current queue
+    ID3D12CommandQueue_Signal(((context_backend*) context->backend)->direct_queue, ((syncobj_backend*) (timeline_syncobj->backend))->fence, current_syncpoint);
 
-    ID3D12CommandQueue_Signal(((context_backend*) context->backend)->direct_queue, ((syncobj_backend*) (timeline_syncobj->backend))->fence, signal_value);
+    // This is reverse to what Vulkan does, we first wait for previous work to be done
+    // and then acquire a new back buffer, because acquire is a GPU operation in vulkan,
+    // here we just ask for index and wait on GPU until work is done and that back buffer is free to use
+    dx12_acquire_image(context);
+    uint32_t       frame_idx       = context->swapchain.current_backbuffer_idx;
+    gfx_sync_point next_sync_point = context->frame_sync.frame_syncpoint[frame_idx];
+    dx12_wait_on_previous_cmds(timeline_syncobj, next_sync_point);
+
+    #define GLOBAL_SYNCPOINT 0
+    #if GLOBAL_SYNCPOINT
+    context->frame_sync.frame_syncpoint[frame_idx] = ++(context->frame_sync.global_syncpoint);
+    #else
+    context->frame_sync.frame_syncpoint[frame_idx] = current_syncpoint + 1;
+    //context->frame_sync.global_syncpoint           = curr_frame_idx;
+    #endif
 
     TracyCFrameMarkEnd("MainFrame");
     return Success;
@@ -1084,7 +1132,7 @@ rhi_error_codes dx12_wait_on_previous_cmds(const gfx_syncobj* in_flight_sync, gf
     syncobj_backend* backend = (syncobj_backend*) (in_flight_sync->backend);
     if (ID3D12Fence_GetCompletedValue(backend->fence) < sync_point) {
         ID3D12Fence_SetEventOnCompletion(backend->fence, sync_point, backend->fenceEvent);
-        WaitForSingleObject(backend->fenceEvent, UINT64_MAX);
+        WaitForSingleObjectEx(backend->fenceEvent, INFINITE, FALSE);
     }
     TracyCZoneEnd(ctx);
     return Success;
@@ -1163,7 +1211,7 @@ rhi_error_codes dx12_resize_swapchain(gfx_context* context, uint32_t width, uint
     dx12_internal_destroy_backbuffers(swapchain);
 
     for (int i = 0; i < MAX_DX_SWAPCHAIN_BUFFERS; ++i) {
-        context->frame_sync.frame_syncpoint[i] = context->frame_sync.global_syncpoint;
+        context->frame_sync.frame_syncpoint[i] = context->frame_sync.frame_syncpoint[context->swapchain.current_backbuffer_idx];
     }
 
     swapchain->width = width;
@@ -1217,7 +1265,6 @@ rhi_error_codes dx12_begin_render_pass(const gfx_cmd_buf* cmd_buf, gfx_render_pa
 {
     TracyCZoneNC(ctx, "Begin Render Pass", COLOR_ACQUIRE, true);
 
-    UNUSED(backbuffer_index);
     ID3D12GraphicsCommandList* cmd_list = (ID3D12GraphicsCommandList*) cmd_buf->backend;
     if (!render_pass.is_compute_pass) {
         D3D12_CPU_DESCRIPTOR_HANDLE rtvs[MAX_RT] = {0};
@@ -1227,7 +1274,6 @@ rhi_error_codes dx12_begin_render_pass(const gfx_cmd_buf* cmd_buf, gfx_render_pa
 
         for (uint32_t i = 0; i < render_pass.color_attachments_count; ++i) {
             gfx_attachment attachment = render_pass.color_attachments[i];
-            UNUSED(attachment);
 
             if (render_pass.is_swap_pass) {
                 if (!render_pass.swapchain)
@@ -1241,12 +1287,12 @@ rhi_error_codes dx12_begin_render_pass(const gfx_cmd_buf* cmd_buf, gfx_render_pa
                 if (attachment.clear)
                     ID3D12GraphicsCommandList_ClearRenderTargetView(cmd_list, rtvHandle, attachment.clear_color.raw, 0, NULL);
 
+            } else {
                 LOG_ERROR("// TODO: UNIMPLEMENTED");
+                LOG_ERROR("// TODO: use gfx_texture->backend as imageview");
     #ifdef _MSC_VER
                 __debugbreak();
     #endif
-            } else {
-                LOG_ERROR("// TODO: use gfx_texture->backend as imageview");
             }
         }
 
@@ -1311,6 +1357,47 @@ rhi_error_codes dx12_dispatch(const gfx_cmd_buf* cmd_buf, uint32_t dimX, uint32_
 
     ID3D12GraphicsCommandList* cmd_list = (ID3D12GraphicsCommandList*) (cmd_buf->backend);
     ID3D12GraphicsCommandList_Dispatch(cmd_list, dimX, dimY, dimZ);
+
+    TracyCZoneEnd(ctx);
+    return Success;
+}
+
+rhi_error_codes dx12_transition_image_layout(const gfx_cmd_buf* cmd_buf, const gfx_resource* image, gfx_image_layout old_layout, gfx_image_layout new_layout)
+{
+    TracyCZoneNC(ctx, "ImageTransitionLayout", COLOR_ACQUIRE, true);
+
+    ID3D12GraphicsCommandList* cmd_list = (ID3D12GraphicsCommandList*) (cmd_buf->backend);
+
+    D3D12_RESOURCE_BARRIER barrier = {0};
+    barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    barrier.Flags                  = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+    barrier.Transition.pResource   = image->texture->backend;
+    barrier.Transition.StateBefore = dx12_util_translate_image_layout(old_layout);
+    barrier.Transition.StateAfter  = dx12_util_translate_image_layout(new_layout);
+    barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+
+    ID3D12GraphicsCommandList_ResourceBarrier(cmd_list, 1, &barrier);
+
+    TracyCZoneEnd(ctx);
+    return Success;
+}
+
+rhi_error_codes dx12_transition_swapchain_layout(const gfx_cmd_buf* cmd_buf, const gfx_swapchain* sc, gfx_image_layout old_layout, gfx_image_layout new_layout)
+{
+    TracyCZoneNC(ctx, "SwapchainTransitionLayout", COLOR_ACQUIRE, true);
+
+    ID3D12GraphicsCommandList* cmd_list = (ID3D12GraphicsCommandList*) (cmd_buf->backend);
+    swapchain_backend*         backend  = (swapchain_backend*) sc->backend;
+
+    D3D12_RESOURCE_BARRIER barrier = {0};
+    barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    barrier.Flags                  = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+    barrier.Transition.pResource   = backend->backbuffers[sc->current_backbuffer_idx];
+    barrier.Transition.StateBefore = dx12_util_translate_image_layout(old_layout);
+    barrier.Transition.StateAfter  = dx12_util_translate_image_layout(new_layout);
+    barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+
+    ID3D12GraphicsCommandList_ResourceBarrier(cmd_list, 1, &barrier);
 
     TracyCZoneEnd(ctx);
     return Success;

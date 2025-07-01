@@ -760,11 +760,6 @@ typedef struct gfx_submit_syncobj
     gfx_syncobj* inflight_syncobj;
     // this is tracked per-in flight frame sync point to wait on CPU
     gfx_sync_point* inflight_syncpoint;
-    // Global timeline sync point that will be signaled when the submit operation is completed
-    // Workloads can wait on these intermediate points,
-    // This is used to increment Values to signal queue submits
-    // gfx_context owns This
-    gfx_sync_point* global_syncpoint;
 } gfx_submit_syncobj;
 
 typedef struct gfx_context
@@ -787,8 +782,7 @@ typedef struct gfx_context
         {
             gfx_syncobj    timeline_syncobj;
             gfx_sync_point frame_syncpoint[MAX_FRAMES_INFLIGHT];    // last timeline value signaled
-            gfx_sync_point global_syncpoint;
-            uint32_t       _pad[8];
+            uint32_t       _pad0[10];
         };
     } frame_sync;
     // NOTE: Add all the command buffers you want here...Draw, Async etc.
