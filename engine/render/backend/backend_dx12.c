@@ -817,9 +817,13 @@ gfx_syncobj dx12_create_syncobj(gfx_syncobj_type type)
         return syncobj;
     }
 
-    if (type == GFX_SYNCOBJ_TYPE_CPU) {
+    if (type == GFX_SYNCOBJ_TYPE_CPU || GFX_SYNCOBJ_TYPE_TIMELINE) {
         // create a CPU event to wait on
         backend->fenceEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+        if (backend->fenceEvent == NULL) {
+            DWORD err = GetLastError();
+            LOG_ERROR("CreateEvent failed -> 0x%08X", err);
+        }
     }
 
     return syncobj;
@@ -835,7 +839,7 @@ void dx12_destroy_syncobj(gfx_syncobj* syncobj)
             ID3D12Fence_Release(backend->fence);
             backend->fence = NULL;
 
-            if (syncobj->type == GFX_SYNCOBJ_TYPE_CPU)
+            if (syncobj->type == GFX_SYNCOBJ_TYPE_CPU || GFX_SYNCOBJ_TYPE_TIMELINE)
                 CloseHandle(backend->fenceEvent);
 
             free(backend);
