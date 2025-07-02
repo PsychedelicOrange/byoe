@@ -581,10 +581,10 @@ static void renderer_internal_clear_screen_no_rendering(gfx_cmd_buf* cmd_buff)
 {
     g_rhi.insert_swapchain_layout_barrier(cmd_buff, &s_RendererSDFInternalState.gfxcontext.swapchain, GFX_IMAGE_LAYOUT_PRESENTATION, GFX_IMAGE_LAYOUT_COLOR_ATTACHMENT);
 
-    color_rgba      clear_color       = {{0.5f + 0.5f * sinf(0.003f * s_RendererSDFInternalState.frameCount + 0.0f),
+    color_rgba      clear_color       = {{{0.5f + 0.5f * sinf(0.003f * s_RendererSDFInternalState.frameCount + 0.0f),
                    0.5f + 0.5f * sinf(0.004f * s_RendererSDFInternalState.frameCount + 2.0f),
                    0.5f + 0.5f * sinf(0.005f * s_RendererSDFInternalState.frameCount + 4.0f),
-                   1.0f}};
+                   1.0f}}};
     gfx_render_pass clear_screen_pass = {
         .is_swap_pass            = true,
         .swapchain               = &s_RendererSDFInternalState.gfxcontext.swapchain,
