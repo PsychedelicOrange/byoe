@@ -7,7 +7,9 @@
 static float       deltaTime;
 static float       lastFrame       = 0.0f;
 static float       elapsedTime     = 0;
-static int         FPS             = 0;
+static uint64_t    FPS             = 0;
+static uint64_t    AvgFPS          = 0;
+static uint64_t    FPSSamples      = 0;
 static GLFWwindow* g_GameWindowRef = NULL;
 
 static engine_version s_EngineVersion = {0, 1, 0, ""};
@@ -90,8 +92,10 @@ void engine_run(void)
 
         elapsedTime += deltaTime;
         if (elapsedTime > 1.0f) {
+            FPSSamples++;
+            AvgFPS += FPS;
             char windowTitle[250];
-            sprintf(windowTitle, "BYOE Game: spooky asteroids! | FPS: %d | render dt: %2.2fms", FPS, deltaTime * 1000.0f);
+            sprintf(windowTitle, "BYOE Game: spooky asteroids! | FPS: %llu | Avg. FPS: %llu | render dt: %2.2fms", FPS, engine_get_avg_fps(), deltaTime * 1000.0f);
             glfwSetWindowTitle(g_GameWindowRef, windowTitle);
             elapsedTime = 0.0f;
         }
@@ -123,9 +127,14 @@ float engine_get_elapsed_time(void)
     return elapsedTime;
 }
 
-int engine_get_fps(void)
+uint64_t engine_get_fps(void)
 {
     return FPS;
+}
+
+uint64_t engine_get_avg_fps(void)
+{
+    return (AvgFPS / FPSSamples);
 }
 
 engine_version engine_get_version(void)
