@@ -8,6 +8,8 @@
 #define DEFAULT_WIDTH  1024
 #define DEFAULT_HEIGHT 1024
 
+#define ENABLE_SYNC_LOGGING 1
+
 typedef struct GLFWwindow GLFWwindow;
 
 typedef enum rhi_api

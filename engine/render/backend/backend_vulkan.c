@@ -2444,11 +2444,15 @@ gfx_texture_readback vulkan_device_readback_swapchain(const gfx_swapchain* swapc
 
 rhi_error_codes vulkan_frame_begin(gfx_context* ctx)
 {
+#if ENABLE_SYNC_LOGGING
     LOG_ERROR("*************************FRAME BEGIN*************************/");
+#endif
 
     gfx_syncobj* in_flight_sync = NULL;
     uint32_t     inflight_idx   = ctx->inflight_frame_idx;
+#if ENABLE_SYNC_LOGGING
     LOG_WARN("[FRAME BEGIN] inflight_idx: %d", inflight_idx);
+#endif
     if (g_gfxConfig.use_timeline_semaphores) {
         in_flight_sync = &ctx->frame_sync.timeline_syncobj;
     } else {
@@ -2472,7 +2476,9 @@ rhi_error_codes vulkan_frame_end(gfx_context* context)
     context->inflight_frame_idx  = (context->inflight_frame_idx + 1) % MAX_FRAMES_INFLIGHT;
     context->current_syncobj_idx = (context->current_syncobj_idx + 1) % (context->swapchain.image_count);
 
+#if ENABLE_SYNC_LOGGING
     LOG_ERROR("//-----------------------FRAME END-------------------------//");
+#endif
 
     return Success;
 }
@@ -2495,7 +2501,9 @@ rhi_error_codes vulkan_wait_on_previous_cmds(const gfx_syncobj* in_flight_sync, 
              .pSemaphores    = &semaphore,
              .pValues        = &sync_point,
         };
+#if ENABLE_SYNC_LOGGING
         LOG_WARN("[WAIT] wait_syncpoint: %llu", sync_point);
+#endif
 
         VK_CHECK_RESULT(vkWaitSemaphores(VKDEVICE, &waitInfo, UINT32_MAX), "cannot wait on in-flight timeline semaphore");
     }
@@ -2513,7 +2521,9 @@ rhi_error_codes vulkan_acquire_image(gfx_context* ctx)
     * Later submits and presents use this mapping for correct synchronization.
     */
     gfx_syncobj image_ready = ctx->present_sync.image_ready[ctx->current_syncobj_idx];
+#if ENABLE_SYNC_LOGGING
     LOG_SUCCESS("[ACQUIRE] current_syncobj_idx: %d", ctx->current_syncobj_idx);
+#endif
     VkResult result = vkAcquireNextImageKHR(VKDEVICE, ((swapchain_backend*) (ctx->swapchain.backend))->swapchain, UINT32_MAX, *(VkSemaphore*) (image_ready.backend), NULL, &ctx->swapchain.current_backbuffer_idx);
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
         LOG_ERROR("[Vulkan] Swapchain out of date or suboptimal...recreating...");
@@ -2569,7 +2579,9 @@ rhi_error_codes vulkan_gfx_cmd_submit_queue(const gfx_cmd_queue* cmd_queue, gfx_
         uint64_t signal_value = ++(*submit_sync.global_syncpoint);
         // update per frame wait sync points
         *submit_sync.inflight_syncpoint = *submit_sync.global_syncpoint;
+#if ENABLE_SYNC_LOGGING
         LOG_SUCCESS("[SIGNAL] signal_value: %llu | global_sync_point: %llu ", signal_value, *submit_sync.global_syncpoint);
+#endif
 
         timelineInfo.waitSemaphoreValueCount   = submit_sync.wait_syncobjs_count;
         timelineInfo.signalSemaphoreValueCount = submit_sync.signal_syncobjs_count;
@@ -2632,7 +2644,9 @@ rhi_error_codes vulkan_gfx_cmd_submit_for_rendering(gfx_context* ctx)
     submit_sync.inflight_syncpoint    = &ctx->frame_sync.frame_syncpoint[inflight_idx];
     submit_sync.global_syncpoint      = &ctx->frame_sync.global_syncpoint;
 
+#if ENABLE_SYNC_LOGGING
     LOG_SUCCESS("[PRE-SUBMIT] curr_syncobj_idx: %d | inflight_idx: %d | global_syncpoint: %llu", curr_syncobj_idx, inflight_idx, ctx->frame_sync.global_syncpoint);
+#endif
     return vulkan_gfx_cmd_submit_queue(&ctx->cmd_queue, submit_sync);
 }
 

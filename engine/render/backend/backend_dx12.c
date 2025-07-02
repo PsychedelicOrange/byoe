@@ -512,8 +512,14 @@ static gfx_sync_point dx12_internal_signal(gfx_context* context)
 {
     gfx_syncobj*   timeline_syncobj = &context->frame_sync.timeline_syncobj;
     gfx_sync_point signal_syncpoint = ++(context->frame_sync.global_syncpoint);
+    #if ENABLE_SYNC_LOGGING
     LOG_WARN("[SIGNAL] signaling new global syncpoint: %llu | global_syncpoint: %llu", signal_syncpoint, context->frame_sync.global_syncpoint);
-    ID3D12CommandQueue_Signal(((context_backend*) context->backend)->direct_queue, ((syncobj_backend*) (timeline_syncobj->backend))->fence, signal_syncpoint);
+    #endif
+    HRESULT hr = ID3D12CommandQueue_Signal(((context_backend*) context->backend)->direct_queue, ((syncobj_backend*) (timeline_syncobj->backend))->fence, signal_syncpoint);
+    if (FAILED(hr)) {
+        LOG_ERROR("[D3D12] failed to signal syncpoint: %llu  (HRESULT = 0x%08X)", signal_syncpoint, (unsigned int) hr);
+        return signal_syncpoint;
+    }
 
     return signal_syncpoint;
 }
@@ -644,12 +650,19 @@ void dx12_ctx_destroy(gfx_context* ctx)
 void dx12_flush_gpu_work(gfx_context* context)
 {
     UNUSED(context);
-    //gfx_syncobj* timeline_syncobj = &context->frame_sync.timeline_syncobj;
-    //
-    //uint64_t signal_value = ++(context->frame_sync.global_syncpoint);
-    //ID3D12CommandQueue_Signal(((context_backend*) context->backend)->direct_queue, ((syncobj_backend*) (timeline_syncobj->backend))->fence, signal_value);
-    //
-    //dx12_wait_on_previous_cmds(timeline_syncobj, context->frame_sync.global_syncpoint);
+    gfx_syncobj* timeline_syncobj = &context->frame_sync.timeline_syncobj;
+
+    uint64_t signal_value = ++(context->frame_sync.global_syncpoint);
+    #if ENABLE_SYNC_LOGGING
+    LOG_WARN("[GPU Flush] [SIGNAL] signaling new global syncpoint: %llu", context->frame_sync.global_syncpoint);
+    #endif
+    ID3D12CommandQueue_Signal(((context_backend*) context->backend)->direct_queue, ((syncobj_backend*) (timeline_syncobj->backend))->fence, signal_value);
+
+    dx12_wait_on_previous_cmds(timeline_syncobj, context->frame_sync.global_syncpoint);
+    context->frame_sync.frame_syncpoint[context->swapchain.current_backbuffer_idx] = signal_value;
+    #if ENABLE_SYNC_LOGGING
+    LOG_WARN("[GPU Flush] [Update Wait] updating frame_idx: %d | new_sync_point: %llu", context->swapchain.current_backbuffer_idx, signal_value);
+    #endif
 }
 
 static void dx12_internal_create_backbuffers(gfx_swapchain* sc)
@@ -1087,9 +1100,11 @@ void dx12_destroy_pipeline(gfx_pipeline* pipeline)
 rhi_error_codes dx12_frame_begin(gfx_context* context)
 {
     TracyCFrameMarkStart("MainFrame");
+    #if ENABLE_SYNC_LOGGING
     LOG_ERROR("*************************FRAME BEGIN*************************/");
 
     LOG_WARN("[Frame Begin] --- Old Current BackBuffer Index: %d", context->swapchain.current_backbuffer_idx);
+    #endif
 
     // This is reverse to what Vulkan does, we first wait for previous work to be done
     // and then acquire a new back buffer, because acquire is a GPU operation in vulkan,
@@ -1098,7 +1113,9 @@ rhi_error_codes dx12_frame_begin(gfx_context* context)
     uint32_t       frame_idx          = context->swapchain.current_backbuffer_idx;
     gfx_syncobj    frame_fence        = context->frame_sync.timeline_syncobj;
     gfx_sync_point current_sync_point = context->frame_sync.frame_syncpoint[frame_idx];
+    #if ENABLE_SYNC_LOGGING
     LOG_SUCCESS("[Frame Begin] --- current_sync_point to wait on: %llu (frame_idx = %d)", current_sync_point, frame_idx);
+    #endif
 
     dx12_wait_on_previous_cmds(&frame_fence, current_sync_point);
 
@@ -1118,10 +1135,14 @@ rhi_error_codes dx12_frame_end(gfx_context* context)
 
     gfx_sync_point wait_value = dx12_internal_signal(context);
     uint32_t       frame_idx  = context->swapchain.current_backbuffer_idx;
+    #if ENABLE_SYNC_LOGGING
     LOG_WARN("[POST SIGNAL] updating_sync_point_to_wait_next: %llu (frame_idx = %d)", wait_value, frame_idx);
+    #endif
     context->frame_sync.frame_syncpoint[frame_idx] = wait_value;
 
+    #if ENABLE_SYNC_LOGGING
     LOG_ERROR("//-----------------------FRAME END-------------------------//");
+    #endif
 
     TracyCFrameMarkEnd("MainFrame");
     return Success;
@@ -1135,16 +1156,43 @@ rhi_error_codes dx12_wait_on_previous_cmds(const gfx_syncobj* in_flight_sync, gf
     syncobj_backend* backend = (syncobj_backend*) (in_flight_sync->backend);
 
     gfx_sync_point completed = ID3D12Fence_GetCompletedValue(backend->fence);
+
+    // Only verbose logging when diagnosing; treat waits as errors otherwise
+    #if ENABLE_SYNC_LOGGING
+    LOG_WARN("[WAIT] want=%llu; before completed=%llu", sync_point, completed);
+    #endif
+
     if (completed < sync_point) {
-        ID3D12Fence_SetEventOnCompletion(backend->fence, sync_point, backend->fenceEvent);
-        WaitForSingleObject(backend->fenceEvent, INFINITE);
+        // Set the fence event and check for failure
+        HRESULT hr = ID3D12Fence_SetEventOnCompletion(backend->fence, sync_point, backend->fenceEvent);
+        if (FAILED(hr)) {
+            LOG_ERROR("[WAIT ERR] SetEventOnCompletion(%llu) failed -> 0x%08X", sync_point, hr);
+        }
+
+        // Wait for the event and log errors only
+        DWORD result = WaitForSingleObject(backend->fenceEvent, INFINITE);
+        if (result != WAIT_OBJECT_0) {
+            LOG_ERROR("[WAIT ERR] WaitForSingleObject -> %s",
+                result == WAIT_TIMEOUT ? "WAIT_TIMEOUT" : "WAIT_FAILED");
+        }
+
+        // Verify fence advanced
         gfx_sync_point new_completed = ID3D12Fence_GetCompletedValue(backend->fence);
-        LOG_SUCCESS("[WAIT DONE] waited until fence >= %llu, new GetCompletedValue: %llu", sync_point, new_completed);
+    #if ENABLE_SYNC_LOGGING
+        LOG_WARN("[WAIT DONE] fence advanced to %llu (wanted >= %llu)", new_completed, sync_point);
+    #else
+        if (new_completed < sync_point) {
+            LOG_ERROR("[WAIT ERR] fence did not advance: completed=%llu, expected>=%llu", new_completed, sync_point);
+        }
+    #endif
     } else {
-        LOG_SUCCESS("[NO WAIT] fence (%llu) already >= %llu", completed, sync_point);
+    #if ENABLE_SYNC_LOGGING
+        LOG_WARN("[NO WAIT] fence (%llu) already >= %llu", completed, sync_point);
+    #endif
     }
+
     TracyCZoneEnd(ctx);
-    return Success; 
+    return Success;
 }
 
 rhi_error_codes dx12_acquire_image(gfx_context* context)
@@ -1153,8 +1201,9 @@ rhi_error_codes dx12_acquire_image(gfx_context* context)
 
     swapchain_backend* sc_backend             = (swapchain_backend*) context->swapchain.backend;
     context->swapchain.current_backbuffer_idx = IDXGISwapChain4_GetCurrentBackBufferIndex(sc_backend->swapchain);
+    #if ENABLE_SYNC_LOGGING
     LOG_WARN("New Current BackBuffer Index: %d", context->swapchain.current_backbuffer_idx);
-
+    #endif
     TracyCZoneEnd(ctx);
 
     return Success;
@@ -1193,7 +1242,9 @@ rhi_error_codes dx12_gfx_cmd_submit_queue(const gfx_cmd_queue* cmd_queue, gfx_su
 rhi_error_codes dx12_gfx_cmd_submit_for_rendering(gfx_context* context)
 {
     gfx_submit_syncobj submit_sync = {0};
+    #if ENABLE_SYNC_LOGGING
     LOG_SUCCESS("[PRE-SUBMIT] global_syncpoint: %llu", context->frame_sync.global_syncpoint);
+    #endif
     return dx12_gfx_cmd_submit_queue(&context->cmd_queue, submit_sync);
 }
 
