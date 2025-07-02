@@ -104,6 +104,7 @@ const rhi_jumptable vulkan_jumptable = {
     vulkan_dispatch,
 
     vulkan_transition_image_layout,
+    vulkan_transition_swapchain_layout,
 
     vulkan_clear_image};
 
@@ -2443,8 +2444,11 @@ gfx_texture_readback vulkan_device_readback_swapchain(const gfx_swapchain* swapc
 
 rhi_error_codes vulkan_frame_begin(gfx_context* ctx)
 {
+    LOG_ERROR("*************************FRAME BEGIN*************************/");
+
     gfx_syncobj* in_flight_sync = NULL;
     uint32_t     inflight_idx   = ctx->inflight_frame_idx;
+    LOG_WARN("[FRAME BEGIN] inflight_idx: %d", inflight_idx);
     if (g_gfxConfig.use_timeline_semaphores) {
         in_flight_sync = &ctx->frame_sync.timeline_syncobj;
     } else {
@@ -2468,6 +2472,8 @@ rhi_error_codes vulkan_frame_end(gfx_context* context)
     context->inflight_frame_idx  = (context->inflight_frame_idx + 1) % MAX_FRAMES_INFLIGHT;
     context->current_syncobj_idx = (context->current_syncobj_idx + 1) % (context->swapchain.image_count);
 
+    LOG_ERROR("//-----------------------FRAME END-------------------------//");
+
     return Success;
 }
 
@@ -2489,6 +2495,8 @@ rhi_error_codes vulkan_wait_on_previous_cmds(const gfx_syncobj* in_flight_sync, 
              .pSemaphores    = &semaphore,
              .pValues        = &sync_point,
         };
+        LOG_WARN("[WAIT] wait_syncpoint: %llu", sync_point);
+
         VK_CHECK_RESULT(vkWaitSemaphores(VKDEVICE, &waitInfo, UINT32_MAX), "cannot wait on in-flight timeline semaphore");
     }
 
@@ -2505,7 +2513,8 @@ rhi_error_codes vulkan_acquire_image(gfx_context* ctx)
     * Later submits and presents use this mapping for correct synchronization.
     */
     gfx_syncobj image_ready = ctx->present_sync.image_ready[ctx->current_syncobj_idx];
-    VkResult    result      = vkAcquireNextImageKHR(VKDEVICE, ((swapchain_backend*) (ctx->swapchain.backend))->swapchain, UINT32_MAX, *(VkSemaphore*) (image_ready.backend), NULL, &ctx->swapchain.current_backbuffer_idx);
+    LOG_SUCCESS("[ACQUIRE] current_syncobj_idx: %d", ctx->current_syncobj_idx);
+    VkResult result = vkAcquireNextImageKHR(VKDEVICE, ((swapchain_backend*) (ctx->swapchain.backend))->swapchain, UINT32_MAX, *(VkSemaphore*) (image_ready.backend), NULL, &ctx->swapchain.current_backbuffer_idx);
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
         LOG_ERROR("[Vulkan] Swapchain out of date or suboptimal...recreating...");
         vkDeviceWaitIdle(VKDEVICE);
@@ -2560,6 +2569,7 @@ rhi_error_codes vulkan_gfx_cmd_submit_queue(const gfx_cmd_queue* cmd_queue, gfx_
         uint64_t signal_value = ++(*submit_sync.global_syncpoint);
         // update per frame wait sync points
         *submit_sync.inflight_syncpoint = *submit_sync.global_syncpoint;
+        LOG_SUCCESS("[SIGNAL] signal_value: %llu | global_sync_point: %llu ", signal_value, *submit_sync.global_syncpoint);
 
         timelineInfo.waitSemaphoreValueCount   = submit_sync.wait_syncobjs_count;
         timelineInfo.signalSemaphoreValueCount = submit_sync.signal_syncobjs_count;
@@ -2622,6 +2632,7 @@ rhi_error_codes vulkan_gfx_cmd_submit_for_rendering(gfx_context* ctx)
     submit_sync.inflight_syncpoint    = &ctx->frame_sync.frame_syncpoint[inflight_idx];
     submit_sync.global_syncpoint      = &ctx->frame_sync.global_syncpoint;
 
+    LOG_SUCCESS("[PRE-SUBMIT] curr_syncobj_idx: %d | inflight_idx: %d | global_syncpoint: %llu", curr_syncobj_idx, inflight_idx, ctx->frame_sync.global_syncpoint);
     return vulkan_gfx_cmd_submit_queue(&ctx->cmd_queue, submit_sync);
 }
 
@@ -2831,6 +2842,16 @@ rhi_error_codes vulkan_transition_image_layout(const gfx_cmd_buf* cmd_buffer, co
     texture_backend* backend     = image->texture->backend;
 
     vulkan_internal_insert_image_memory_barrier(vkCmdBuffer, backend->image, vulkan_util_translate_image_layout(old_layout), vulkan_util_translate_image_layout(new_layout));
+
+    return Success;
+}
+
+rhi_error_codes vulkan_transition_swapchain_layout(const gfx_cmd_buf* cmd_buffer, const gfx_swapchain* sc, gfx_image_layout old_layout, gfx_image_layout new_layout)
+{
+    VkCommandBuffer    vkCmdBuffer = *(VkCommandBuffer*) cmd_buffer->backend;
+    swapchain_backend* backend     = (swapchain_backend*) sc->backend;
+
+    vulkan_internal_insert_image_memory_barrier(vkCmdBuffer, backend->backbuffers[sc->current_backbuffer_idx], vulkan_util_translate_image_layout(old_layout), vulkan_util_translate_image_layout(new_layout));
 
     return Success;
 }

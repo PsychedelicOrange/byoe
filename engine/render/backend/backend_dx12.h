@@ -76,6 +76,9 @@ rhi_error_codes dx12_end_render_pass(const gfx_cmd_buf* cmd_buf, gfx_render_pass
 rhi_error_codes dx12_draw(const gfx_cmd_buf* cmd_buf, uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance);
 rhi_error_codes dx12_dispatch(const gfx_cmd_buf* cmd_buf, uint32_t dimX, uint32_t dimY, uint32_t dimZ);
 
+rhi_error_codes dx12_transition_image_layout(const gfx_cmd_buf* cmd_buffer, const gfx_resource* image, gfx_image_layout old_layout, gfx_image_layout new_layout);
+rhi_error_codes dx12_transition_swapchain_layout(const gfx_cmd_buf* cmd_buffer, const gfx_swapchain* swapchain, gfx_image_layout old_layout, gfx_image_layout new_layout);
+
     // ...
 
 #endif    // _WIN32
