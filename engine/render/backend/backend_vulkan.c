@@ -1843,12 +1843,19 @@ static gfx_pipeline vulkan_internal_create_gfx_pipeline(gfx_pipeline_create_info
         .back.writeMask        = 0,
         .minDepthBounds        = 0,
         .maxDepthBounds        = 0,
-        .front.failOp          = VK_STENCIL_OP_KEEP,
-        .front.passOp          = VK_STENCIL_OP_KEEP,
-        .front.compareOp       = VK_COMPARE_OP_ALWAYS,
-        .front.compareMask     = 0,
-        .front.reference       = 0,
-        .front.depthFailOp     = VK_STENCIL_OP_KEEP};
+    };
+
+    depthStencilSCI.front = (VkStencilOpState){
+        .failOp      = VK_STENCIL_OP_KEEP,
+        .passOp      = VK_STENCIL_OP_KEEP,
+        .depthFailOp = VK_STENCIL_OP_KEEP,
+        .compareOp   = VK_COMPARE_OP_ALWAYS,
+        .compareMask = 0,
+        .writeMask   = 0,
+        .reference   = 0,
+    };
+
+    depthStencilSCI.back = depthStencilSCI.front;
 
     //----------------------------
     // Multi sample State (MSAA)
@@ -1929,7 +1936,8 @@ static gfx_pipeline vulkan_internal_create_gfx_pipeline(gfx_pipeline_create_info
 
 gfx_pipeline vulkan_device_create_pipeline(gfx_pipeline_create_info info)
 {
-    if (info.type == GFX_PIPELINE_TYPE_GRAPHICS) return vulkan_internal_create_gfx_pipeline(info);
+    if (info.type == GFX_PIPELINE_TYPE_GRAPHICS)
+        return vulkan_internal_create_gfx_pipeline(info);
     else
         return vulkan_internal_create_compute_pipeline(info);
 }

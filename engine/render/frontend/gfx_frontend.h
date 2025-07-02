@@ -9,8 +9,8 @@
 #define DEFAULT_HEIGHT 1024
 
 #if _DEBUG
-#define ENABLE_SYNC_LOGGING 1
-#endif 
+    #define ENABLE_SYNC_LOGGING 0
+#endif
 
 typedef struct GLFWwindow GLFWwindow;
 

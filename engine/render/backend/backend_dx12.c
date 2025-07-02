@@ -62,12 +62,12 @@
 //   - [x] Drawing API
 //   - [x] Shaders/Loading (re-use the SPIRV compiled, and GLSL as source for DX no HLSL!)
 //   - [x] Root Signature
-//   - [ ] Pipeline API
+//   - [x] Pipeline API
 //   - [ ] Hello Triangle Shader + Draw loop
 // - [ ] Create Texture/Buffer resources
 // - [ ] Resource Views API
 // - [ ] Descriptor Heaps/tables API + root signature hookup
-// - [ ] Barriers API
+// - [x] Barriers API
 // - [ ] Root Constants
 // - [ ] Restore SDF renderer
 
@@ -232,7 +232,7 @@ typedef struct shader_backend
 
 //--------------------------------------------------------
 
-static D3D12_DESCRIPTOR_RANGE_TYPE dx12_util_descriptor_type_translate(gfx_resource_type res_type)
+static D3D12_DESCRIPTOR_RANGE_TYPE dx12_util_descriptor_range_type_translate(gfx_resource_type res_type)
 {
     switch (res_type) {
         case GFX_RESOURCE_TYPE_SAMPLER:
@@ -286,6 +286,117 @@ static D3D12_RESOURCE_STATES dx12_util_translate_image_layout(gfx_image_layout l
         default:
             LOG_ERROR("[D3D12] Unsupported gfx_image_layout!");
             return D3D12_RESOURCE_STATE_COMMON;
+    }
+}
+
+static D3D12_PRIMITIVE_TOPOLOGY_TYPE dx12_util_draw_type_translate(gfx_draw_type draw_type)
+{
+    switch (draw_type) {
+        case GFX_DRAW_TYPE_POINT: return D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+        case GFX_DRAW_TYPE_LINE: return D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
+        case GFX_DRAW_TYPE_TRIANGLE: return D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+        default: return D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+    }
+}
+
+static DXGI_FORMAT dx12_util_format_translate(gfx_format format)
+{
+    switch (format) {
+        case GFX_FORMAT_NONE: return DXGI_FORMAT_UNKNOWN;
+        case GFX_FORMAT_R8INT: return DXGI_FORMAT_R8_SINT;
+        case GFX_FORMAT_R8UINT: return DXGI_FORMAT_R8_UINT;
+        case GFX_FORMAT_R8F: return DXGI_FORMAT_R8_UNORM;    // no R8 float, unorm is closest
+        case GFX_FORMAT_R16F: return DXGI_FORMAT_R16_FLOAT;
+        case GFX_FORMAT_R32F: return DXGI_FORMAT_R32_FLOAT;
+        case GFX_FORMAT_R32UINT: return DXGI_FORMAT_R32_UINT;
+        case GFX_FORMAT_R32INT: return DXGI_FORMAT_R32_SINT;
+
+        case GFX_FORMAT_RGBINT: return DXGI_FORMAT_R8G8B8A8_SINT;    // RGB not supported directly
+        case GFX_FORMAT_RGBUINT: return DXGI_FORMAT_R8G8B8A8_UINT;
+        case GFX_FORMAT_RGBUNORM: return DXGI_FORMAT_R8G8B8A8_UNORM;    // emulate RGB with RGBA
+        case GFX_FORMAT_RGB32F: return DXGI_FORMAT_R32G32B32_FLOAT;
+
+        case GFX_FORMAT_RGBAINT: return DXGI_FORMAT_R8G8B8A8_SINT;
+        case GFX_FORMAT_RGBAUNORM: return DXGI_FORMAT_R8G8B8A8_UNORM;
+        case GFX_FORMAT_RGBA32F: return DXGI_FORMAT_R32G32B32A32_FLOAT;
+
+        case GFX_FORMAT_DEPTH32F: return DXGI_FORMAT_D32_FLOAT;
+        case GFX_FORMAT_DEPTH16UNORM: return DXGI_FORMAT_D16_UNORM;
+        case GFX_FORMAT_DEPTHSTENCIL: return DXGI_FORMAT_D24_UNORM_S8_UINT;
+
+        case GFX_FORMAT_SCREEN: return DXGI_FORMAT_B8G8R8A8_UNORM;
+
+        default: return DXGI_FORMAT_UNKNOWN;
+    }
+}
+
+static D3D12_FILL_MODE dx12_util_polygon_mode_translate(gfx_polygon_mode polygon_mode)
+{
+    switch (polygon_mode) {
+        case GFX_POLYGON_MODE_FILL: return D3D12_FILL_MODE_SOLID;
+        case GFX_POLYGON_MODE_WIRE: return D3D12_FILL_MODE_WIREFRAME;
+        case GFX_POLYGON_MODE_POINT: return D3D12_FILL_MODE_SOLID;
+        default: return D3D12_FILL_MODE_SOLID;
+    }
+}
+
+static D3D12_CULL_MODE dx12_util_cull_mode_translate(gfx_cull_mode cull_mode)
+{
+    switch (cull_mode) {
+        case GFX_CULL_MODE_BACK: return D3D12_CULL_MODE_BACK;
+        case GFX_CULL_MODE_FRONT: return D3D12_CULL_MODE_FRONT;
+        case GFX_CULL_MODE_BACK_AND_FRONT: return D3D12_CULL_MODE_FRONT | D3D12_CULL_MODE_BACK;
+        case GFX_CULL_MODE_NO_CULL: return D3D12_CULL_MODE_NONE;
+        default: return D3D12_CULL_MODE_NONE;
+    }
+}
+
+static D3D12_BLEND dx12_util_blend_factor_translate(gfx_blend_factor factor)
+{
+    switch (factor) {
+        case GFX_BLEND_FACTOR_ZERO: return D3D12_BLEND_ZERO;
+        case GFX_BLEND_FACTOR_ONE: return D3D12_BLEND_ONE;
+        case GFX_BLEND_FACTOR_SRC_COLOR: return D3D12_BLEND_SRC_COLOR;
+        case GFX_BLEND_FACTOR_ONE_MINUS_SRC_COLOR: return D3D12_BLEND_INV_SRC_COLOR;
+        case GFX_BLEND_FACTOR_DST_COLOR: return D3D12_BLEND_DEST_COLOR;
+        case GFX_BLEND_FACTOR_ONE_MINUS_DST_COLOR: return D3D12_BLEND_INV_DEST_COLOR;
+        case GFX_BLEND_FACTOR_SRC_ALPHA: return D3D12_BLEND_SRC_ALPHA;
+        case GFX_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA: return D3D12_BLEND_INV_SRC_ALPHA;
+        case GFX_BLEND_FACTOR_DST_ALPHA: return D3D12_BLEND_DEST_ALPHA;
+        case GFX_BLEND_FACTOR_ONE_MINUS_DST_ALPHA: return D3D12_BLEND_INV_DEST_ALPHA;
+        case GFX_BLEND_FACTOR_CONSTANT_COLOR: return D3D12_BLEND_BLEND_FACTOR;
+        case GFX_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR: return D3D12_BLEND_INV_BLEND_FACTOR;
+        case GFX_BLEND_FACTOR_CONSTANT_ALPHA: return D3D12_BLEND_BLEND_FACTOR;                  // No separate constant alpha in D3D12
+        case GFX_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA: return D3D12_BLEND_INV_BLEND_FACTOR;    // Same as above
+        case GFX_BLEND_FACTOR_SRC_ALPHA_SATURATE: return D3D12_BLEND_SRC_ALPHA_SAT;
+        default: return D3D12_BLEND_ONE;
+    }
+}
+
+static D3D12_BLEND_OP dx12_util_blend_op_translate(gfx_blend_op op)
+{
+    switch (op) {
+        case GFX_BLEND_OP_ADD: return D3D12_BLEND_OP_ADD;
+        case GFX_BLEND_OP_SUBTRACT: return D3D12_BLEND_OP_SUBTRACT;
+        case GFX_BLEND_OP_REVERSE_SUBTRACT: return D3D12_BLEND_OP_REV_SUBTRACT;
+        case GFX_BLEND_OP_MIN: return D3D12_BLEND_OP_MIN;
+        case GFX_BLEND_OP_MAX: return D3D12_BLEND_OP_MAX;
+        default: return D3D12_BLEND_OP_ADD;
+    }
+}
+
+static D3D12_COMPARISON_FUNC dx12_util_compare_op_translate(gfx_compare_op compare_op)
+{
+    switch (compare_op) {
+        case GFX_COMPARE_OP_NEVER: return D3D12_COMPARISON_FUNC_NEVER;
+        case GFX_COMPARE_OP_LESS: return D3D12_COMPARISON_FUNC_LESS;
+        case GFX_COMPARE_OP_EQUAL: return D3D12_COMPARISON_FUNC_EQUAL;
+        case GFX_COMPARE_OP_LESS_OR_EQUAL: return D3D12_COMPARISON_FUNC_LESS_EQUAL;
+        case GFX_COMPARE_OP_GREATER: return D3D12_COMPARISON_FUNC_GREATER;
+        case GFX_COMPARE_OP_NOT_EQUAL: return D3D12_COMPARISON_FUNC_NOT_EQUAL;
+        case GFX_COMPARE_OP_GREATER_OR_EQUAL: return D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+        case GFX_COMPARE_OP_ALWAYS: return D3D12_COMPARISON_FUNC_ALWAYS;
+        default: return D3D12_COMPARISON_FUNC_ALWAYS;
     }
 }
 
@@ -1021,7 +1132,7 @@ gfx_root_signature dx12_create_root_signature(const gfx_descriptor_set_layout* s
         for (uint32_t j = 0; j < table_entry.NumDescriptorRanges; ++j) {
             const gfx_descriptor_binding binding = set_layout->bindings[j];
             // Add a range into descriptor table
-            ranges[j].RangeType                         = dx12_util_descriptor_type_translate(binding.type);
+            ranges[j].RangeType                         = dx12_util_descriptor_range_type_translate(binding.type);
             ranges[j].NumDescriptors                    = binding.count;
             ranges[j].BaseShaderRegister                = binding.location.binding;
             ranges[j].RegisterSpace                     = binding.location.set;
@@ -1085,18 +1196,159 @@ void dx12_destroy_root_signature(gfx_root_signature* root_sig)
     }
 }
 
-gfx_pipeline dx12_create_pipeline(gfx_pipeline_create_info info)
+static gfx_pipeline dx12_internal_create_gfx_pipeline(gfx_pipeline_create_info info)
 {
     gfx_pipeline pipeline = {0};
     uuid_generate(&pipeline.uuid);
-    UNUSED(info);
+
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC desc = {0};
+    desc.NodeMask                           = 0;
+    desc.Flags                              = D3D12_PIPELINE_STATE_FLAG_NONE;
+    desc.pRootSignature                     = (ID3D12RootSignature*) (info.root_sig.backend);
+
+    // Shaders
+    D3D12_SHADER_BYTECODE VSByteCode = {0};
+    VSByteCode.BytecodeLength        = ID3D10Blob_GetBufferSize(((shader_backend*) (info.shader.stages.VS))->bytecode);
+    VSByteCode.pShaderBytecode       = ID3D10Blob_GetBufferPointer(((shader_backend*) (info.shader.stages.VS))->bytecode);
+    desc.VS                          = VSByteCode;
+
+    D3D12_SHADER_BYTECODE PSByteCode = {0};
+    PSByteCode.BytecodeLength        = ID3D10Blob_GetBufferSize(((shader_backend*) (info.shader.stages.PS))->bytecode);
+    PSByteCode.pShaderBytecode       = ID3D10Blob_GetBufferPointer(((shader_backend*) (info.shader.stages.PS))->bytecode);
+    desc.PS                          = PSByteCode;
+
+    //----------------------------
+    // Input Assembly Stage
+    //----------------------------
+    // TODO: Fill this properly
+    D3D12_INPUT_LAYOUT_DESC input_layout = {0};
+    input_layout.NumElements             = 0;
+    input_layout.pInputElementDescs      = NULL;
+    desc.InputLayout                     = input_layout;
+
+    D3D12_PRIMITIVE_TOPOLOGY_TYPE prim_topology = {0};
+    prim_topology                               = dx12_util_draw_type_translate(info.draw_type);
+    desc.PrimitiveTopologyType                  = prim_topology;
+
+    for (uint32_t i = 0; i < info.color_formats_count; i++) {
+        desc.RTVFormats[i] = dx12_util_format_translate(info.color_formats[i]);
+    }
+    desc.DSVFormat = dx12_util_format_translate(info.depth_format);
+
+    //----------------------------
+    // Rasterizer Stage
+    //----------------------------
+    D3D12_RASTERIZER_DESC rasterizer = {0};
+    rasterizer.FrontCounterClockwise = TRUE;
+    rasterizer.DepthClipEnable       = FALSE;
+    rasterizer.CullMode              = dx12_util_cull_mode_translate(info.cull_mode);
+    rasterizer.FillMode              = dx12_util_polygon_mode_translate(info.polygon_mode);
+    rasterizer.MultisampleEnable     = FALSE;
+    desc.RasterizerState             = rasterizer;
+
+    //----------------------------
+    // Color Blend State
+    //----------------------------
+    D3D12_BLEND_DESC blend_state       = {0};
+    blend_state.AlphaToCoverageEnable  = FALSE;
+    blend_state.IndependentBlendEnable = FALSE;
+
+    D3D12_RENDER_TARGET_BLEND_DESC rt_blend_desc = {
+        .BlendEnable           = info.enable_transparency,
+        .SrcBlend              = dx12_util_blend_factor_translate(info.src_color_blend_factor),
+        .DestBlend             = dx12_util_blend_factor_translate(info.dst_color_blend_factor),
+        .BlendOp               = dx12_util_blend_op_translate(info.color_blend_op),
+        .SrcBlendAlpha         = dx12_util_blend_factor_translate(info.src_alpha_blend_factor),
+        .DestBlendAlpha        = dx12_util_blend_factor_translate(info.dst_alpha_blend_factor),
+        .BlendOpAlpha          = dx12_util_blend_op_translate(info.alpha_blend_op),
+        .RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL,
+    };
+    blend_state.RenderTarget[0] = rt_blend_desc;
+    desc.BlendState             = blend_state;
+
+    //----------------------------
+    // Depth Stencil Stage
+    //----------------------------
+    D3D12_DEPTH_STENCIL_DESC depth = {0};
+    depth.DepthEnable              = info.enable_depth_test,
+    depth.DepthWriteMask           = info.enable_depth_write ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO,
+    depth.DepthFunc                = dx12_util_compare_op_translate(info.depth_compare),
+    depth.StencilEnable            = FALSE;
+    depth.StencilReadMask          = D3D12_DEFAULT_STENCIL_READ_MASK;
+    depth.StencilWriteMask         = D3D12_DEFAULT_STENCIL_WRITE_MASK;
+    depth.FrontFace                = (D3D12_DEPTH_STENCILOP_DESC){
+                       .StencilFailOp      = D3D12_STENCIL_OP_KEEP,
+                       .StencilDepthFailOp = D3D12_STENCIL_OP_KEEP,
+                       .StencilPassOp      = D3D12_STENCIL_OP_KEEP,
+                       .StencilFunc        = D3D12_COMPARISON_FUNC_ALWAYS};
+    depth.BackFace         = depth.FrontFace;
+    desc.DepthStencilState = depth;
+
+    //----------------------------
+    // Multi sample State (MSAA)
+    //----------------------------
+    desc.SampleDesc.Count   = 1;    // No MSAA
+    desc.SampleDesc.Quality = 0;
+    desc.SampleMask         = UINT32_MAX;
+
+    //----------------------------
+    // Gfx Pipeline
+    //----------------------------
+
+    ID3D12PipelineState* pso = NULL;
+    HRESULT              hr  = ID3D12Device10_CreateGraphicsPipelineState(DXDevice, &desc, &IID_ID3D12PipelineState, &pso);
+    if (FAILED(hr)) {
+        LOG_ERROR("[D3D12] Failed to create gfx PSO (HRESULT=0x%08X)", hr);
+        uuid_destroy(&pipeline.uuid);
+        return pipeline;
+    }
+    pipeline.backend = pso;
 
     return pipeline;
+}
+
+static gfx_pipeline dx12_internal_create_compute_pipeline(gfx_pipeline_create_info info)
+{
+    gfx_pipeline pipeline = {0};
+    uuid_generate(&pipeline.uuid);
+
+    D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {0};
+    desc.NodeMask                          = 0;
+    desc.Flags                             = D3D12_PIPELINE_STATE_FLAG_NONE;
+    desc.pRootSignature                    = (ID3D12RootSignature*) (info.root_sig.backend);
+
+    D3D12_SHADER_BYTECODE CSByteCode = {0};
+    CSByteCode.BytecodeLength        = ID3D10Blob_GetBufferSize(((shader_backend*) (info.shader.stages.CS))->bytecode);
+    CSByteCode.pShaderBytecode       = ID3D10Blob_GetBufferPointer(((shader_backend*) (info.shader.stages.CS))->bytecode);
+    desc.CS                          = CSByteCode;
+
+    ID3D12PipelineState* pso = NULL;
+    HRESULT              hr  = ID3D12Device10_CreateComputePipelineState(DXDevice, &desc, &IID_ID3D12PipelineState, &pso);
+    if (FAILED(hr)) {
+        LOG_ERROR("[D3D12] Failed to create compute PSO (HRESULT=0x%08X)", hr);
+        uuid_destroy(&pipeline.uuid);
+        return pipeline;
+    }
+    pipeline.backend = pso;
+
+    return pipeline;
+}
+
+gfx_pipeline dx12_create_pipeline(gfx_pipeline_create_info info)
+{
+    if (info.type == GFX_PIPELINE_TYPE_GRAPHICS)
+        return dx12_internal_create_gfx_pipeline(info);
+    else
+        return dx12_internal_create_compute_pipeline(info);
 }
 
 void dx12_destroy_pipeline(gfx_pipeline* pipeline)
 {
     uuid_destroy(&pipeline->uuid);
+    if (pipeline->backend) {
+        ID3D12PipelineState_Release((ID3D12PipelineState*) pipeline->backend);
+        pipeline->backend = NULL;
+    }
 }
 
 //--------------------------------------------------------
