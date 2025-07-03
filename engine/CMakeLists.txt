@@ -44,6 +44,7 @@ set_target_properties(engine PROPERTIES OUTPUT_NAME "engine")
 # Skip for CI
 option(CI "If building in CI" OFF)
 
+
 if(NOT CI)
 	find_program(GLSLC_EXECUTABLE glslc HINTS $ENV{VULKAN_SDK}/Bin $ENV{VULKAN_SDK}/bin)
 
