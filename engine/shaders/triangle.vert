@@ -21,6 +21,6 @@ void main()
         vec3(0.0, 0.0, 1.0)   // blue
     );
 
-    gl_Position = vec4(positions[gl_VertexID], 0.0, 1.0);
-    outColor = colors[gl_VertexID];
+    gl_Position = vec4(positions[gl_VertexIndex], 0.0, 1.0);
+    outColor = colors[gl_VertexIndex];
 }
