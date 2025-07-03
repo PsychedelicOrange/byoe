@@ -10,9 +10,9 @@ out gl_PerVertex
 void main()
 {
     vec2 positions[3] = vec2[](
-        vec2( 0.0,  0.5),  // top
-        vec2(-0.5, -0.5),  // bottom-left
-        vec2( 0.5, -0.5)   // bottom-right
+        vec2( 0.0,  -0.5),  // top
+        vec2(-0.5, 0.5),  // bottom-left
+        vec2( 0.5, 0.5)   // bottom-right
     );
 
     vec3 colors[3] = vec3[](

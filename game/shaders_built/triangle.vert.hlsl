@@ -1,4 +1,4 @@
-static const float2 _19[3] = { float2(0.0f, 0.5f), (-0.5f).xx, float2(0.5f, -0.5f) };
+static const float2 _19[3] = { float2(0.0f, -0.5f), float2(-0.5f, 0.5f), 0.5f.xx };
 static const float3 _28[3] = { float3(1.0f, 0.0f, 0.0f), float3(0.0f, 1.0f, 0.0f), float3(0.0f, 0.0f, 1.0f) };
 
 static float4 gl_Position;
