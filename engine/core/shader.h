@@ -11,6 +11,7 @@ typedef struct
 } SPVBuffer;
 
 char* readFileToString(const char* filename, uint32_t* file_size);
+char* appendFileExt(const char* fileName, const char* ext);
 
 SPVBuffer loadSPVFile(const char* filename);
 

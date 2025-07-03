@@ -156,6 +156,7 @@ const rhi_jumptable dx12_jumptable = {
     #define SIZE_DWORD            4
     #define MAX_ROOT_PARAMS       16
     #define MAX_DESCRIPTOR_RANGES 32
+    #define SHADER_BINARY_EXT     "cso"
 
 //--------------------------------------------------------
 // Internal Types
@@ -1017,18 +1018,19 @@ gfx_shader dx12_create_compute_shader(const char* cso_file_path)
     gfx_shader shader = {0};
     uuid_generate(&shader.uuid);
 
-    shader_backend* backend = malloc(sizeof(shader_backend));
+    char*           full_path = appendFileExt(cso_file_path, SHADER_BINARY_EXT);
+    shader_backend* backend   = malloc(sizeof(shader_backend));
     if (backend) {
         shader.stages.CS = backend;
         backend->stage   = GFX_SHADER_STAGE_CS;
-        HRESULT hr       = D3DReadFileToBlob((LPCWSTR) cso_file_path, &backend->bytecode);
+        HRESULT hr       = D3DReadFileToBlob((LPCWSTR) full_path, &backend->bytecode);
         if (FAILED(hr)) {
-            LOG_ERROR("Failed to load shader blob from file: %s (HRESULT = 0x%08X)", cso_file_path, hr);
+            LOG_ERROR("Failed to load shader blob from file: %s (HRESULT = 0x%08X)", full_path, hr);
             uuid_destroy(&shader.uuid);
             return shader;
         }
     }
-
+    free(full_path);
     return shader;
 }
 
@@ -1051,29 +1053,45 @@ gfx_shader dx12_create_vs_ps_shader(const char* cso_file_path_vs, const char* cs
     gfx_shader shader = {0};
     uuid_generate(&shader.uuid);
 
-    shader_backend* backend_vs = malloc(sizeof(shader_backend));
+    char*           full_path_vs = appendFileExt(cso_file_path_vs, SHADER_BINARY_EXT);
+    shader_backend* backend_vs   = malloc(sizeof(shader_backend));
     if (backend_vs) {
-        shader.stages.CS  = backend_vs;
+        shader.stages.VS  = backend_vs;
         backend_vs->stage = GFX_SHADER_STAGE_CS;
-        HRESULT hr        = D3DReadFileToBlob((LPCWSTR) cso_file_path_vs, &backend_vs->bytecode);
-        if (FAILED(hr)) {
-            LOG_ERROR("Failed to load shader blob from file: %s (HRESULT = 0x%08X)", cso_file_path_vs, hr);
-            uuid_destroy(&shader.uuid);
-            return shader;
-        }
-    }
 
-    shader_backend* backend_ps = malloc(sizeof(shader_backend));
-    if (backend_ps) {
-        shader.stages.CS  = backend_ps;
-        backend_ps->stage = GFX_SHADER_STAGE_PS;
-        HRESULT hr        = D3DReadFileToBlob((LPCWSTR) cso_file_path_ps, &backend_ps->bytecode);
+        int      len       = MultiByteToWideChar(CP_UTF8, 0, full_path_vs, -1, NULL, 0);
+        wchar_t* wide_path = malloc(len * sizeof(wchar_t));
+        MultiByteToWideChar(CP_UTF8, 0, full_path_vs, -1, wide_path, len);
+
+        HRESULT hr = D3DReadFileToBlob((LPCWSTR) wide_path, &backend_vs->bytecode);
         if (FAILED(hr)) {
-            LOG_ERROR("Failed to load shader blob from file: %s (HRESULT = 0x%08X)", cso_file_path_ps, hr);
+            LOG_ERROR("Failed to load shader blob from file: %s (HRESULT = 0x%08X)", full_path_vs, hr);
             uuid_destroy(&shader.uuid);
             return shader;
         }
+        free(wide_path);
     }
+    free(full_path_vs);
+
+    char*           full_path_ps = appendFileExt(cso_file_path_ps, SHADER_BINARY_EXT);
+    shader_backend* backend_ps   = malloc(sizeof(shader_backend));
+    if (backend_ps) {
+        shader.stages.PS  = backend_ps;
+        backend_ps->stage = GFX_SHADER_STAGE_PS;
+
+        int      len       = MultiByteToWideChar(CP_UTF8, 0, full_path_ps, -1, NULL, 0);
+        wchar_t* wide_path = malloc(len * sizeof(wchar_t));
+        MultiByteToWideChar(CP_UTF8, 0, full_path_ps, -1, wide_path, len);
+
+        HRESULT hr = D3DReadFileToBlob((LPCWSTR) wide_path, &backend_ps->bytecode);
+        if (FAILED(hr)) {
+            LOG_ERROR("Failed to load shader blob from file: %s (HRESULT = 0x%08X)", full_path_ps, hr);
+            uuid_destroy(&shader.uuid);
+            return shader;
+        }
+        free(wide_path);
+    }
+    free(full_path_ps);
 
     return shader;
 }
@@ -1175,8 +1193,10 @@ gfx_root_signature dx12_create_root_signature(const gfx_descriptor_set_layout* s
         ID3D10Blob_Release(error_blob);
     }
 
-    ID3D10Blob_Release(signature_blob);
-    ID3D10Blob_Release(error_blob);
+    if (signature_blob)
+        ID3D10Blob_Release(signature_blob);
+    if (error_blob)
+        ID3D10Blob_Release(error_blob);
 
     root_sig.backend                 = d3d_root_sig;
     root_sig.descriptor_set_layouts  = (gfx_descriptor_set_layout*) set_layouts;
@@ -1230,6 +1250,7 @@ static gfx_pipeline dx12_internal_create_gfx_pipeline(gfx_pipeline_create_info i
     prim_topology                               = dx12_util_draw_type_translate(info.draw_type);
     desc.PrimitiveTopologyType                  = prim_topology;
 
+    desc.NumRenderTargets = info.color_formats_count;
     for (uint32_t i = 0; i < info.color_formats_count; i++) {
         desc.RTVFormats[i] = dx12_util_format_translate(info.color_formats[i]);
     }

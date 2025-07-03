@@ -134,6 +134,8 @@ DEFINE_CLAMP(int)
         free(x->backend);    \
     x->backend = NULL
 
+#define SHADER_BINARY_EXT "spv"
+
 //--------------------------------------------------------
 // Internal Types
 //--------------------------------------------------------
@@ -1547,12 +1549,14 @@ gfx_shader vulkan_device_create_compute_shader(const char* spv_file_path)
     gfx_shader shader = {0};
     uuid_generate(&shader.uuid);
 
+    char* full_path = appendFileExt(spv_file_path, SHADER_BINARY_EXT);
+
     shader_backend* backend = malloc(sizeof(shader_backend));
     if (backend) {
         shader.stages.CS = backend;
         backend->stage   = GFX_SHADER_STAGE_CS;
 
-        backend->modules.CS = vulkan_internal_create_shader_handle(spv_file_path);
+        backend->modules.CS = vulkan_internal_create_shader_handle(full_path);
 
         backend->stage_ci = (VkPipelineShaderStageCreateInfo){
             .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -1560,6 +1564,8 @@ gfx_shader vulkan_device_create_compute_shader(const char* spv_file_path)
             .pName  = "main",
             .module = backend->modules.CS};
     }
+
+    free(full_path);
     return shader;
 }
 
@@ -1584,7 +1590,9 @@ gfx_shader vulkan_device_create_vs_ps_shader(const char* spv_file_path_vs, const
         shader.stages.VS  = backend_vs;
         backend_vs->stage = GFX_SHADER_STAGE_VS;
 
-        backend_vs->modules.VS = vulkan_internal_create_shader_handle(spv_file_path_vs);
+        char* full_path        = appendFileExt(spv_file_path_vs, SHADER_BINARY_EXT);
+        backend_vs->modules.VS = vulkan_internal_create_shader_handle(full_path);
+        free(full_path);
 
         backend_vs->stage_ci = (VkPipelineShaderStageCreateInfo){
             .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -1598,7 +1606,9 @@ gfx_shader vulkan_device_create_vs_ps_shader(const char* spv_file_path_vs, const
         shader.stages.PS  = backend_ps;
         backend_ps->stage = GFX_SHADER_STAGE_PS;
 
-        backend_ps->modules.PS = vulkan_internal_create_shader_handle(spv_file_path_ps);
+        char* full_path        = appendFileExt(spv_file_path_ps, SHADER_BINARY_EXT);
+        backend_ps->modules.PS = vulkan_internal_create_shader_handle(full_path);
+        free(full_path);
 
         backend_ps->stage_ci = (VkPipelineShaderStageCreateInfo){
             .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
