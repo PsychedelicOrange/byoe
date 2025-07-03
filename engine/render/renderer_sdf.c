@@ -586,10 +586,8 @@ bool renderer_sdf_init(renderer_desc desc)
 
     bool success = render_internal_sdf_init_gfx_ctx(desc.width, desc.height);
 
-#if !CLEAR_TEST
     if (success)
         renderer_internal_create_sdf_pass_resources();
-#endif
 
     return success;
 }
@@ -601,9 +599,7 @@ void renderer_sdf_destroy(void)
     free(s_RendererSDFInternalState.lastSwapchainReadback.pixels);
 
     // clean up
-#if !CLEAR_TEST
     renderer_internal_destroy_sdf_pass_resources();
-#endif
 
     renderer_internal_sdf_destroy_gfx_ctx();
 

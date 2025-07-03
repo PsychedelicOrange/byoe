@@ -15,7 +15,7 @@ set(CMAKE_C_EXTENSIONS OFF)         # Disable compiler-specific extensions
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 ####################################################################
 # GLOBAL PER PLATFORM SETTINGS
-
+set(FETCHCONTENT_QUIET OFF)
 ##### ANDROID #####
 
 ##### WINDOWS #####
