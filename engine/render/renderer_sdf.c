@@ -104,6 +104,8 @@ static void renderer_internal_sdf_resize(GLFWwindow* window, int width, int heig
     g_rhi.resize_swapchain(&s_RendererSDFInternalState.gfxcontext, width, height);
 }
 
+#if !CLEAR_TEST
+
 static void renderer_internal_create_shaders(void)
 {
     s_RendererSDFInternalState.clear_tex_resources.shader   = g_rhi.create_compute_shader("./game/shaders_built/clear_texture.comp.spv");
@@ -356,16 +358,19 @@ static void renderer_internal_create_screen_pass_descriptor_table(void)
     };
     g_rhi.update_descriptor_table(&s_RendererSDFInternalState.screen_quad_resources.table, screen_table_entries, ARRAY_SIZE(screen_table_entries));
 }
+#endif
 
 static void renderer_internal_hot_reload_shaders(void)
 {
     g_rhi.flush_gpu_work(&s_RendererSDFInternalState.gfxcontext);
 
+#if !CLEAR_TEST
     renderer_internal_destroy_shaders();
     renderer_internal_destroy_pipelines();
 
     renderer_internal_create_shaders();
     renderer_internal_create_pipelines();
+#endif
 
     g_rhi.flush_gpu_work(&s_RendererSDFInternalState.gfxcontext);
 }
@@ -403,11 +408,10 @@ static void renderer_internal_sdf_destroy_gfx_ctx(void)
     }
 }
 
-//----------------------------------------------------------------
-
 static void renderer_internal_create_sdf_pass_resources(void)
 {
     // create the shaders and pipeline
+#if !CLEAR_TEST
     renderer_internal_create_shaders();
     renderer_internal_create_root_sigs();
     renderer_internal_create_pipelines();
@@ -415,12 +419,14 @@ static void renderer_internal_create_sdf_pass_resources(void)
     renderer_internal_create_scene_pass_descriptor_table();
     renderer_internal_create_clear_tex_pass_descriptor_table();
     renderer_internal_create_screen_pass_descriptor_table();
+#endif
 
     g_rhi.flush_gpu_work(&s_RendererSDFInternalState.gfxcontext);
 }
 
 static void renderer_internal_destroy_sdf_pass_resources(void)
 {
+#if !CLEAR_TEST
     renderer_internal_destroy_shaders();
     renderer_internal_destroy_root_sigs();
     renderer_internal_destroy_pipelines();
@@ -438,52 +444,10 @@ static void renderer_internal_destroy_sdf_pass_resources(void)
     g_rhi.destroy_sampler_resource_view(&s_RendererSDFInternalState.screen_quad_resources.sampler_view);
     g_rhi.destroy_sampler(&s_RendererSDFInternalState.screen_quad_resources.scene_tex_sampler);
     g_rhi.destroy_descriptor_table(&s_RendererSDFInternalState.screen_quad_resources.table);
+#endif
 }
-
-bool renderer_sdf_init(renderer_desc desc)
-{
-    // use the desc to init the internal state
-    (void) desc;
-
-    s_RendererSDFInternalState.numPrimitives = 0;
-    s_RendererSDFInternalState.width         = desc.width;
-    s_RendererSDFInternalState.height        = desc.height;
-    s_RendererSDFInternalState.window        = desc.window;
-    s_RendererSDFInternalState.frameCount    = 0;
-
-    glfwSetWindowSizeCallback(s_RendererSDFInternalState.window, renderer_internal_sdf_resize);
-
-    bool success = render_internal_sdf_init_gfx_ctx(desc.width, desc.height);
 
 #if !CLEAR_TEST
-    if (success)
-        renderer_internal_create_sdf_pass_resources();
-#endif
-
-    return success;
-}
-
-void renderer_sdf_destroy(void)
-{
-    g_rhi.flush_gpu_work(&s_RendererSDFInternalState.gfxcontext);
-
-    free(s_RendererSDFInternalState.lastSwapchainReadback.pixels);
-
-    // clean up
-#if !CLEAR_TEST
-    renderer_internal_destroy_sdf_pass_resources();
-#endif
-
-    renderer_internal_sdf_destroy_gfx_ctx();
-
-    g_rhi.destroy_swapchain(&s_RendererSDFInternalState.gfxcontext.swapchain);
-    g_rhi.ctx_destroy(&s_RendererSDFInternalState.gfxcontext);
-
-    // glfw: terminate, clearing all previously allocated GLFW resources.
-    // ------------------------------------------------------------------
-    glfwTerminate();
-}
-
 static void renderer_internal_scene_clear_pass(gfx_cmd_buf* cmd_buff)
 {
     const SDF_Scene* scene = s_RendererSDFInternalState.scene;
@@ -576,6 +540,7 @@ static void renderer_internal_sdf_screen_quad_pass(gfx_cmd_buf* cmd_buff)
 
     g_rhi.insert_image_layout_barrier(cmd_buff, &s_RendererSDFInternalState.sdfscene_resources.scene_texture, GFX_IMAGE_LAYOUT_SHADER_READ_ONLY, GFX_IMAGE_LAYOUT_GENERAL);
 }
+#else
 
 static void renderer_internal_clear_screen_no_rendering(gfx_cmd_buf* cmd_buff)
 {
@@ -601,6 +566,53 @@ static void renderer_internal_clear_screen_no_rendering(gfx_cmd_buf* cmd_buff)
     g_rhi.end_render_pass(cmd_buff, clear_screen_pass);
 
     g_rhi.insert_swapchain_layout_barrier(cmd_buff, &s_RendererSDFInternalState.gfxcontext.swapchain, GFX_IMAGE_LAYOUT_COLOR_ATTACHMENT, GFX_IMAGE_LAYOUT_PRESENTATION);
+}
+#endif
+
+//----------------------------------------------------------------
+
+bool renderer_sdf_init(renderer_desc desc)
+{
+    // use the desc to init the internal state
+    (void) desc;
+
+    s_RendererSDFInternalState.numPrimitives = 0;
+    s_RendererSDFInternalState.width         = desc.width;
+    s_RendererSDFInternalState.height        = desc.height;
+    s_RendererSDFInternalState.window        = desc.window;
+    s_RendererSDFInternalState.frameCount    = 0;
+
+    glfwSetWindowSizeCallback(s_RendererSDFInternalState.window, renderer_internal_sdf_resize);
+
+    bool success = render_internal_sdf_init_gfx_ctx(desc.width, desc.height);
+
+#if !CLEAR_TEST
+    if (success)
+        renderer_internal_create_sdf_pass_resources();
+#endif
+
+    return success;
+}
+
+void renderer_sdf_destroy(void)
+{
+    g_rhi.flush_gpu_work(&s_RendererSDFInternalState.gfxcontext);
+
+    free(s_RendererSDFInternalState.lastSwapchainReadback.pixels);
+
+    // clean up
+#if !CLEAR_TEST
+    renderer_internal_destroy_sdf_pass_resources();
+#endif
+
+    renderer_internal_sdf_destroy_gfx_ctx();
+
+    g_rhi.destroy_swapchain(&s_RendererSDFInternalState.gfxcontext.swapchain);
+    g_rhi.ctx_destroy(&s_RendererSDFInternalState.gfxcontext);
+
+    // glfw: terminate, clearing all previously allocated GLFW resources.
+    // ------------------------------------------------------------------
+    glfwTerminate();
 }
 
 void renderer_sdf_render(void)
