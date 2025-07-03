@@ -1,5 +1,5 @@
 Texture2D<float4> sceneTexture : register(t0, space0);
-SamplerState _sceneTexture_sampler : register(s0, space0);
+SamplerState sceneSampler : register(s1, space0);
 
 static float4 outColorRenderTarget;
 static float2 inUV;
@@ -16,7 +16,7 @@ struct SPIRV_Cross_Output
 
 void frag_main()
 {
-    outColorRenderTarget = sceneTexture.Sample(_sceneTexture_sampler, inUV);
+    outColorRenderTarget = sceneTexture.Sample(sceneSampler, inUV);
 }
 
 SPIRV_Cross_Output main(SPIRV_Cross_Input stage_input)

@@ -22,7 +22,7 @@
 // Image memory barrier
 // - [x] sdf_scene_texture image memory pipeline barrier before screen quad pass
 
-#define CLEAR_TEST 1
+#define CLEAR_TEST 0
 
 typedef struct SDFPushConstant
 {
@@ -33,6 +33,7 @@ typedef struct SDFPushConstant
     int   curr_draw_node_idx;
 } SDFPushConstant;
 
+#if !CLEAR_TEST
 typedef struct sdf_resources
 {
     gfx_resource         scene_texture;
@@ -66,24 +67,36 @@ typedef struct clear_texture_resources
     gfx_root_signature   root_sig;
     gfx_descriptor_table table;
 } clear_texture_resources;
+#else
+typedef struct triangle_resources
+{
+    gfx_shader         shader;
+    gfx_root_signature root_sig;
+    gfx_pipeline       pipeline;
+} triangle_resources;
+#endif
 
 typedef struct renderer_internal_state
 {
-    uint32_t                numPrimitives;
-    uint32_t                width;
-    uint32_t                height;
-    uint32_t                raymarchShaderID;
-    GLFWwindow*             window;
-    const SDF_Scene*        scene;
-    uint64_t                frameCount;
-    bool                    captureSwapchain;
-    bool                    _pad0[3];
-    mat4s                   viewproj;
-    gfx_texture_readback    lastSwapchainReadback;
-    gfx_context             gfxcontext;
+    uint32_t             numPrimitives;
+    uint32_t             width;
+    uint32_t             height;
+    uint32_t             raymarchShaderID;
+    GLFWwindow*          window;
+    const SDF_Scene*     scene;
+    uint64_t             frameCount;
+    bool                 captureSwapchain;
+    bool                 _pad0[3];
+    mat4s                viewproj;
+    gfx_texture_readback lastSwapchainReadback;
+    gfx_context          gfxcontext;
+#if !CLEAR_TEST
     screen_quad_resoruces   screen_quad_resources;
     sdf_resources           sdfscene_resources;
     clear_texture_resources clear_tex_resources;
+#else
+    triangle_resources triangle;
+#endif
 } renderer_internal_state;
 
 //---------------------------------------------------------
@@ -104,24 +117,32 @@ static void renderer_internal_sdf_resize(GLFWwindow* window, int width, int heig
     g_rhi.resize_swapchain(&s_RendererSDFInternalState.gfxcontext, width, height);
 }
 
-#if !CLEAR_TEST
-
 static void renderer_internal_create_shaders(void)
 {
+#if !CLEAR_TEST
     s_RendererSDFInternalState.clear_tex_resources.shader   = g_rhi.create_compute_shader("./game/shaders_built/clear_texture.comp.spv");
     s_RendererSDFInternalState.sdfscene_resources.shader    = g_rhi.create_compute_shader("./game/shaders_built/raymarch_sdf_scene.comp.spv");
     s_RendererSDFInternalState.screen_quad_resources.shader = g_rhi.create_vs_ps_shader("./game/shaders_built/screen_quad.vert.spv", "./game/shaders_built/screen_quad.frag.spv");
+#else
+    s_RendererSDFInternalState.triangle.shader = g_rhi.create_vs_ps_shader("./game/shaders_built/triangle.vert.spv", "./game/shaders_built/triangle.frag.spv");
+#endif
 }
 
 static void renderer_internal_destroy_shaders(void)
 {
+#if !CLEAR_TEST
     g_rhi.destroy_compute_shader(&s_RendererSDFInternalState.clear_tex_resources.shader);
     g_rhi.destroy_compute_shader(&s_RendererSDFInternalState.sdfscene_resources.shader);
     g_rhi.destroy_vs_ps_shader(&s_RendererSDFInternalState.screen_quad_resources.shader);
+#else
+    g_rhi.destroy_vs_ps_shader(&s_RendererSDFInternalState.triangle.shader);
+#endif
 }
 
 static void renderer_internal_create_root_sigs(void)
 {
+#if !CLEAR_TEST
+
     {
         gfx_descriptor_binding tex_binding = {
             .location = {
@@ -211,17 +232,26 @@ static void renderer_internal_create_root_sigs(void)
 
         s_RendererSDFInternalState.screen_quad_resources.root_sig = g_rhi.create_root_signature(&screen_set_layout_0, 1, NULL, 0);
     }
+#else
+    // Nothing to bind
+    s_RendererSDFInternalState.triangle.root_sig = g_rhi.create_root_signature(NULL, 0, NULL, 0);
+#endif
 }
 
 static void renderer_internal_destroy_root_sigs(void)
 {
+#if !CLEAR_TEST
     g_rhi.destroy_root_signature(&s_RendererSDFInternalState.clear_tex_resources.root_sig);
     g_rhi.destroy_root_signature(&s_RendererSDFInternalState.sdfscene_resources.root_sig);
     g_rhi.destroy_root_signature(&s_RendererSDFInternalState.screen_quad_resources.root_sig);
+#else
+    g_rhi.destroy_root_signature(&s_RendererSDFInternalState.triangle.root_sig);
+#endif
 }
 
 static void renderer_internal_create_pipelines(void)
 {
+#if !CLEAR_TEST
     gfx_pipeline_create_info clear_tex_pipeline_ci = {
         .type     = GFX_PIPELINE_TYPE_COMPUTE,
         .root_sig = s_RendererSDFInternalState.clear_tex_resources.root_sig,
@@ -257,15 +287,37 @@ static void renderer_internal_create_pipelines(void)
     };
 
     s_RendererSDFInternalState.screen_quad_resources.pipeline = g_rhi.create_pipeline(scrn_pipeline_ci);
+#else
+
+    gfx_pipeline_create_info tri_pipeline_ci = {
+        .type                = GFX_PIPELINE_TYPE_GRAPHICS,
+        .root_sig            = s_RendererSDFInternalState.triangle.root_sig,
+        .shader              = s_RendererSDFInternalState.triangle.shader,
+        .draw_type           = GFX_DRAW_TYPE_TRIANGLE,
+        .polygon_mode        = GFX_POLYGON_MODE_FILL,
+        .cull_mode           = GFX_CULL_MODE_NO_CULL,
+        .enable_depth_test   = false,
+        .enable_depth_write  = false,
+        .enable_transparency = false,
+        .color_formats_count = 1,
+        .color_formats[0]    = GFX_FORMAT_SCREEN,
+    };
+    s_RendererSDFInternalState.triangle.pipeline = g_rhi.create_pipeline(tri_pipeline_ci);
+#endif
 }
 
 static void renderer_internal_destroy_pipelines(void)
 {
+#if !CLEAR_TEST
     g_rhi.destroy_pipeline(&s_RendererSDFInternalState.clear_tex_resources.pipeline);
     g_rhi.destroy_pipeline(&s_RendererSDFInternalState.sdfscene_resources.pipeline);
     g_rhi.destroy_pipeline(&s_RendererSDFInternalState.screen_quad_resources.pipeline);
+#else
+    g_rhi.destroy_pipeline(&s_RendererSDFInternalState.triangle.pipeline);
+#endif
 }
 
+#if !CLEAR_TEST
 static void renderer_internal_create_scene_pass_descriptor_table(void)
 {
     //--------------------------------------------------
@@ -364,13 +416,11 @@ static void renderer_internal_hot_reload_shaders(void)
 {
     g_rhi.flush_gpu_work(&s_RendererSDFInternalState.gfxcontext);
 
-#if !CLEAR_TEST
     renderer_internal_destroy_shaders();
     renderer_internal_destroy_pipelines();
 
     renderer_internal_create_shaders();
     renderer_internal_create_pipelines();
-#endif
 
     g_rhi.flush_gpu_work(&s_RendererSDFInternalState.gfxcontext);
 }
@@ -411,11 +461,11 @@ static void renderer_internal_sdf_destroy_gfx_ctx(void)
 static void renderer_internal_create_sdf_pass_resources(void)
 {
     // create the shaders and pipeline
-#if !CLEAR_TEST
     renderer_internal_create_shaders();
     renderer_internal_create_root_sigs();
     renderer_internal_create_pipelines();
 
+#if !CLEAR_TEST
     renderer_internal_create_scene_pass_descriptor_table();
     renderer_internal_create_clear_tex_pass_descriptor_table();
     renderer_internal_create_screen_pass_descriptor_table();
@@ -426,11 +476,11 @@ static void renderer_internal_create_sdf_pass_resources(void)
 
 static void renderer_internal_destroy_sdf_pass_resources(void)
 {
-#if !CLEAR_TEST
     renderer_internal_destroy_shaders();
     renderer_internal_destroy_root_sigs();
     renderer_internal_destroy_pipelines();
 
+#if !CLEAR_TEST
     g_rhi.destroy_texture_resource_view(&s_RendererSDFInternalState.clear_tex_resources.shader_read_view);
     g_rhi.destroy_descriptor_table(&s_RendererSDFInternalState.clear_tex_resources.table);
 
@@ -483,7 +533,7 @@ static void renderer_internal_scene_draw_pass(gfx_cmd_buf* cmd_buff)
     g_rhi.begin_render_pass(cmd_buff, scene_draw_pass, s_RendererSDFInternalState.gfxcontext.swapchain.current_backbuffer_idx);
     {
         g_rhi.bind_root_signature(cmd_buff, &s_RendererSDFInternalState.sdfscene_resources.root_sig);
-        g_rhi.bind_compute_pipeline(cmd_buff, s_RendererSDFInternalState.sdfscene_resources.pipeline);
+        g_rhi.bind_compute_pipeline(cmd_buff, &s_RendererSDFInternalState.sdfscene_resources.pipeline);
 
         g_rhi.bind_descriptor_table(cmd_buff, &s_RendererSDFInternalState.sdfscene_resources.table, GFX_PIPELINE_TYPE_COMPUTE);
 
@@ -527,7 +577,7 @@ static void renderer_internal_sdf_screen_quad_pass(gfx_cmd_buf* cmd_buff)
     g_rhi.begin_render_pass(cmd_buff, clear_screen_pass, s_RendererSDFInternalState.gfxcontext.swapchain.current_backbuffer_idx);
     {
         g_rhi.bind_root_signature(cmd_buff, &s_RendererSDFInternalState.screen_quad_resources.root_sig);
-        g_rhi.bind_gfx_pipeline(cmd_buff, s_RendererSDFInternalState.screen_quad_resources.pipeline);
+        g_rhi.bind_gfx_pipeline(cmd_buff, &s_RendererSDFInternalState.screen_quad_resources.pipeline);
 
         g_rhi.set_viewport(cmd_buff, (gfx_viewport){.x = 0, .y = 0, .width = s_RendererSDFInternalState.width, .height = s_RendererSDFInternalState.height, .min_depth = 0, .max_depth = 1});
         g_rhi.set_scissor(cmd_buff, (gfx_scissor){.x = 0, .y = 0, .width = s_RendererSDFInternalState.width, .height = s_RendererSDFInternalState.height});
@@ -560,8 +610,12 @@ static void renderer_internal_clear_screen_no_rendering(gfx_cmd_buf* cmd_buff)
                .clear_color = clear_color}};
     g_rhi.begin_render_pass(cmd_buff, clear_screen_pass, s_RendererSDFInternalState.gfxcontext.swapchain.current_backbuffer_idx);
     {
-        //g_rhi.set_viewport(cmd_buff, (gfx_viewport){.x = 0, .y = 0, .width = s_RendererSDFInternalState.width, .height = s_RendererSDFInternalState.height, .min_depth = 0, .max_depth = 1});
-        //g_rhi.set_scissor(cmd_buff, (gfx_scissor){.x = 0, .y = 0, .width = s_RendererSDFInternalState.width, .height = s_RendererSDFInternalState.height});
+        g_rhi.bind_root_signature(cmd_buff, &s_RendererSDFInternalState.triangle.root_sig);
+        g_rhi.bind_gfx_pipeline(cmd_buff, &s_RendererSDFInternalState.triangle.pipeline);
+        g_rhi.set_viewport(cmd_buff, (gfx_viewport){.x = 0, .y = 0, .width = s_RendererSDFInternalState.width, .height = s_RendererSDFInternalState.height, .min_depth = 0, .max_depth = 1});
+        g_rhi.set_scissor(cmd_buff, (gfx_scissor){.x = 0, .y = 0, .width = s_RendererSDFInternalState.width, .height = s_RendererSDFInternalState.height});
+
+        g_rhi.draw(cmd_buff, 3, 1, 0, 0);
     }
     g_rhi.end_render_pass(cmd_buff, clear_screen_pass);
 
@@ -666,7 +720,6 @@ void renderer_sdf_draw_scene(const SDF_Scene* scene)
             renderer_internal_sdf_screen_quad_pass(cmd_buff);
 #else
             renderer_internal_clear_screen_no_rendering(cmd_buff);
-
 #endif
         }
 

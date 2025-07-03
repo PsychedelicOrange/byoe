@@ -1724,10 +1724,9 @@ static gfx_pipeline vulkan_internal_create_compute_pipeline(gfx_pipeline_create_
         .stage  = cs_backend->stage_ci,
     };
 
-    VkPipeline vk_pipeline = VK_NULL_HANDLE;
-    VK_CHECK_RESULT(vkCreateComputePipelines(VKDEVICE, VK_NULL_HANDLE, 1, &computePipelineCI, NULL, &vk_pipeline), "[Vulkan] Cannot create compute graphics pipeline");
+    pipeline.backend = malloc(sizeof(VkPipeline));
+    VK_CHECK_RESULT(vkCreateComputePipelines(VKDEVICE, VK_NULL_HANDLE, 1, &computePipelineCI, NULL, pipeline.backend), "[Vulkan] Cannot create compute graphics pipeline");
 
-    pipeline.backend = &vk_pipeline;
     return pipeline;
 }
 
@@ -1924,12 +1923,10 @@ static gfx_pipeline vulkan_internal_create_gfx_pipeline(gfx_pipeline_create_info
         .stageCount          = stage_count,
         .renderPass          = VK_NULL_HANDLE};    // renderPass is NULL since we are using VK_KHR_dynamic_rendering extension
 
-    VkPipeline vk_pipeline = VK_NULL_HANDLE;
-    VK_CHECK_RESULT(vkCreateGraphicsPipelines(VKDEVICE, VK_NULL_HANDLE, 1, &graphics_pipeline_ci, NULL, &vk_pipeline), "[Vulkan] could not create graphics pipeline");
+    pipeline.backend = malloc(sizeof(VkPipeline));
+    VK_CHECK_RESULT(vkCreateGraphicsPipelines(VKDEVICE, VK_NULL_HANDLE, 1, &graphics_pipeline_ci, NULL, pipeline.backend), "[Vulkan] could not create graphics pipeline");
 
     free(stages);
-
-    pipeline.backend = vk_pipeline;
 
     return pipeline;
 }
@@ -1946,6 +1943,7 @@ void vulkan_device_destroy_pipeline(gfx_pipeline* pipeline)
 {
     uuid_destroy(&pipeline->uuid);
     vkDestroyPipeline(VKDEVICE, *(VkPipeline*) (pipeline->backend), NULL);
+    free(pipeline->backend);
     pipeline->backend = NULL;
 }
 
@@ -2811,15 +2809,15 @@ rhi_error_codes vulkan_set_scissor(const gfx_cmd_buf* cmd_buf, gfx_scissor sciss
     return Success;
 }
 
-rhi_error_codes vulkan_bind_gfx_pipeline(const gfx_cmd_buf* cmd_buf, gfx_pipeline pipeline)
+rhi_error_codes vulkan_bind_gfx_pipeline(const gfx_cmd_buf* cmd_buf, const gfx_pipeline* pipeline)
 {
-    vkCmdBindPipeline(*(VkCommandBuffer*) cmd_buf->backend, VK_PIPELINE_BIND_POINT_GRAPHICS, *(VkPipeline*) (pipeline.backend));
+    vkCmdBindPipeline(*(VkCommandBuffer*) cmd_buf->backend, VK_PIPELINE_BIND_POINT_GRAPHICS, *(VkPipeline*) (pipeline->backend));
     return Success;
 }
 
-rhi_error_codes vulkan_bind_compute_pipeline(const gfx_cmd_buf* cmd_buf, gfx_pipeline pipeline)
+rhi_error_codes vulkan_bind_compute_pipeline(const gfx_cmd_buf* cmd_buf, const gfx_pipeline* pipeline)
 {
-    vkCmdBindPipeline(*(VkCommandBuffer*) cmd_buf->backend, VK_PIPELINE_BIND_POINT_COMPUTE, *(VkPipeline*) (pipeline.backend));
+    vkCmdBindPipeline(*(VkCommandBuffer*) cmd_buf->backend, VK_PIPELINE_BIND_POINT_COMPUTE, *(VkPipeline*) (pipeline->backend));
     return Success;
 }
 

@@ -124,8 +124,8 @@ typedef struct rhi_jumptablefrontend
     rhi_error_codes (*set_viewport)(const gfx_cmd_buf*, gfx_viewport);
     rhi_error_codes (*set_scissor)(const gfx_cmd_buf*, gfx_scissor);
 
-    rhi_error_codes (*bind_gfx_pipeline)(const gfx_cmd_buf*, gfx_pipeline);
-    rhi_error_codes (*bind_compute_pipeline)(const gfx_cmd_buf*, gfx_pipeline);
+    rhi_error_codes (*bind_gfx_pipeline)(const gfx_cmd_buf*, const gfx_pipeline*);
+    rhi_error_codes (*bind_compute_pipeline)(const gfx_cmd_buf*, const gfx_pipeline*);
     rhi_error_codes (*bind_root_signature)(const gfx_cmd_buf*, const gfx_root_signature*);
     rhi_error_codes (*bind_descriptor_table)(const gfx_cmd_buf*, const gfx_descriptor_table*, gfx_pipeline_type);
     rhi_error_codes (*bind_push_constant)(const gfx_cmd_buf*, gfx_root_signature*, gfx_push_constant);
