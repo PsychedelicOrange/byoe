@@ -1,3 +1,5 @@
+![Linux Build](https://github.com/parth/game-engine/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/parth/game-engine/actions/workflows/build.yml)
+
 # BYOE : Asteroids adventure
 A while ago some of us came together to make a game for BYOG (Build Your Own Game) a game jam that happend just before IGDC. Initially we hoped to make a BYOE (Build Your Own Engine) game from scratch but realized it'll take a longer time given our requirements. 
 
