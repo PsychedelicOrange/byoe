@@ -261,7 +261,7 @@ static D3D12_DESCRIPTOR_RANGE_TYPE dx12_util_descriptor_range_type_translate(gfx
     }
 }
 
-static D3D12_RESOURCE_STATES dx12_util_translate_image_layout(gfx_image_layout layout)
+static D3D12_RESOURCE_STATES dx12_util_translate_image_layout_to_res_state(gfx_image_layout layout)
 {
     switch (layout) {
         case GFX_IMAGE_LAYOUT_UNDEFINED:
@@ -1817,8 +1817,8 @@ rhi_error_codes dx12_transition_image_layout(const gfx_cmd_buf* cmd_buf, const g
     barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
     barrier.Flags                  = D3D12_RESOURCE_BARRIER_FLAG_NONE;
     barrier.Transition.pResource   = image->texture->backend;
-    barrier.Transition.StateBefore = dx12_util_translate_image_layout(old_layout);
-    barrier.Transition.StateAfter  = dx12_util_translate_image_layout(new_layout);
+    barrier.Transition.StateBefore = dx12_util_translate_image_layout_to_res_state(old_layout);
+    barrier.Transition.StateAfter  = dx12_util_translate_image_layout_to_res_state(new_layout);
     barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 
     ID3D12GraphicsCommandList_ResourceBarrier(cmd_list, 1, &barrier);
@@ -1838,8 +1838,8 @@ rhi_error_codes dx12_transition_swapchain_layout(const gfx_cmd_buf* cmd_buf, con
     barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
     barrier.Flags                  = D3D12_RESOURCE_BARRIER_FLAG_NONE;
     barrier.Transition.pResource   = backend->backbuffers[sc->current_backbuffer_idx];
-    barrier.Transition.StateBefore = dx12_util_translate_image_layout(old_layout);
-    barrier.Transition.StateAfter  = dx12_util_translate_image_layout(new_layout);
+    barrier.Transition.StateBefore = dx12_util_translate_image_layout_to_res_state(old_layout);
+    barrier.Transition.StateAfter  = dx12_util_translate_image_layout_to_res_state(new_layout);
     barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 
     ID3D12GraphicsCommandList_ResourceBarrier(cmd_list, 1, &barrier);
