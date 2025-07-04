@@ -157,6 +157,7 @@ const rhi_jumptable dx12_jumptable = {
     #define MAX_ROOT_PARAMS       16
     #define MAX_DESCRIPTOR_RANGES 32
     #define SHADER_BINARY_EXT     "cso"
+    #define DX_SWAPCHAIN_FORMAT   DXGI_FORMAT_B8G8R8A8_UNORM
 
 //--------------------------------------------------------
 // Internal Types
@@ -341,7 +342,7 @@ static DXGI_FORMAT dx12_util_format_translate(gfx_format format)
         case GFX_FORMAT_DEPTH16UNORM: return DXGI_FORMAT_D16_UNORM;
         case GFX_FORMAT_DEPTHSTENCIL: return DXGI_FORMAT_D24_UNORM_S8_UINT;
 
-        case GFX_FORMAT_SCREEN: return DXGI_FORMAT_B8G8R8A8_UNORM;
+        case GFX_FORMAT_SCREEN: return DX_SWAPCHAIN_FORMAT;
 
         default: return DXGI_FORMAT_UNKNOWN;
     }
@@ -791,6 +792,40 @@ void dx12_flush_gpu_work(gfx_context* context)
     #if ENABLE_SYNC_LOGGING
     LOG_WARN("[GPU Flush] [Update Wait] updating frame_idx: %d | new_sync_point: %llu", context->swapchain.current_backbuffer_idx, signal_value);
     #endif
+
+    for (int i = 0; i < MAX_DX_SWAPCHAIN_BUFFERS; ++i) {
+        context->frame_sync.frame_syncpoint[i] = context->frame_sync.global_syncpoint;
+    }
+}
+
+static void dx12_internal_update_swapchain_rtv(gfx_swapchain* sc)
+{
+    swapchain_backend* backend = (swapchain_backend*) sc->backend;
+
+    backend->image_count = MAX_DX_SWAPCHAIN_BUFFERS;
+    ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(backend->rtv_heap, &backend->rtv_handle_start);
+
+    for (uint32_t i = 0; i < MAX_DX_SWAPCHAIN_BUFFERS; i++) {
+        HRESULT hr = IDXGISwapChain4_GetBuffer(backend->swapchain, i, &IID_ID3D12Resource, &backend->backbuffers[i]);
+        if (FAILED(hr)) {
+            LOG_ERROR("[D3D12] Failed to get backbuffer %u from swapchain (HRESULT = 0x%08X)", i, (unsigned int) hr);
+            for (uint32_t j = 0; j < i; j++) {
+                if (backend->backbuffers[j]) {
+                    ID3D12Resource_Release(backend->backbuffers[j]);
+                }
+            }
+            ID3D12DescriptorHeap_Release(backend->rtv_heap);
+            IDXGISwapChain4_Release(backend->swapchain);
+            uuid_destroy(&sc->uuid);
+            free(backend);
+            return;
+        }
+
+        // Create RTV for the back buffer
+        D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = backend->rtv_handle_start;
+        rtvHandle.ptr += i * ID3D12Device10_GetDescriptorHandleIncrementSize(DXDevice, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+        ID3D12Device10_CreateRenderTargetView(DXDevice, backend->backbuffers[i], NULL, rtvHandle);
+    }
 }
 
 static void dx12_internal_create_backbuffers(gfx_swapchain* sc)
@@ -812,30 +847,7 @@ static void dx12_internal_create_backbuffers(gfx_swapchain* sc)
         return;
     }
 
-    backend->image_count = MAX_DX_SWAPCHAIN_BUFFERS;
-    ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(backend->rtv_heap, &backend->rtv_handle_start);
-
-    for (uint32_t i = 0; i < MAX_DX_SWAPCHAIN_BUFFERS; i++) {
-        hr = IDXGISwapChain4_GetBuffer(backend->swapchain, i, &IID_ID3D12Resource, &backend->backbuffers[i]);
-        if (FAILED(hr)) {
-            LOG_ERROR("[D3D12] Failed to get backbuffer %u from swapchain (HRESULT = 0x%08X)", i, (unsigned int) hr);
-            for (uint32_t j = 0; j < i; j++) {
-                if (backend->backbuffers[j]) {
-                    ID3D12Resource_Release(backend->backbuffers[j]);
-                }
-            }
-            ID3D12DescriptorHeap_Release(backend->rtv_heap);
-            IDXGISwapChain4_Release(backend->swapchain);
-            uuid_destroy(&sc->uuid);
-            free(backend);
-            return;
-        }
-
-        // Create RTV for the back buffer
-        D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = backend->rtv_handle_start;
-        rtvHandle.ptr += i * ID3D12Device10_GetDescriptorHandleIncrementSize(DXDevice, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-        ID3D12Device10_CreateRenderTargetView(DXDevice, backend->backbuffers[i], NULL, rtvHandle);
-    }
+    dx12_internal_update_swapchain_rtv(sc);
 }
 
 static void dx12_internal_destroy_backbuffers(gfx_swapchain* sc)
@@ -877,7 +889,7 @@ gfx_swapchain dx12_create_swapchain(uint32_t width, uint32_t height)
     DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {0};
     swapChainDesc.Width                 = width;
     swapChainDesc.Height                = height;
-    swapChainDesc.Format                = DXGI_FORMAT_B8G8R8A8_UNORM;
+    swapChainDesc.Format                = DX_SWAPCHAIN_FORMAT;
     swapChainDesc.Stereo                = FALSE;
     swapChainDesc.SampleDesc            = (DXGI_SAMPLE_DESC){1, 0};
     swapChainDesc.BufferUsage           = DXGI_USAGE_RENDER_TARGET_OUTPUT;
@@ -1575,16 +1587,26 @@ rhi_error_codes dx12_resize_swapchain(gfx_context* context, uint32_t width, uint
 
     dx12_flush_gpu_work(context);
 
-    dx12_internal_destroy_backbuffers(swapchain);
-
-    for (int i = 0; i < MAX_DX_SWAPCHAIN_BUFFERS; ++i) {
-        context->frame_sync.frame_syncpoint[i] = context->frame_sync.global_syncpoint;
-    }
-
     swapchain->width = width;
     swapchain->width = height;
 
-    dx12_internal_create_backbuffers(swapchain);
+    swapchain_backend* backend = (swapchain_backend*) swapchain->backend;
+
+    for (uint32_t i = 0; i < backend->image_count; i++) {
+        if (backend->backbuffers[i]) {
+            ID3D12Resource_Release(backend->backbuffers[i]);
+            backend->backbuffers[i] = NULL;
+        }
+    }
+
+    DXGI_SWAP_CHAIN_DESC swapChainDesc = {};
+    IDXGISwapChain4*     sc4           = backend->swapchain;
+    IDXGISwapChain4_GetDesc(sc4, &swapChainDesc);
+    IDXGISwapChain4_ResizeBuffers(sc4, MAX_DX_SWAPCHAIN_BUFFERS, width, height, DX_SWAPCHAIN_FORMAT, swapChainDesc.Flags);
+
+    dx12_internal_update_swapchain_rtv(swapchain);
+
+    dx12_flush_gpu_work(context);
 
     return Success;
 }
