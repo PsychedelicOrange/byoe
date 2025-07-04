@@ -71,6 +71,13 @@ rhi_error_codes dx12_end_gfx_cmd_recording(const gfx_cmd_buf* cmd_buf);
 rhi_error_codes dx12_begin_render_pass(const gfx_cmd_buf* cmd_buf, gfx_render_pass render_pass, uint32_t backbuffer_index);
 rhi_error_codes dx12_end_render_pass(const gfx_cmd_buf* cmd_buf, gfx_render_pass render_pass);
 
+rhi_error_codes dx12_set_viewport(const gfx_cmd_buf* cmd_buf, gfx_viewport viewport);
+rhi_error_codes dx12_set_scissor(const gfx_cmd_buf* cmd_buf, gfx_scissor scissor);
+                
+rhi_error_codes dx12_bind_gfx_pipeline(const gfx_cmd_buf* cmd_buf, const gfx_pipeline* pipeline);
+rhi_error_codes dx12_bind_compute_pipeline(const gfx_cmd_buf* cmd_buf, const gfx_pipeline* pipeline);
+rhi_error_codes dx12_device_bind_root_signature(const gfx_cmd_buf* cmd_buf, const gfx_root_signature* root_signature);
+
 // ...
 
 rhi_error_codes dx12_draw(const gfx_cmd_buf* cmd_buf, uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance);

@@ -20,6 +20,7 @@ void vert_main()
     float2 uv = float2(x, y);
     outUV = uv;
     gl_Position = float4((uv * 2.0f) - 1.0f.xx, 0.0f, 1.0f);
+    gl_Position.y = -gl_Position.y;
 }
 
 SPIRV_Cross_Output main(SPIRV_Cross_Input stage_input)

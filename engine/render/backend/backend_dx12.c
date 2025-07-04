@@ -57,13 +57,13 @@
 //   - [x] Test and resolve issues
 //   - [x] Swapchain resize
 //   - [x] **SUBMIT** API
-// - [ ] Hello Triangle without VB/IB in single shader quad
+// - [x] Hello Triangle without VB/IB in single shader quad
 //   - [x] Begin/End RenderpPass API (dynamic rendering VK) (setup RT/DRT etc. clear them...)
 //   - [x] Drawing API
 //   - [x] Shaders/Loading (re-use the SPIRV compiled, and GLSL as source for DX no HLSL!)
 //   - [x] Root Signature
 //   - [x] Pipeline API
-//   - [ ] Hello Triangle Shader + Draw loop
+//   - [x] Hello Triangle Shader + Draw loop
 // - [ ] Create Texture/Buffer resources
 // - [ ] Resource Views API
 // - [ ] Descriptor Heaps/tables API + root signature hookup
@@ -125,13 +125,13 @@ const rhi_jumptable dx12_jumptable = {
     dx12_end_gfx_cmd_recording,
     dx12_begin_render_pass,
     dx12_end_render_pass,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
+    dx12_set_viewport,
+    dx12_set_scissor,
+    dx12_bind_gfx_pipeline,
+    dx12_bind_compute_pipeline,
+    dx12_device_bind_root_signature,
+    NULL,    // bind descriptor heaps
+    NULL,    // bind root constant aka push constants
     dx12_draw,
     dx12_dispatch,
     dx12_transition_image_layout,
@@ -231,6 +231,12 @@ typedef struct shader_backend
     ID3DBlob*        bytecode;
 } shader_backend;
 
+typedef struct pipeline_backend
+{
+    ID3D12PipelineState*   pso;
+    D3D_PRIMITIVE_TOPOLOGY topology;
+} pipeline_backend;
+
 //--------------------------------------------------------
 
 static D3D12_DESCRIPTOR_RANGE_TYPE dx12_util_descriptor_range_type_translate(gfx_resource_type res_type)
@@ -290,13 +296,23 @@ static D3D12_RESOURCE_STATES dx12_util_translate_image_layout(gfx_image_layout l
     }
 }
 
-static D3D12_PRIMITIVE_TOPOLOGY_TYPE dx12_util_draw_type_translate(gfx_draw_type draw_type)
+static D3D12_PRIMITIVE_TOPOLOGY_TYPE dx12_util_draw_type_prim_topology_type_translate(gfx_draw_type draw_type)
 {
     switch (draw_type) {
         case GFX_DRAW_TYPE_POINT: return D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
         case GFX_DRAW_TYPE_LINE: return D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
         case GFX_DRAW_TYPE_TRIANGLE: return D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
         default: return D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+    }
+}
+
+static D3D_PRIMITIVE_TOPOLOGY dx12_util_draw_type_translate(gfx_draw_type draw_type)
+{
+    switch (draw_type) {
+        case GFX_DRAW_TYPE_POINT: return D3D_PRIMITIVE_TOPOLOGY_POINTLIST;
+        case GFX_DRAW_TYPE_LINE: return D3D_PRIMITIVE_TOPOLOGY_LINELIST;
+        case GFX_DRAW_TYPE_TRIANGLE: return D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+        default: return D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
     }
 }
 
@@ -861,7 +877,7 @@ gfx_swapchain dx12_create_swapchain(uint32_t width, uint32_t height)
     DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {0};
     swapChainDesc.Width                 = width;
     swapChainDesc.Height                = height;
-    swapChainDesc.Format                = DXGI_FORMAT_R8G8B8A8_UNORM;
+    swapChainDesc.Format                = DXGI_FORMAT_B8G8R8A8_UNORM;
     swapChainDesc.Stereo                = FALSE;
     swapChainDesc.SampleDesc            = (DXGI_SAMPLE_DESC){1, 0};
     swapChainDesc.BufferUsage           = DXGI_USAGE_RENDER_TARGET_OUTPUT;
@@ -1221,6 +1237,14 @@ static gfx_pipeline dx12_internal_create_gfx_pipeline(gfx_pipeline_create_info i
     gfx_pipeline pipeline = {0};
     uuid_generate(&pipeline.uuid);
 
+    pipeline_backend* backend = malloc(sizeof(pipeline_backend));
+    pipeline.backend          = backend;
+    if (!backend) {
+        LOG_ERROR("[D3D12] Failed to malloc pipeline_backend");
+        uuid_destroy(&pipeline.uuid);
+        return pipeline;
+    }
+
     D3D12_GRAPHICS_PIPELINE_STATE_DESC desc = {0};
     desc.NodeMask                           = 0;
     desc.Flags                              = D3D12_PIPELINE_STATE_FLAG_NONE;
@@ -1246,9 +1270,12 @@ static gfx_pipeline dx12_internal_create_gfx_pipeline(gfx_pipeline_create_info i
     input_layout.pInputElementDescs      = NULL;
     desc.InputLayout                     = input_layout;
 
+    // Set via IA to support dynamic state
     D3D12_PRIMITIVE_TOPOLOGY_TYPE prim_topology = {0};
-    prim_topology                               = dx12_util_draw_type_translate(info.draw_type);
+    prim_topology                               = dx12_util_draw_type_prim_topology_type_translate(info.draw_type);
     desc.PrimitiveTopologyType                  = prim_topology;
+    // Just translate and cache it
+    backend->topology = dx12_util_draw_type_translate(info.draw_type);
 
     desc.NumRenderTargets = info.color_formats_count;
     for (uint32_t i = 0; i < info.color_formats_count; i++) {
@@ -1323,7 +1350,7 @@ static gfx_pipeline dx12_internal_create_gfx_pipeline(gfx_pipeline_create_info i
         uuid_destroy(&pipeline.uuid);
         return pipeline;
     }
-    pipeline.backend = pso;
+    backend->pso = pso;
 
     return pipeline;
 }
@@ -1367,7 +1394,8 @@ void dx12_destroy_pipeline(gfx_pipeline* pipeline)
 {
     uuid_destroy(&pipeline->uuid);
     if (pipeline->backend) {
-        ID3D12PipelineState_Release((ID3D12PipelineState*) pipeline->backend);
+        ID3D12PipelineState_Release((ID3D12PipelineState*) ((pipeline_backend*) (pipeline->backend))->pso);
+        free(pipeline->backend);
         pipeline->backend = NULL;
     }
 }
@@ -1675,6 +1703,62 @@ rhi_error_codes dx12_end_render_pass(const gfx_cmd_buf* cmd_buf, gfx_render_pass
     UNUSED(render_pass);
     TracyCZoneNC(ctx, "Begin Render Pass", COLOR_ACQUIRE, true);
     TracyCZoneEnd(ctx);
+
+    return Success;
+}
+
+rhi_error_codes dx12_set_viewport(const gfx_cmd_buf* cmd_buf, gfx_viewport viewport)
+{
+    D3D12_VIEWPORT desc = {0};
+    desc.TopLeftX       = (FLOAT) viewport.x;
+    desc.TopLeftY       = (FLOAT) viewport.y;
+    desc.Width          = (FLOAT) viewport.width;
+    desc.Height         = (FLOAT) viewport.height;
+    desc.MinDepth       = (FLOAT) viewport.min_depth;
+    desc.MaxDepth       = (FLOAT) viewport.max_depth;
+
+    ID3D12GraphicsCommandList* cmd_list = (ID3D12GraphicsCommandList*) (cmd_buf->backend);
+    ID3D12GraphicsCommandList_RSSetViewports(cmd_list, 1, &desc);
+
+    return Success;
+}
+rhi_error_codes dx12_set_scissor(const gfx_cmd_buf* cmd_buf, gfx_scissor scissor)
+{
+    D3D12_RECT rect = {0};
+    rect.left       = (LONG) scissor.x;
+    rect.top        = (LONG) scissor.y;
+    rect.right      = (LONG) (scissor.x + scissor.width);
+    rect.bottom     = (LONG) (scissor.y + scissor.height);
+
+    ID3D12GraphicsCommandList* cmd_list = (ID3D12GraphicsCommandList*) (cmd_buf->backend);
+    ID3D12GraphicsCommandList_RSSetScissorRects(cmd_list, 1, &rect);
+
+    return Success;
+}
+
+rhi_error_codes dx12_bind_gfx_pipeline(const gfx_cmd_buf* cmd_buf, const gfx_pipeline* pipeline)
+{
+    pipeline_backend* backend = (pipeline_backend*) (pipeline->backend);
+
+    ID3D12GraphicsCommandList* cmd_list = (ID3D12GraphicsCommandList*) (cmd_buf->backend);
+    ID3D12GraphicsCommandList_IASetPrimitiveTopology(cmd_list, backend->topology);
+    ID3D12GraphicsCommandList_SetPipelineState(cmd_list, backend->pso);
+
+    return Success;
+}
+
+rhi_error_codes dx12_bind_compute_pipeline(const gfx_cmd_buf* cmd_buf, const gfx_pipeline* pipeline)
+{
+    ID3D12GraphicsCommandList* cmd_list = (ID3D12GraphicsCommandList*) (cmd_buf->backend);
+    ID3D12GraphicsCommandList_SetPipelineState(cmd_list, (ID3D12PipelineState*) pipeline->backend);
+
+    return Success;
+}
+
+rhi_error_codes dx12_device_bind_root_signature(const gfx_cmd_buf* cmd_buf, const gfx_root_signature* root_signature)
+{
+    ID3D12GraphicsCommandList* cmd_list = (ID3D12GraphicsCommandList*) (cmd_buf->backend);
+    ID3D12GraphicsCommandList_SetGraphicsRootSignature(cmd_list, (ID3D12RootSignature*) root_signature->backend);
 
     return Success;
 }

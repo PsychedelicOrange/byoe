@@ -82,7 +82,7 @@ if(WIN32)
 
         add_custom_command(
             OUTPUT ${HLSL_OUT}
-            COMMAND ${SPIRV_CROSS_EXECUTABLE} ${SPV_IN} --output ${HLSL_OUT} --hlsl --shader-model 60
+            COMMAND ${SPIRV_CROSS_EXECUTABLE} ${SPV_IN} --output ${HLSL_OUT} --hlsl --shader-model 60 --flip-vert-y
             DEPENDS ${SPV_IN}
             COMMENT "Generating HLSL from SPIR-V: ${SPV_IN} -> ${HLSL_OUT}"
             VERBATIM
