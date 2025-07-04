@@ -63,7 +63,9 @@ float engine_get_last_frame(void);
 
 float engine_get_elapsed_time(void);
 
-int engine_get_fps(void);
+uint64_t engine_get_fps(void);
+
+uint64_t engine_get_avg_fps(void);
 
 engine_version engine_get_version(void);
 

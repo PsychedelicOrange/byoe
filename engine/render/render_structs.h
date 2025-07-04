@@ -282,8 +282,8 @@ typedef struct SDF_Node
 // Graphics API
 //------------------------
 
-#define MAX_BACKBUFFERS         4
-#define MAX_FRAMES_INFLIGHT     2
+#define MAX_BACKBUFFERS         3
+#define MAX_FRAMES_INFLIGHT     3    // same as no. of Swapchain images
 #define MAX_CMD_BUFFS_PER_QUEUE 16
 #define MAX_RT                  8
 
@@ -470,9 +470,8 @@ typedef struct gfx_syncobj
 {
     random_uuid_t    uuid;
     void*            backend;
-    uint64_t         wait_value;
     gfx_syncobj_type type;
-    uint32_t         _pad0[3];
+    uint32_t         _pad0[1];
 } gfx_syncobj;
 
 typedef uint64_t gfx_sync_point;
@@ -620,11 +619,14 @@ typedef struct gfx_cmd_buf
 
 typedef struct gfx_cmd_queue
 {
-    gfx_cmd_buf* cmds[MAX_CMD_BUFFS_PER_QUEUE];
-    uint32_t     cmds_count;
-    uint32_t     _pad0[3];
+    void*    cmds[MAX_CMD_BUFFS_PER_QUEUE];
+    uint32_t cmds_count;
+    uint32_t _pad0[3];
 } gfx_cmd_queue;
 
+// Since each stages is a pointer to backend
+// We store the gfx_shader_type along with 
+// it's corresponding backend stage
 typedef struct gfx_shader
 {
     random_uuid_t uuid;
@@ -747,20 +749,22 @@ typedef struct gfx_scissor
 //-----------------------------------
 // High-level structs
 //-----------------------------------
-
+// TODO: get rid of this! or make it vulkan internal
 typedef struct gfx_submit_syncobj
 {
     const gfx_syncobj* wait_synobjs;
     const gfx_syncobj* signal_synobjs;
     uint32_t           wait_syncobjs_count;
     uint32_t           signal_syncobjs_count;
-    // CPU sync primitve to wait on: Fence or Timeline Semaphore
+    // CPU sync primitive to wait on: Fence or Timeline Semaphore
     gfx_syncobj* inflight_syncobj;
-    // Global timeline synnc point that will be signalled when the submit operation is completed
-    // Workloads can wait on this or intermediate points,
-    // this is sued to increment Values to singnal queue submits
-    // this is tracked per-inflight farme, gfx_context owns This
-    uint64_t* timeline_syncpoint;
+    // this is tracked per-in flight frame sync point to wait on CPU
+    gfx_sync_point* inflight_syncpoint;
+    // Global timeline sync point that will be signaled when the submit operation is completed
+    // Workloads can wait on these intermediate points,
+    // This is used to increment Values to signal queue submits
+    // gfx_context owns This
+    gfx_sync_point* global_syncpoint;
 } gfx_submit_syncobj;
 
 typedef struct gfx_context
@@ -770,16 +774,32 @@ typedef struct gfx_context
     uint32_t      current_syncobj_idx;
     uint32_t      inflight_frame_idx;
     gfx_swapchain swapchain;
-    gfx_syncobj   inflight_syncobj[MAX_FRAMES_INFLIGHT];
-    gfx_syncobj   image_ready[MAX_BACKBUFFERS];
-    gfx_syncobj   rendering_done[MAX_BACKBUFFERS];
+    struct
+    {
+        gfx_syncobj image_ready[MAX_BACKBUFFERS];
+        gfx_syncobj rendering_done[MAX_BACKBUFFERS];
+
+    } present_sync;    // won't be needing this in DX12
+    union
+    {
+        gfx_syncobj inflight_syncobj[MAX_FRAMES_INFLIGHT];
+        struct
+        {
+            gfx_syncobj    timeline_syncobj;
+            gfx_sync_point frame_syncpoint[MAX_FRAMES_INFLIGHT];    // last timeline value signaled
+            gfx_sync_point global_syncpoint;
+            uint32_t       _pad[8];
+        };
+    } frame_sync;
     // NOTE: Add all the command buffers you want here...Draw, Async etc.
     // 1 per thread, only single threaded for now
-    gfx_cmd_pool draw_cmds_pool;
+    // IN DX12 we need one per frame to reset memory when we are done with a command buffer recording and need to reset
+    // If we use a single pool, DX12 would never be able to re-use memory that was used by the command buffer even if
+    // we reset it, so vulkan should also suffer this wrath of multiple pools per frame in flight
+    gfx_cmd_pool draw_cmds_pool[MAX_FRAMES_INFLIGHT];
     // FIXME: Do we really need 2 of these draw_cmds and queue? can't we collapse and use 1?
     gfx_cmd_buf   draw_cmds[MAX_FRAMES_INFLIGHT];
     gfx_cmd_queue cmd_queue;
-    uint64_t      timeline_syncpoint[MAX_FRAMES_INFLIGHT];    // last timeline value signaled
 } gfx_context;
 
 typedef struct gfx_attachment

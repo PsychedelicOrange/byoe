@@ -1,6 +1,10 @@
 #include "shader.h"
 #include <stddef.h>
 #include <stdio.h>
+#include <string.h>
+
+#include "./logging/log.h"
+
 // -- -- -- -- -- -- Shader functions -- -- -- -- -- --- --
 //
 char* readFileToString(const char* filename, uint32_t* file_size)
@@ -30,6 +34,19 @@ char* readFileToString(const char* filename, uint32_t* file_size)
 
     fclose(file);
     return content;
+}
+
+char* appendFileExt(const char* fileName, const char* ext)
+{
+    size_t utf8_len  = strlen(fileName);
+    size_t total_len = utf8_len + 4 + 1;
+    char*  full_path = malloc(total_len);
+    if (!full_path) {
+        LOG_ERROR("Memory allocation failed for shader path");
+        return NULL;
+    }
+    snprintf(full_path, total_len, "%s.%s", fileName, ext);
+    return full_path;
 }
 
 SPVBuffer loadSPVFile(const char* filename)
