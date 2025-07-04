@@ -105,22 +105,20 @@ foreach(SHADER ${shaders})
     string(SUBSTRING ${FILE_EXT} 1 -1    FILE_EXT_NO_DOT)     
 
     get_filename_component(FILE_NAME ${SHADER} NAME)
-    set(SHADER_OUTPUT ${CMAKE_SOURCE_DIR}/engine/shaders_built/${FILE_NAME}.spv)
+    set(SHADER_OUTPUT ${CMAKE_SOURCE_DIR}/game/shaders_built/${FILE_NAME}.spv)
     compile_shader(${SHADER} ${SHADER_OUTPUT})
     list(APPEND COMPILED_SHADERS ${SHADER_OUTPUT})
 
     
     if(WIN32)
-        set(HLSL_FILE ${CMAKE_SOURCE_DIR}/engine/shaders_built/${FILE_NAME}.hlsl)
-        set(CSO_FILE  ${CMAKE_SOURCE_DIR}/engine/shaders_built/${FILE_NAME}.cso)
+        set(HLSL_FILE ${CMAKE_SOURCE_DIR}/game/shaders_built/${FILE_NAME}.hlsl)
+        set(CSO_FILE  ${CMAKE_SOURCE_DIR}/game/shaders_built/${FILE_NAME}.cso)
         compile_hlsl_from_spv(${SHADER_OUTPUT} ${HLSL_FILE} ${CSO_FILE} ${FILE_EXT_NO_DOT})
-        list(APPEND COMPILED_SHADERS ${CSO_FILE})
+        list(APPEND COMPILED_SHADERS ${HLSL_FILE} ${CSO_FILE})
     endif()
 endforeach()
 
 add_custom_target(compile_shaders ALL DEPENDS ${COMPILED_SHADERS})
-include_directories(${CMAKE_SOURCE_DIR}/engine/shaders_built/headers)
-add_dependencies(engine compile_shaders)
 ####################################################################
 # COMPILATION AND LINKING
 # Platform-specific configuration

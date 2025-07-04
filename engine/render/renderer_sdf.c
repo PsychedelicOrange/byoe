@@ -120,11 +120,11 @@ static void renderer_internal_sdf_resize(GLFWwindow* window, int width, int heig
 static void renderer_internal_create_shaders(void)
 {
 #if !CLEAR_TEST
-    s_RendererSDFInternalState.clear_tex_resources.shader   = g_rhi.create_compute_shader("./engine/shaders_built/clear_texture.comp");
-    s_RendererSDFInternalState.sdfscene_resources.shader    = g_rhi.create_compute_shader("./engine/shaders_built/raymarch_sdf_scene.comp");
-    s_RendererSDFInternalState.screen_quad_resources.shader = g_rhi.create_vs_ps_shader("./engine/shaders_built/screen_quad.vert", "./engine/shaders_built/screen_quad.frag");
+    s_RendererSDFInternalState.clear_tex_resources.shader   = g_rhi.create_compute_shader("./game/shaders_built/clear_texture.comp");
+    s_RendererSDFInternalState.sdfscene_resources.shader    = g_rhi.create_compute_shader("./game/shaders_built/raymarch_sdf_scene.comp");
+    s_RendererSDFInternalState.screen_quad_resources.shader = g_rhi.create_vs_ps_shader("./game/shaders_built/screen_quad.vert", "./game/shaders_built/screen_quad.frag");
 #else
-    s_RendererSDFInternalState.triangle.shader = g_rhi.create_vs_ps_shader(, "./engine/shaders_built/triangle.frag");
+    s_RendererSDFInternalState.triangle.shader = g_rhi.create_vs_ps_shader("./game/shaders_built/triangle.vert", "./game/shaders_built/triangle.frag");
 #endif
 }
 
