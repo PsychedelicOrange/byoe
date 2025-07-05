@@ -403,15 +403,76 @@ typedef enum gfx_compare_op
 
 typedef enum gfx_resource_type
 {
-    GFX_RESOURCE_TYPE_SAMPLER,
-    GFX_RESOURCE_TYPE_SAMPLED_IMAGE,
-    GFX_RESOURCE_TYPE_STORAGE_IMAGE,
-    GFX_RESOURCE_TYPE_UNIFORM_BUFFER,
-    GFX_RESOURCE_TYPE_STORAGE_BUFFER,
-    GFX_RESOURCE_TYPE_UNIFORM_TEXEL_BUFFER,
-    GFX_RESOURCE_TYPE_STORAGE_TEXEL_BUFFER,
-    GFX_RESOURCE_TYPE_INPUT_ATTACHMENT
+    GFX_RESOURCE_TYPE_SAMPLER,                     // Sampler
+    GFX_RESOURCE_TYPE_SAMPLED_IMAGE,               // SRV
+    GFX_RESOURCE_TYPE_STORAGE_IMAGE,               // UAV
+    GFX_RESOURCE_TYPE_STORAGE_BUFFER,              // UAV
+    GFX_RESOURCE_TYPE_STORAGE_TEXEL_BUFFER,        // UAV
+    GFX_RESOURCE_TYPE_UNIFORM_BUFFER,              // CBV
+    GFX_RESOURCE_TYPE_UNIFORM_TEXEL_BUFFER,        // CBV
+    GFX_RESOURCE_TYPE_COLOR_ATTACHMENT,            // RTV
+    GFX_RESOURCE_TYPE_DEPTH_STENCIL_ATTACHMENT,    // DSV
 } gfx_resource_type;
+
+//--------------------------------------------
+// TODO: Future use
+typedef enum gfx_binding_usage
+{
+
+    GFX_BINDING_USAGE_SAMPLER,
+    GFX_BINDING_USAGE_SRV,
+    GFX_BINDING_USAGE_UAV,
+    GFX_BINDING_USAGE_CBV,
+    GFX_BINDING_USAGE_RTV,
+    GFX_BINDING_USAGE_DSV,
+    GFX_BINDING_USAGE_ACCELERATION_STRUCTURE,
+} gfx_binding_type;
+
+typedef enum gfx_resource_usage
+{
+    // -------------------
+    // COMMON (buffers/textures)
+    // -------------------
+    GFX_RESOURCE_USAGE_NONE            = 0x00000000,    // Invalid/default
+    GFX_RESOURCE_USAGE_SHADER_READ     = 0x00000001,    // Sampled in shader (SRV)
+    GFX_RESOURCE_USAGE_SHADER_WRITE    = 0x00000002,    // Written via UAV
+    GFX_RESOURCE_USAGE_CONSTANT_BUFFER = 0x00000004,    // CBV
+    GFX_RESOURCE_USAGE_TRANSFER_SRC    = 0x00000008,    // Can be copied from
+    GFX_RESOURCE_USAGE_TRANSFER_DST    = 0x00000010,    // Can be copied into
+    GFX_RESOURCE_USAGE_INDIRECT_BUFFER = 0x00000020,    // Used for indirect dispatch/draw
+
+    // -------------------
+    // TEXTURE-SPECIFIC
+    // -------------------
+    GFX_RESOURCE_USAGE_COLOR_ATTACHMENT         = 0x00000100,    // Render target (RTV)
+    GFX_RESOURCE_USAGE_DEPTH_STENCIL_ATTACHMENT = 0x00000200,    // DSV
+    GFX_RESOURCE_USAGE_INPUT_ATTACHMENT         = 0x00000400,    // Vulkan input attachment
+    GFX_RESOURCE_USAGE_MIP_GEN                  = 0x00000800,    // Used in mip generation
+
+    // -------------------
+    // BUFFER-SPECIFIC
+    // -------------------
+    GFX_RESOURCE_USAGE_VERTEX_BUFFER        = 0x00001000,
+    GFX_RESOURCE_USAGE_INDEX_BUFFER         = 0x00002000,
+    GFX_RESOURCE_USAGE_UNIFORM_TEXEL_BUFFER = 0x00004000,
+    GFX_RESOURCE_USAGE_STORAGE_TEXEL_BUFFER = 0x00008000,
+
+    // -------------------
+    // RAYTRACING
+    // -------------------
+    GFX_RESOURCE_USAGE_ACCELERATION_STRUCTURE_BUILD   = 0x00010000,
+    GFX_RESOURCE_USAGE_ACCELERATION_STRUCTURE_STORAGE = 0x00020000,
+
+    // -------------------
+    // FLAGS
+    // -------------------
+    GFX_RESOURCE_USAGE_ALLOW_ALIASING   = 0x01000000,    // For memory aliasing (Vulkan + D3D12)
+    GFX_RESOURCE_USAGE_ALLOW_DISPLAY    = 0x02000000,    // Used for presentation/display surface
+    GFX_RESOURCE_USAGE_ALLOW_CPU_ACCESS = 0x04000000,    // CPU visible (upload/readback)
+
+    GFX_RESOURCE_USAGE_MASK_ALL = 0xFFFFFFFF
+} gfx_resource_usage;
+//--------------------------------------------
 
 typedef enum gfx_texture_type
 {
@@ -625,7 +686,7 @@ typedef struct gfx_cmd_queue
 } gfx_cmd_queue;
 
 // Since each stages is a pointer to backend
-// We store the gfx_shader_type along with 
+// We store the gfx_shader_type along with
 // it's corresponding backend stage
 typedef struct gfx_shader
 {

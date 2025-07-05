@@ -22,7 +22,7 @@ void engine_init(struct GLFWwindow** gameWindow, uint32_t width, uint32_t height
 
     cpu_caps_print_info();
     os_caps_print_info();
-
+      
     // Follow this order strictly to avoid load crashing
     render_utils_init_glfw();
     *gameWindow = render_utils_create_glfw_window("BYOE Game: Spooky Asteroids!", width, height);

@@ -6,6 +6,7 @@
     #include "../core/containers/typed_growable_array.h"
     #include "../core/logging/log.h"
 
+    #include "../core/memory/memalign.h"
     #include "../core/shader.h"
     #include <stdint.h>
 // clang-format off
@@ -64,11 +65,18 @@
 //   - [x] Root Signature
 //   - [x] Pipeline API
 //   - [x] Hello Triangle Shader + Draw loop
-// - [ ] Create Texture/Buffer resources
+// - [x] Create Texture/Buffer/Sampler resources
+//   - [x] Textures
+//   - [x] Buffers
+//   - [x] Sampler
 // - [ ] Resource Views API
+//   - [ ] Textures
+//   - [ ] Buffers
+//   - [ ] Sampler
 // - [ ] Descriptor Heaps/tables API + root signature hookup
 // - [x] Barriers API
 // - [ ] Root Constants
+// - [ ] Swapchain read back and clear image + misc utils
 // - [ ] Restore SDF renderer
 
 //--------------------------------------------------------
@@ -93,6 +101,11 @@ const rhi_jumptable dx12_jumptable = {
     dx12_destroy_root_signature,
     dx12_create_pipeline,
     dx12_destroy_pipeline,
+    NULL,    // create_descriptor_table
+    NULL,    // destroy_descriptor_table
+    NULL,    // update_descriptor_table
+    dx12_create_texture_resource,
+    dx12_destroy_texture_resource,
     NULL,
     NULL,
     NULL,
@@ -104,14 +117,9 @@ const rhi_jumptable dx12_jumptable = {
     NULL,
     NULL,
     NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
+    NULL,    // create single time cmd buffer
+    NULL,    // destroy single time cmd buffer
+    NULL,    // read back swapchain
     dx12_frame_begin,
     dx12_frame_end,
     dx12_wait_on_previous_cmds,
@@ -136,7 +144,7 @@ const rhi_jumptable dx12_jumptable = {
     dx12_dispatch,
     dx12_transition_image_layout,
     dx12_transition_swapchain_layout,
-    NULL,
+    NULL,    // clear image
 };
 //--------------------------------------------------------
 
@@ -255,7 +263,8 @@ static D3D12_DESCRIPTOR_RANGE_TYPE dx12_util_descriptor_range_type_translate(gfx
         case GFX_RESOURCE_TYPE_UNIFORM_BUFFER:
             return D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
         // Note: INPUT_ATTACHMENT doesn't have a direct DX12 equivalent;
-        case GFX_RESOURCE_TYPE_INPUT_ATTACHMENT:
+        case GFX_RESOURCE_TYPE_COLOR_ATTACHMENT:
+        case GFX_RESOURCE_TYPE_DEPTH_STENCIL_ATTACHMENT:
         default:
             return (D3D12_DESCRIPTOR_RANGE_TYPE) -1;    // Invalid/unsupported
     }
@@ -415,6 +424,62 @@ static D3D12_COMPARISON_FUNC dx12_util_compare_op_translate(gfx_compare_op compa
         case GFX_COMPARE_OP_GREATER_OR_EQUAL: return D3D12_COMPARISON_FUNC_GREATER_EQUAL;
         case GFX_COMPARE_OP_ALWAYS: return D3D12_COMPARISON_FUNC_ALWAYS;
         default: return D3D12_COMPARISON_FUNC_ALWAYS;
+    }
+}
+
+static D3D12_RESOURCE_DIMENSION dx12_util_tex_type_dimensions_translate(gfx_texture_type type)
+{
+    switch (type) {
+        case GFX_TEXTURE_TYPE_1D:
+            return D3D12_RESOURCE_DIMENSION_TEXTURE1D;
+        case GFX_TEXTURE_TYPE_2D:
+        case GFX_TEXTURE_TYPE_2D_ARRAY:
+        case GFX_TEXTURE_TYPE_CUBEMAP:
+            return D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+        case GFX_TEXTURE_TYPE_3D:
+            return D3D12_RESOURCE_DIMENSION_TEXTURE3D;
+        default:
+            return D3D12_RESOURCE_DIMENSION_UNKNOWN;
+            break;
+    }
+}
+
+static D3D12_FILTER_TYPE dx12_util_filter_type_translate(gfx_filter_mode filter)
+{
+    switch (filter) {
+        case GFX_FILTER_MODE_NEAREST: return D3D12_FILTER_TYPE_POINT;
+        case GFX_FILTER_MODE_LINEAR: return D3D12_FILTER_TYPE_LINEAR;
+        default: return D3D12_FILTER_TYPE_LINEAR;
+    }
+}
+
+static D3D12_FILTER dx12_util_filter_translate(gfx_filter_mode min_filter,
+    gfx_filter_mode                                            mag_filter)
+{
+    bool min_linear = (min_filter == GFX_FILTER_MODE_LINEAR);
+    bool mag_linear = (mag_filter == GFX_FILTER_MODE_LINEAR);
+
+    if (!min_linear && !mag_linear)
+        return D3D12_FILTER_MIN_MAG_MIP_POINT;
+
+    if (!min_linear && mag_linear)
+        return D3D12_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT;
+
+    if (min_linear && !mag_linear)
+        return D3D12_FILTER_MIN_LINEAR_MAG_MIP_POINT;
+
+    // Both linear
+    return D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
+}
+
+static D3D12_TEXTURE_ADDRESS_MODE dx12_util_wrap_mode_translate(gfx_wrap_mode mode)
+{
+    switch (mode) {
+        case GFX_WRAP_MODE_REPEAT: return D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+        case GFX_WRAP_MODE_MIRRORED_REPEAT: return D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+        case GFX_WRAP_MODE_CLAMP_TO_EDGE: return D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+        case GFX_WRAP_MODE_CLAMP_TO_BORDER: return D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+        default: return D3D12_TEXTURE_ADDRESS_MODE_WRAP;
     }
 }
 
@@ -1409,6 +1474,177 @@ void dx12_destroy_pipeline(gfx_pipeline* pipeline)
         ID3D12PipelineState_Release((ID3D12PipelineState*) ((pipeline_backend*) (pipeline->backend))->pso);
         free(pipeline->backend);
         pipeline->backend = NULL;
+    }
+}
+
+gfx_resource dx12_create_texture_resource(gfx_texture_create_info desc)
+{
+    gfx_resource resource = {0};
+    resource.texture      = malloc(sizeof(gfx_texture));
+    uuid_generate(&resource.texture->uuid);
+
+    ID3D12Resource*     d3dresource = NULL;
+    D3D12_RESOURCE_DESC res_desc    = {0};
+    res_desc.Width                  = desc.width;
+    res_desc.Height                 = desc.height;
+    res_desc.DepthOrArraySize       = (UINT16) desc.depth;
+    res_desc.MipLevels              = 1;    // No mip-maps support for RHI yet
+    res_desc.Dimension              = dx12_util_tex_type_dimensions_translate(desc.tex_type);
+    res_desc.Format                 = dx12_util_format_translate(desc.format);
+    res_desc.SampleDesc.Count       = 1;
+    res_desc.SampleDesc.Quality     = 0;
+    res_desc.Layout                 = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+    res_desc.Flags                  = D3D12_RESOURCE_FLAG_NONE;
+
+    if (desc.res_type >= GFX_RESOURCE_TYPE_STORAGE_IMAGE && desc.res_type <= GFX_RESOURCE_TYPE_STORAGE_TEXEL_BUFFER)
+        res_desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+    else if (desc.res_type == GFX_RESOURCE_TYPE_COLOR_ATTACHMENT)
+        res_desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+    else if (desc.res_type == GFX_RESOURCE_TYPE_DEPTH_STENCIL_ATTACHMENT)
+        res_desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+
+    // Crated resource with memory backing
+    D3D12_HEAP_PROPERTIES heapProps    = {0};
+    heapProps.Type                     = D3D12_HEAP_TYPE_DEFAULT;
+    heapProps.CPUPageProperty          = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+    heapProps.MemoryPoolPreference     = D3D12_MEMORY_POOL_UNKNOWN;
+    D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON;
+
+    HRESULT hr = ID3D12Device10_CreateCommittedResource(DXDevice, &heapProps, D3D12_HEAP_FLAG_NONE, &res_desc, initialState, NULL, &IID_ID3D12Resource, &d3dresource);
+    if (FAILED(hr)) {
+        if (resource.texture)
+            uuid_destroy(&resource.texture->uuid);
+        LOG_ERROR("[D3D12] Failed to create commited texture resource! (HRESULT=0x%08X)", hr);
+        return resource;
+    }
+
+    resource.texture->backend = d3dresource;
+
+    return resource;
+}
+
+void dx12_destroy_texture_resource(gfx_resource* resource)
+{
+    uuid_destroy(&resource->texture->uuid);
+
+    if (resource->texture->backend)
+        ID3D12Resource_Release((ID3D12Resource*) resource->texture->backend);
+    resource->texture->backend = NULL;
+
+    if (resource->texture)
+        free(resource->texture);
+    resource->texture = NULL;
+}
+
+gfx_resource dx12_create_sampler(gfx_sampler_create_info desc)
+{
+    gfx_resource resource = {0};
+    resource.sampler      = malloc(sizeof(gfx_sampler));
+    uuid_generate(&resource.sampler->uuid);
+    gfx_sampler* sampler = resource.sampler;
+    sampler->backend     = malloc(sizeof(D3D12_SAMPLER_DESC));
+
+    // cache the sampler since we create it within the heap! D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER
+    D3D12_SAMPLER_DESC samplerDesc = {0};
+    samplerDesc.Filter             = dx12_util_filter_translate(desc.min_filter, desc.mag_filter);
+    samplerDesc.AddressU           = dx12_util_wrap_mode_translate(desc.wrap_mode);
+    samplerDesc.AddressV           = dx12_util_wrap_mode_translate(desc.wrap_mode);
+    samplerDesc.AddressW           = dx12_util_wrap_mode_translate(desc.wrap_mode);
+    samplerDesc.ComparisonFunc     = D3D12_COMPARISON_FUNC_ALWAYS;
+    samplerDesc.MipLODBias         = 0.0f;
+    samplerDesc.MaxAnisotropy      = (UINT) desc.max_anisotropy;
+    samplerDesc.BorderColor[0]     = 1.0f;
+    samplerDesc.BorderColor[1]     = 1.0f;
+    samplerDesc.BorderColor[2]     = 1.0f;
+    samplerDesc.BorderColor[3]     = 1.0f;
+    samplerDesc.MinLOD             = desc.min_lod;
+    samplerDesc.MaxLOD             = desc.max_lod;
+
+    // Cache this, we use during Descriptor table update time, deferred even further
+    *((D3D12_SAMPLER_DESC*) sampler->backend) = samplerDesc;
+
+    return resource;
+}
+
+void dx12_destroy_sampler(gfx_resource* resource)
+{
+    uuid_destroy(&resource->sampler->uuid);
+
+    if (resource->sampler->backend)
+        free(resource->sampler->backend);
+    resource->sampler->backend = NULL;
+
+    if (resource->sampler)
+        free(resource->sampler);
+    resource->sampler = NULL;
+}
+
+gfx_resource dx12_create_uniform_buffer_resource(uint32_t size)
+{
+    gfx_resource resource = {0};
+    resource.ubo          = malloc(sizeof(gfx_uniform_buffer));
+    uuid_generate(&resource.ubo->uuid);
+
+    D3D12_HEAP_PROPERTIES heapProps = {0};
+    heapProps.Type                  = D3D12_HEAP_TYPE_UPLOAD;
+    heapProps.CPUPageProperty       = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+    heapProps.MemoryPoolPreference  = D3D12_MEMORY_POOL_UNKNOWN;
+
+    // Constant buffers are 256 Bytes aligned
+    uint32_t aligned_size = (uint32_t)align_memory_size(size, 256);
+
+    D3D12_RESOURCE_DESC buffer_desc = {0};
+    buffer_desc.Dimension           = D3D12_RESOURCE_DIMENSION_BUFFER;
+    buffer_desc.Width               = aligned_size;
+    buffer_desc.Height              = 1;
+    buffer_desc.DepthOrArraySize    = 1;
+    buffer_desc.MipLevels           = 1;
+    buffer_desc.SampleDesc.Count    = 1;
+    buffer_desc.Layout              = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+
+    ID3D12Resource* d3dresource = NULL;
+    HRESULT         hr          = ID3D12Device10_CreateCommittedResource(DXDevice, &heapProps, D3D12_HEAP_FLAG_NONE, &buffer_desc, D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource, &d3dresource);
+    if (FAILED(hr)) {
+        if (resource.ubo)
+            uuid_destroy(&resource.ubo->uuid);
+        LOG_ERROR("[D3D12] Failed to create commited constatn buffer resource! (HRESULT=0x%08X)", hr);
+        return resource;
+    }
+
+    resource.ubo->backend = d3dresource;
+    resource.ubo->size    = aligned_size;
+    resource.ubo->offset  = 0;
+
+    return resource;
+}
+
+void dx12_destroy_uniform_buffer_resource(gfx_resource* resource)
+{
+    uuid_destroy(&resource->ubo->uuid);
+
+    if (resource->ubo->backend)
+        ID3D12Resource_Release((ID3D12Resource*) resource->ubo->backend);
+    resource->ubo->backend = NULL;
+
+    if (resource->ubo)
+        free(resource->ubo);
+    resource->ubo = NULL;
+}
+
+void dx12_update_uniform_buffer(gfx_resource* resource, uint32_t size, uint32_t offset, void* data)
+{
+    if (!resource || !resource->ubo || !data)
+        return;
+
+    ID3D12Resource* buffer = (ID3D12Resource*) resource->ubo->backend;
+
+    void*       mapped = NULL;
+    D3D12_RANGE range  = {offset, offset + size};
+
+    HRESULT hr = ID3D12Resource_Map(buffer, 0, &range, &mapped);
+    if (SUCCEEDED(hr)) {
+        memcpy((uint8_t*) mapped + offset, data, size);
+        ID3D12Resource_Unmap(buffer, 0, NULL);
     }
 }
 

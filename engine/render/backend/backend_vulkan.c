@@ -419,7 +419,9 @@ static VkDescriptorType vulkan_util_descriptor_type_translate(gfx_resource_type 
         case GFX_RESOURCE_TYPE_STORAGE_BUFFER: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         case GFX_RESOURCE_TYPE_UNIFORM_TEXEL_BUFFER: return VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
         case GFX_RESOURCE_TYPE_STORAGE_TEXEL_BUFFER: return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
-        case GFX_RESOURCE_TYPE_INPUT_ATTACHMENT: return VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+        case GFX_RESOURCE_TYPE_COLOR_ATTACHMENT:
+        case GFX_RESOURCE_TYPE_DEPTH_STENCIL_ATTACHMENT:
+            return VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
         default: return VK_DESCRIPTOR_TYPE_MAX_ENUM;    // Use the maximum value to indicate an invalid type
     }
 }

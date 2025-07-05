@@ -49,6 +49,18 @@ void         dx12_destroy_pipeline(gfx_pipeline* pipeline);
 
 // ...
 
+gfx_resource dx12_create_texture_resource(gfx_texture_create_info desc);
+void         dx12_destroy_texture_resource(gfx_resource* resource);
+
+gfx_resource dx12_create_sampler(gfx_sampler_create_info desc);
+void         dx12_destroy_sampler(gfx_resource* resource);
+
+gfx_resource dx12_create_uniform_buffer_resource(uint32_t size);
+void         dx12_destroy_uniform_buffer_resource(gfx_resource* resource);
+void         dx12_update_uniform_buffer(gfx_resource* resource, uint32_t size, uint32_t offset, void* data);
+
+// ...
+
 //------------------------------------------
 // RHI
 //------------------------------------------
@@ -73,7 +85,7 @@ rhi_error_codes dx12_end_render_pass(const gfx_cmd_buf* cmd_buf, gfx_render_pass
 
 rhi_error_codes dx12_set_viewport(const gfx_cmd_buf* cmd_buf, gfx_viewport viewport);
 rhi_error_codes dx12_set_scissor(const gfx_cmd_buf* cmd_buf, gfx_scissor scissor);
-                
+
 rhi_error_codes dx12_bind_gfx_pipeline(const gfx_cmd_buf* cmd_buf, const gfx_pipeline* pipeline);
 rhi_error_codes dx12_bind_compute_pipeline(const gfx_cmd_buf* cmd_buf, const gfx_pipeline* pipeline);
 rhi_error_codes dx12_device_bind_root_signature(const gfx_cmd_buf* cmd_buf, const gfx_root_signature* root_signature);
