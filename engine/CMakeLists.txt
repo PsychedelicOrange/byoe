@@ -41,8 +41,6 @@ endif()
 set_target_properties(engine PROPERTIES OUTPUT_NAME "engine")
 ####################################################################
 # BUILDING SHADERS
-# Skip for CI
-option(CI "If building in CI" OFF)
 
 
 if(NOT CI)
