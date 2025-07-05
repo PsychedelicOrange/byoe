@@ -41,32 +41,36 @@ endif()
 set_target_properties(engine PROPERTIES OUTPUT_NAME "engine")
 ####################################################################
 # BUILDING SHADERS
-find_program(GLSLC_EXECUTABLE glslc HINTS $ENV{VULKAN_SDK}/Bin $ENV{VULKAN_SDK}/bin)
 
-if(NOT GLSLC_EXECUTABLE)
-    message(FATAL_ERROR "Could not find glslc. Ensure the Vulkan SDK is installed and VULKAN_SDK is set.")
-endif()
 
-# Function to compile shaders
-function(compile_shader SHADER_SRC SHADER_DST)
-    add_custom_command(
-        OUTPUT ${SHADER_DST}
-        COMMAND ${GLSLC_EXECUTABLE}  --target-env=vulkan1.2 ${SHADER_SRC} -o ${SHADER_DST}
-        DEPENDS ${SHADER_SRC}
-        COMMENT "Compiling shader: ${SHADER_SRC} output: ${SHADER_DST}"
-        VERBATIM
-    )
-endfunction()
+if(NOT CI)
+	find_program(GLSLC_EXECUTABLE glslc HINTS $ENV{VULKAN_SDK}/Bin $ENV{VULKAN_SDK}/bin)
 
-set(COMPILED_SHADERS)
-foreach(SHADER ${shaders})
-    get_filename_component(FILE_NAME ${SHADER} NAME)
-    set(SHADER_OUTPUT ${CMAKE_SOURCE_DIR}/game/shaders_built/${FILE_NAME}.spv)
-    compile_shader(${SHADER} ${SHADER_OUTPUT})
-    list(APPEND COMPILED_SHADERS ${SHADER_OUTPUT})
-endforeach()
+	if(NOT GLSLC_EXECUTABLE)
+		message(FATAL_ERROR "Could not find glslc. Ensure the Vulkan SDK is installed and VULKAN_SDK is set.")
+	endif()
 
-add_custom_target(compile_shaders ALL DEPENDS ${COMPILED_SHADERS})
+	# Function to compile shaders
+	function(compile_shader SHADER_SRC SHADER_DST)
+		add_custom_command(
+			OUTPUT ${SHADER_DST}
+			COMMAND ${GLSLC_EXECUTABLE}  --target-env=vulkan1.2 ${SHADER_SRC} -o ${SHADER_DST}
+			DEPENDS ${SHADER_SRC}
+			COMMENT "Compiling shader: ${SHADER_SRC} output: ${SHADER_DST}"
+			VERBATIM
+		)
+	endfunction()
+
+	set(COMPILED_SHADERS)
+	foreach(SHADER ${shaders})
+		get_filename_component(FILE_NAME ${SHADER} NAME)
+		set(SHADER_OUTPUT ${CMAKE_SOURCE_DIR}/game/shaders_built/${FILE_NAME}.spv)
+		compile_shader(${SHADER} ${SHADER_OUTPUT})
+		list(APPEND COMPILED_SHADERS ${SHADER_OUTPUT})
+	endforeach()
+
+	add_custom_target(compile_shaders ALL DEPENDS ${COMPILED_SHADERS})
+endif() 
 ####################################################################
 # COMPILATION AND LINKING
 # Platform-specific configuration
