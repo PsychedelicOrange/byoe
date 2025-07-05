@@ -50,26 +50,26 @@ if(NOT CI)
 		message(FATAL_ERROR "Could not find glslc. Ensure the Vulkan SDK is installed and VULKAN_SDK is set.")
 	endif()
 
-# Function to compile shaders
-function(compile_shader SHADER_SRC SHADER_DST)
-    add_custom_command(
-        OUTPUT ${SHADER_DST}
-        COMMAND ${GLSLC_EXECUTABLE}  --target-env=vulkan1.2 ${SHADER_SRC} -o ${SHADER_DST}
-        DEPENDS ${SHADER_SRC}
-        COMMENT "Compiling shader: ${SHADER_SRC} output: ${SHADER_DST}"
-        VERBATIM
-    )
-endfunction()
+	# Function to compile shaders
+	function(compile_shader SHADER_SRC SHADER_DST)
+		add_custom_command(
+			OUTPUT ${SHADER_DST}
+			COMMAND ${GLSLC_EXECUTABLE}  --target-env=vulkan1.2 ${SHADER_SRC} -o ${SHADER_DST}
+			DEPENDS ${SHADER_SRC}
+			COMMENT "Compiling shader: ${SHADER_SRC} output: ${SHADER_DST}"
+			VERBATIM
+		)
+	endfunction()
 
-set(COMPILED_SHADERS)
-foreach(SHADER ${shaders})
-    get_filename_component(FILE_NAME ${SHADER} NAME)
-    set(SHADER_OUTPUT ${CMAKE_SOURCE_DIR}/game/shaders_built/${FILE_NAME}.spv)
-    compile_shader(${SHADER} ${SHADER_OUTPUT})
-    list(APPEND COMPILED_SHADERS ${SHADER_OUTPUT})
-endforeach()
+	set(COMPILED_SHADERS)
+	foreach(SHADER ${shaders})
+		get_filename_component(FILE_NAME ${SHADER} NAME)
+		set(SHADER_OUTPUT ${CMAKE_SOURCE_DIR}/game/shaders_built/${FILE_NAME}.spv)
+		compile_shader(${SHADER} ${SHADER_OUTPUT})
+		list(APPEND COMPILED_SHADERS ${SHADER_OUTPUT})
+	endforeach()
 
-add_custom_target(compile_shaders ALL DEPENDS ${COMPILED_SHADERS})
+	add_custom_target(compile_shaders ALL DEPENDS ${COMPILED_SHADERS})
 endif() 
 ####################################################################
 # COMPILATION AND LINKING
