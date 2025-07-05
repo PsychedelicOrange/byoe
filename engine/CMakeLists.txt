@@ -51,7 +51,6 @@ if(NOT CI)
 	if(NOT GLSLC_EXECUTABLE)
 		message(FATAL_ERROR "Could not find glslc. Ensure the Vulkan SDK is installed and VULKAN_SDK is set.")
 	endif()
-endif() 
 
 # Function to compile shaders
 function(compile_shader SHADER_SRC SHADER_DST)
@@ -73,6 +72,7 @@ foreach(SHADER ${shaders})
 endforeach()
 
 add_custom_target(compile_shaders ALL DEPENDS ${COMPILED_SHADERS})
+endif() 
 ####################################################################
 # COMPILATION AND LINKING
 # Platform-specific configuration
