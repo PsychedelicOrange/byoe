@@ -1,4 +1,4 @@
-name: Build Linux
+name: Build MacOs
 
 on:
   push:
@@ -8,12 +8,12 @@ on:
 
 jobs:
   build-linux:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest 
     steps:
       - uses: actions/checkout@v4
 
       - name: Install dependencies
-        run: sudo apt install libxkbcommon-dev xorg-dev #GLFW
+        run: brew install glfw
 
       - name: Prepare Vulkan SDK
         uses: humbletim/setup-vulkan-sdk@v1.2.1
@@ -28,3 +28,4 @@ jobs:
           cd build
           cmake .. -DCI=ON
           make
+
