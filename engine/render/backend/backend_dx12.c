@@ -1290,6 +1290,7 @@ gfx_root_signature dx12_create_root_signature(const gfx_descriptor_set_layout* s
             ranges[j].BaseShaderRegister                = binding.location.binding;
             ranges[j].RegisterSpace                     = binding.location.set;
             ranges[j].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+            ranges[j].OffsetInDescriptorsFromTableStart = i;
         }
 
         root_params[i].ParameterType   = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
@@ -1305,7 +1306,7 @@ gfx_root_signature dx12_create_root_signature(const gfx_descriptor_set_layout* s
 
         param->ParameterType            = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
         param->Constants.Num32BitValues = pc.size / SIZE_DWORD;
-        param->Constants.ShaderRegister = 0;    // or we can (pc.offset / 4) encode offset in register this way
+        param->Constants.ShaderRegister = set_layout_count + i;    // or we can (pc.offset / 4) encode offset in register this way
         param->Constants.RegisterSpace  = 0;
         param->ShaderVisibility         = D3D12_SHADER_VISIBILITY_ALL;    // Currently ALL!
     }
@@ -1316,7 +1317,11 @@ gfx_root_signature dx12_create_root_signature(const gfx_descriptor_set_layout* s
 
     HRESULT hr = D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1, &signature_blob, &error_blob);
     if (FAILED(hr)) {
-        LOG_ERROR("Failed to serializwe root signature (HRESULT = 0x%08X)", hr);
+        LOG_ERROR("Failed to serialize root signature (HRESULT = 0x%08X)", hr);
+        if (error_blob) {
+            const char* msg = ID3D10Blob_GetBufferPointer(error_blob);
+            LOG_ERROR("Root Signature Error: %s", msg);
+        }
         uuid_destroy(&root_sig.uuid);
     }
 
