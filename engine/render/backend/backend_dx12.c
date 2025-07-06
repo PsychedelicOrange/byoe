@@ -52,7 +52,7 @@
 // - [x] gfx_syncobj primitives
 // - [x] Create command allocators
 // - [x] Create command lists from allocator
-// - [ ] Rendering Loop: Basic submit/present flow using Fence counting etc. for Clear color
+// - [x] Rendering Loop: Basic submit/present flow using Fence counting etc. for Clear color
 //   - [x] frame_begin & end/wait_on_cmds/submit/present
 //   - [x] Create in context! + decide on per-in flight fence or just one global fence
 //   - [x] Test and resolve issues
@@ -69,15 +69,19 @@
 //   - [x] Textures
 //   - [x] Buffers
 //   - [x] Sampler
-// - [ ] Resource Views API
-//   - [ ] Textures
-//   - [ ] Buffers
-//   - [ ] Sampler
-// - [ ] Descriptor Heaps/tables API + root signature hookup
+// - [x] Resource Views API
+//   - [x] Textures
+//   - [x] Buffers
+//   - [x] Sampler
+// - [x] Descriptor Heaps/tables API + root signature hookup
 // - [x] Barriers API
-// - [ ] Root Constants
-// - [ ] Swapchain read back and clear image + misc utils
+// - [x] Root Constants
 // - [ ] Restore SDF renderer
+//   - [ ] Clear Image
+//   - [ ] Bindings stuff etc. and whatever needs to be done to not crash it
+// - [ ] Single time command buffer
+// - [ ] Swapchain read back
+// - [ ] Restore tests!
 
 //--------------------------------------------------------
 const rhi_jumptable dx12_jumptable = {
@@ -101,22 +105,22 @@ const rhi_jumptable dx12_jumptable = {
     dx12_destroy_root_signature,
     dx12_create_pipeline,
     dx12_destroy_pipeline,
-    NULL,    // create_descriptor_table
-    NULL,    // destroy_descriptor_table
-    NULL,    // update_descriptor_table
+    dx12_create_descriptor_table,
+    dx12_destroy_descriptor_table,
+    dx12_update_descriptor_table,
     dx12_create_texture_resource,
     dx12_destroy_texture_resource,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
+    dx12_create_sampler,
+    dx12_destroy_sampler,
+    dx12_create_uniform_buffer_resource,
+    dx12_destroy_uniform_buffer_resource,
+    dx12_update_uniform_buffer,
+    dx12_create_texture_resource_view,
+    dx12_destroy_texture_resource_view,
+    dx12d_create_sampler_resource_view,
+    dx12d_destroy_sampler_resource_view,
+    dx12_create_uniform_buffer_resource_view,
+    dx12_destroy_uniform_buffer_resource_view,
     NULL,    // create single time cmd buffer
     NULL,    // destroy single time cmd buffer
     NULL,    // read back swapchain
@@ -138,8 +142,8 @@ const rhi_jumptable dx12_jumptable = {
     dx12_bind_gfx_pipeline,
     dx12_bind_compute_pipeline,
     dx12_device_bind_root_signature,
-    NULL,    // bind descriptor heaps
-    NULL,    // bind root constant aka push constants
+    dx12_bind_descriptor_table,
+    dx12_bind_push_constant,
     dx12_draw,
     dx12_dispatch,
     dx12_transition_image_layout,
@@ -148,7 +152,7 @@ const rhi_jumptable dx12_jumptable = {
 };
 //--------------------------------------------------------
 
-    #define HR_CHECK(x)                                                                                                              \
+    #define DX_CHECK_HR(x)                                                                                                           \
         do {                                                                                                                         \
             HRESULT hr__ = (x);                                                                                                      \
             if (FAILED(hr__)) {                                                                                                      \
@@ -161,11 +165,12 @@ const rhi_jumptable dx12_jumptable = {
 
     #define DXDevice s_DXCtx.device
 
-    #define SIZE_DWORD            4
-    #define MAX_ROOT_PARAMS       16
-    #define MAX_DESCRIPTOR_RANGES 32
-    #define SHADER_BINARY_EXT     "cso"
-    #define DX_SWAPCHAIN_FORMAT   DXGI_FORMAT_B8G8R8A8_UNORM
+    #define SIZE_DWORD                 4
+    #define MAX_ROOT_PARAMS            16
+    #define MAX_DESCRIPTOR_RANGES      32
+    #define SHADER_BINARY_EXT          "cso"
+    #define DX_SWAPCHAIN_FORMAT        DXGI_FORMAT_B8G8R8A8_UNORM
+    #define DX12_DESCRIPTOR_SIZE(type) s_DXCtx.device->lpVtbl->GetDescriptorHandleIncrementSize(s_DXCtx.device, type)
 
 //--------------------------------------------------------
 // Internal Types
@@ -245,6 +250,28 @@ typedef struct pipeline_backend
     ID3D12PipelineState*   pso;
     D3D_PRIMITIVE_TOPOLOGY topology;
 } pipeline_backend;
+
+typedef struct resource_view_backend
+{
+    union
+    {
+        D3D12_SHADER_RESOURCE_VIEW_DESC  srv_desc;
+        D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc;
+        D3D12_RENDER_TARGET_VIEW_DESC    rtv_desc;
+        D3D12_DEPTH_STENCIL_VIEW_DESC    dsv_desc;
+        D3D12_CONSTANT_BUFFER_VIEW_DESC  cbv_desc;
+    };
+} resource_view_backend;
+
+// TODO: Make this a global ring buffer like descriptor allocator
+typedef struct descriptor_table_backend
+{
+    ID3D12DescriptorHeap* cbv_uav_srv_heap;
+    ID3D12DescriptorHeap* sampler_heap;
+    ID3D12DescriptorHeap* rtv_heap;
+    ID3D12DescriptorHeap* dsv_heap;
+    uint32_t              heap_count;
+} descriptor_table_backend;
 
 //--------------------------------------------------------
 
@@ -531,7 +558,7 @@ static IDXGIAdapter4* dx12_internal_select_best_adapter(IDXGIFactory7* factory, 
 
             maxDedicatedVRAM = desc.DedicatedVideoMemory;
             // ++ Also check if the adapter supports min feature level
-            HR_CHECK(D3D12CreateDevice((IUnknown*) adapter4, min_feat_level, &IID_ID3D12Device, NULL));
+            DX_CHECK_HR(D3D12CreateDevice((IUnknown*) adapter4, min_feat_level, &IID_ID3D12Device, NULL));
             best_adapter = adapter4;
             break;
         }
@@ -716,6 +743,16 @@ static gfx_sync_point dx12_internal_signal(gfx_context* context)
     }
 
     return signal_syncpoint;
+}
+
+static void dx12_internal_destroy_res_view(gfx_resource_view* view)
+{
+    uuid_destroy(&view->uuid);
+    if (view->backend) {
+        free(view->backend);
+        view->backend = NULL;
+        view          = NULL;
+    }
 }
 
 //--------------------------------------------------------
@@ -1238,7 +1275,6 @@ gfx_root_signature dx12_create_root_signature(const gfx_descriptor_set_layout* s
         D3D12_DESCRIPTOR_RANGE      ranges[MAX_DESCRIPTOR_RANGES] = {0};
 
         table_entry.NumDescriptorRanges = set_layout->binding_count;
-        table_entry.pDescriptorRanges   = ranges;
 
         for (uint32_t j = 0; j < table_entry.NumDescriptorRanges; ++j) {
             const gfx_descriptor_binding binding = set_layout->bindings[j];
@@ -1251,6 +1287,7 @@ gfx_root_signature dx12_create_root_signature(const gfx_descriptor_set_layout* s
         }
 
         root_params[i].ParameterType   = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+        table_entry.pDescriptorRanges  = ranges;
         root_params[i].DescriptorTable = table_entry;
         // TODO: Implement shader visibility for each table in a more granular fashion
         root_params[i].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;    // Currently ALL!
@@ -1477,6 +1514,222 @@ void dx12_destroy_pipeline(gfx_pipeline* pipeline)
     }
 }
 
+gfx_descriptor_table dx12_create_descriptor_table(const gfx_root_signature* root_signature)
+{
+    // Basically we create a descriptor heaps here
+    gfx_descriptor_table descriptor_table = {0};
+    uuid_generate(&descriptor_table.uuid);
+
+    descriptor_table_backend* backend = malloc(sizeof(descriptor_table_backend));
+    memset(backend, 0, sizeof(descriptor_table_backend));
+    descriptor_table.backend = backend;
+
+    uint32_t total_cbv_srv_uav_count = 0;
+    uint32_t total_sampler_count     = 0;
+    uint32_t total_rtv_count         = 0;
+    uint32_t total_dsv_count         = 0;
+
+    // Count descriptors per set and accumulate them, we create heaps with max sets
+    // TODO: If this is taking too much time, use global heaps or ring buffer
+    for (uint32_t set = 0; set < root_signature->descriptor_layout_count; ++set) {
+        const gfx_descriptor_set_layout* set_layout = &root_signature->descriptor_set_layouts[set];
+
+        for (uint32_t i = 0; i < set_layout->binding_count; ++i) {
+            const gfx_descriptor_binding* binding = &set_layout->bindings[i];
+            uint32_t                      count   = binding->count;
+
+            switch (binding->type) {
+                case GFX_RESOURCE_TYPE_UNIFORM_BUFFER:
+                case GFX_RESOURCE_TYPE_STORAGE_BUFFER:
+                case GFX_RESOURCE_TYPE_SAMPLED_IMAGE:
+                case GFX_RESOURCE_TYPE_STORAGE_IMAGE:
+                    total_cbv_srv_uav_count += count;
+                    break;
+
+                case GFX_RESOURCE_TYPE_SAMPLER:
+                    total_sampler_count += count;
+                    break;
+
+                case GFX_RESOURCE_TYPE_COLOR_ATTACHMENT:
+                    total_rtv_count += count;
+                    break;
+
+                case GFX_RESOURCE_TYPE_DEPTH_STENCIL_ATTACHMENT:
+                    total_dsv_count += count;
+                    break;
+
+                default:
+                    break;
+            }
+        }
+    }
+
+    // Now create the actual heaps
+    if (total_cbv_srv_uav_count > 0) {
+        backend->heap_count++;
+        D3D12_DESCRIPTOR_HEAP_DESC desc = {
+            .Type           = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+            .NumDescriptors = total_cbv_srv_uav_count,
+            .Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
+            .NodeMask       = 0,
+        };
+        HRESULT hr = ID3D12Device10_CreateDescriptorHeap(DXDevice, &desc, &IID_ID3D12DescriptorHeap, &backend->cbv_uav_srv_heap);
+        DX_CHECK_HR(hr);
+    }
+
+    if (total_sampler_count > 0) {
+        backend->heap_count++;
+        D3D12_DESCRIPTOR_HEAP_DESC desc = {
+            .Type           = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER,
+            .NumDescriptors = total_sampler_count,
+            .Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
+            .NodeMask       = 0,
+        };
+        HRESULT hr = ID3D12Device10_CreateDescriptorHeap(DXDevice, &desc, &IID_ID3D12DescriptorHeap, &backend->sampler_heap);
+        DX_CHECK_HR(hr);
+    }
+
+    // RTV/DSV heaps usually not shader visible — optional:
+    if (total_rtv_count > 0) {
+        backend->heap_count++;
+        D3D12_DESCRIPTOR_HEAP_DESC desc = {
+            .Type           = D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
+            .NumDescriptors = total_rtv_count,
+            .Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_NONE,
+            .NodeMask       = 0,
+        };
+        HRESULT hr = ID3D12Device10_CreateDescriptorHeap(DXDevice, &desc, &IID_ID3D12DescriptorHeap, &backend->rtv_heap);
+        DX_CHECK_HR(hr);
+    }
+
+    if (total_dsv_count > 0) {
+        backend->heap_count++;
+        D3D12_DESCRIPTOR_HEAP_DESC desc = {
+            .Type           = D3D12_DESCRIPTOR_HEAP_TYPE_DSV,
+            .NumDescriptors = total_dsv_count,
+            .Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_NONE,
+            .NodeMask       = 0,
+        };
+        HRESULT hr = ID3D12Device10_CreateDescriptorHeap(DXDevice, &desc, &IID_ID3D12DescriptorHeap, &backend->dsv_heap);
+        DX_CHECK_HR(hr);
+    }
+
+    descriptor_table.set_count = root_signature->descriptor_layout_count;
+    return descriptor_table;
+}
+
+void dx12_destroy_descriptor_table(gfx_descriptor_table* descriptor_table)
+{
+    (void) descriptor_table;
+    uuid_destroy(&descriptor_table->uuid);
+    descriptor_table_backend* backend = ((descriptor_table_backend*) (descriptor_table->backend));
+
+    if (backend->cbv_uav_srv_heap) {
+        ID3D12DescriptorHeap_Release(backend->cbv_uav_srv_heap);
+        backend->cbv_uav_srv_heap = NULL;
+    }
+
+    if (backend->sampler_heap) {
+        ID3D12DescriptorHeap_Release(backend->sampler_heap);
+        backend->sampler_heap = NULL;
+    }
+
+    if (backend->rtv_heap) {
+        ID3D12DescriptorHeap_Release(backend->rtv_heap);
+        backend->rtv_heap = NULL;
+    }
+
+    if (backend->dsv_heap) {
+        ID3D12DescriptorHeap_Release(backend->dsv_heap);
+        backend->dsv_heap = NULL;
+    }
+
+    free(backend);
+    descriptor_table->backend = NULL;
+}
+
+void dx12_update_descriptor_table(gfx_descriptor_table* descriptor_table, gfx_descriptor_table_entry* entries, uint32_t num_entries)
+{
+    descriptor_table_backend* backend = (descriptor_table_backend*) (descriptor_table->backend);
+
+    D3D12_CPU_DESCRIPTOR_HANDLE cbv_srv_base   = {0};
+    UINT                        cbv_srv_stride = 0;
+    if (backend->cbv_uav_srv_heap) {
+        ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(backend->cbv_uav_srv_heap, &cbv_srv_base);
+        cbv_srv_stride = DX12_DESCRIPTOR_SIZE(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    }
+
+    D3D12_CPU_DESCRIPTOR_HANDLE sampler_base   = {0};
+    UINT                        sampler_stride = 0;
+    if (backend->sampler_heap) {
+        ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(backend->sampler_heap, &sampler_base);
+        sampler_stride = DX12_DESCRIPTOR_SIZE(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
+    }
+
+    D3D12_CPU_DESCRIPTOR_HANDLE rtv_base   = {0};
+    UINT                        rtv_stride = 0;
+    if (backend->rtv_heap) {
+        ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(backend->rtv_heap, &rtv_base);
+        rtv_stride = DX12_DESCRIPTOR_SIZE(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
+    }
+
+    D3D12_CPU_DESCRIPTOR_HANDLE dsv_base   = {0};
+    UINT                        dsv_stride = 0;
+    if (backend->dsv_heap) {
+        ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(backend->dsv_heap, &dsv_base);
+        dsv_stride = DX12_DESCRIPTOR_SIZE(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
+    }
+
+    // Note: We don't care about or use UAV counters yet!
+
+    for (uint32_t i = 0; i < num_entries; i++) {
+        const gfx_resource*      res      = entries[i].resource;
+        const gfx_resource_view* res_view = entries[i].resource_view;
+
+        // Note: maybe we can also combine location.set/binding to find the right offset position in the heap or use flattened out layout
+        // gfx_binding_location location = entries[i].location;
+
+        switch (res_view->type) {
+            case GFX_RESOURCE_TYPE_UNIFORM_BUFFER: {
+                D3D12_CONSTANT_BUFFER_VIEW_DESC cbv_desc = ((resource_view_backend*) (res_view->backend))->cbv_desc;
+
+                D3D12_CPU_DESCRIPTOR_HANDLE dst = cbv_srv_base;
+                dst.ptr += i * cbv_srv_stride;
+                ID3D12Device10_CreateConstantBufferView(DXDevice, &cbv_desc, dst);
+            } break;
+            case GFX_RESOURCE_TYPE_STORAGE_BUFFER: {
+                D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc = ((resource_view_backend*) (res_view->backend))->uav_desc;
+
+                D3D12_CPU_DESCRIPTOR_HANDLE dst = cbv_srv_base;
+                dst.ptr += i * cbv_srv_stride;
+                ID3D12Device10_CreateUnorderedAccessView(DXDevice, (ID3D12Resource*) res->ubo->backend, NULL, &uav_desc, dst);
+            } break;
+            case GFX_RESOURCE_TYPE_STORAGE_IMAGE: {
+                D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc = ((resource_view_backend*) (res_view->backend))->uav_desc;
+
+                D3D12_CPU_DESCRIPTOR_HANDLE dst = cbv_srv_base;
+                dst.ptr += i * cbv_srv_stride;
+                ID3D12Device10_CreateUnorderedAccessView(DXDevice, (ID3D12Resource*) res->texture->backend, NULL, &uav_desc, dst);
+            } break;
+            case GFX_RESOURCE_TYPE_SAMPLER: {
+                D3D12_CPU_DESCRIPTOR_HANDLE dst = sampler_base;
+                dst.ptr += i * sampler_stride;
+                ID3D12Device10_CreateSampler(DXDevice, (D3D12_SAMPLER_DESC*) res->sampler->backend, dst);
+            } break;
+            case GFX_RESOURCE_TYPE_SAMPLED_IMAGE: {
+                D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc = ((resource_view_backend*) (res_view->backend))->srv_desc;
+
+                D3D12_CPU_DESCRIPTOR_HANDLE dst = cbv_srv_base;
+                dst.ptr += i * cbv_srv_stride;
+                ID3D12Device10_CreateShaderResourceView(DXDevice, (ID3D12Resource*) res->texture->backend, &srv_desc, dst);
+            } break;
+            default:
+                LOG_ERROR("[D3D12] Unsupported resource type %d in descriptor table update", res_view->type);
+                break;
+        }
+    }
+}
+
 gfx_resource dx12_create_texture_resource(gfx_texture_create_info desc)
 {
     gfx_resource resource = {0};
@@ -1591,7 +1844,7 @@ gfx_resource dx12_create_uniform_buffer_resource(uint32_t size)
     heapProps.MemoryPoolPreference  = D3D12_MEMORY_POOL_UNKNOWN;
 
     // Constant buffers are 256 Bytes aligned
-    uint32_t aligned_size = (uint32_t)align_memory_size(size, 256);
+    uint32_t aligned_size = (uint32_t) align_memory_size(size, 256);
 
     D3D12_RESOURCE_DESC buffer_desc = {0};
     buffer_desc.Dimension           = D3D12_RESOURCE_DIMENSION_BUFFER;
@@ -1633,19 +1886,160 @@ void dx12_destroy_uniform_buffer_resource(gfx_resource* resource)
 
 void dx12_update_uniform_buffer(gfx_resource* resource, uint32_t size, uint32_t offset, void* data)
 {
-    if (!resource || !resource->ubo || !data)
-        return;
-
     ID3D12Resource* buffer = (ID3D12Resource*) resource->ubo->backend;
-
-    void*       mapped = NULL;
-    D3D12_RANGE range  = {offset, offset + size};
+    D3D12_RANGE     range  = {offset, offset + size};
+    void*           mapped = NULL;
 
     HRESULT hr = ID3D12Resource_Map(buffer, 0, &range, &mapped);
     if (SUCCEEDED(hr)) {
         memcpy((uint8_t*) mapped + offset, data, size);
         ID3D12Resource_Unmap(buffer, 0, NULL);
     }
+}
+
+gfx_resource_view dx12_create_texture_resource_view(const gfx_resource_view_create_info desc)
+{
+    gfx_resource_view view = {0};
+    uuid_generate(&view.uuid);
+    view.type = desc.res_type;
+
+    resource_view_backend* backend = malloc(sizeof(resource_view_backend));
+    view.backend                   = backend;
+
+    // choose between SRV and UAV
+    if (desc.res_type >= GFX_RESOURCE_TYPE_STORAGE_IMAGE && desc.res_type <= GFX_RESOURCE_TYPE_STORAGE_TEXEL_BUFFER) {
+        // UAV
+        D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc = {0};
+        uav_desc.Format                           = dx12_util_format_translate(desc.texture.format);
+
+        if (desc.texture.texture_type == GFX_TEXTURE_TYPE_2D_ARRAY) {
+            uav_desc.ViewDimension                  = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+            uav_desc.Texture2DArray.MipSlice        = desc.texture.base_mip;
+            uav_desc.Texture2DArray.FirstArraySlice = desc.texture.base_layer;
+            uav_desc.Texture2DArray.ArraySize       = desc.texture.layer_count;
+            uav_desc.Texture2DArray.PlaneSlice      = 0;
+        } else if (desc.texture.texture_type == GFX_TEXTURE_TYPE_2D) {
+            uav_desc.ViewDimension        = D3D12_UAV_DIMENSION_TEXTURE2D;
+            uav_desc.Texture2D.MipSlice   = desc.texture.base_mip;
+            uav_desc.Texture2D.PlaneSlice = 0;
+        } else {
+            LOG_ERROR("Unsupported UAV texture view type");
+        }
+
+        backend->uav_desc = uav_desc;
+
+    } else if (desc.res_type == GFX_RESOURCE_TYPE_SAMPLED_IMAGE) {
+        // SRV
+
+        D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc = {0};
+        srv_desc.Format                          = dx12_util_format_translate(desc.texture.format);
+        srv_desc.Shader4ComponentMapping         = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+
+        if (desc.texture.texture_type == GFX_TEXTURE_TYPE_2D_ARRAY) {
+            srv_desc.ViewDimension                      = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+            srv_desc.Texture2DArray.MostDetailedMip     = desc.texture.base_mip;
+            srv_desc.Texture2DArray.MipLevels           = desc.texture.mip_levels;
+            srv_desc.Texture2DArray.FirstArraySlice     = desc.texture.base_layer;
+            srv_desc.Texture2DArray.ArraySize           = desc.texture.layer_count;
+            srv_desc.Texture2DArray.PlaneSlice          = 0;
+            srv_desc.Texture2DArray.ResourceMinLODClamp = 0.0f;
+        } else if (desc.texture.texture_type == GFX_TEXTURE_TYPE_2D) {
+            srv_desc.ViewDimension                 = D3D12_SRV_DIMENSION_TEXTURE2D;
+            srv_desc.Texture2D.MostDetailedMip     = desc.texture.base_mip;
+            srv_desc.Texture2D.MipLevels           = desc.texture.mip_levels;
+            srv_desc.Texture2D.PlaneSlice          = 0;
+            srv_desc.Texture2D.ResourceMinLODClamp = 0.0f;
+        } else {
+            assert(0 && "Unsupported SRV texture view type");
+        }
+
+        backend->srv_desc = srv_desc;
+
+    } else if (desc.res_type == GFX_RESOURCE_TYPE_COLOR_ATTACHMENT) {
+        D3D12_RENDER_TARGET_VIEW_DESC rtv_desc = {0};
+        rtv_desc.Format                        = dx12_util_format_translate(desc.texture.format);
+
+        if (desc.texture.texture_type == GFX_TEXTURE_TYPE_2D_ARRAY) {
+            rtv_desc.ViewDimension                  = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+            rtv_desc.Texture2DArray.MipSlice        = desc.texture.base_mip;
+            rtv_desc.Texture2DArray.FirstArraySlice = desc.texture.base_layer;
+            rtv_desc.Texture2DArray.ArraySize       = desc.texture.layer_count;
+            rtv_desc.Texture2DArray.PlaneSlice      = 0;
+        } else if (desc.texture.texture_type == GFX_TEXTURE_TYPE_2D) {
+            rtv_desc.ViewDimension        = D3D12_RTV_DIMENSION_TEXTURE2D;
+            rtv_desc.Texture2D.MipSlice   = desc.texture.base_mip;
+            rtv_desc.Texture2D.PlaneSlice = 0;
+        } else {
+            assert(0 && "Unsupported RTV texture view type");
+        }
+
+        backend->rtv_desc = rtv_desc;
+    } else if (desc.res_type == GFX_RESOURCE_TYPE_DEPTH_STENCIL_ATTACHMENT) {
+        D3D12_DEPTH_STENCIL_VIEW_DESC dsv_desc = {0};
+        dsv_desc.Format                        = dx12_util_format_translate(desc.texture.format);
+        dsv_desc.Flags                         = D3D12_DSV_FLAG_NONE;
+
+        if (desc.texture.texture_type == GFX_TEXTURE_TYPE_2D_ARRAY) {
+            dsv_desc.ViewDimension                  = D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
+            dsv_desc.Texture2DArray.MipSlice        = desc.texture.base_mip;
+            dsv_desc.Texture2DArray.FirstArraySlice = desc.texture.base_layer;
+            dsv_desc.Texture2DArray.ArraySize       = desc.texture.layer_count;
+        } else if (desc.texture.texture_type == GFX_TEXTURE_TYPE_2D) {
+            dsv_desc.ViewDimension      = D3D12_DSV_DIMENSION_TEXTURE2D;
+            dsv_desc.Texture2D.MipSlice = desc.texture.base_mip;
+        } else {
+            assert(0 && "Unsupported DSV texture view type");
+        }
+
+        backend->dsv_desc = dsv_desc;
+    }
+
+    return view;
+}
+
+void dx12_destroy_texture_resource_view(gfx_resource_view* view)
+{
+    dx12_internal_destroy_res_view(view);
+}
+
+gfx_resource_view dx12d_create_sampler_resource_view(gfx_resource_view_create_info desc)
+{
+    gfx_resource_view view = {0};
+    uuid_generate(&view.uuid);
+    view.type = desc.res_type;
+
+    return view;
+}
+
+void dx12d_destroy_sampler_resource_view(gfx_resource_view* view)
+{
+    dx12_internal_destroy_res_view(view);
+}
+
+gfx_resource_view dx12_create_uniform_buffer_resource_view(gfx_resource* resource, uint32_t size, uint32_t offset)
+{
+    gfx_resource_view view = {0};
+    uuid_generate(&view.uuid);
+    view.type = GFX_RESOURCE_TYPE_UNIFORM_BUFFER;
+
+    resource_view_backend* backend = malloc(sizeof(resource_view_backend));
+    view.backend                   = backend;
+
+    ID3D12Resource* d3dresource = (ID3D12Resource*) resource->ubo->backend;
+
+    D3D12_CONSTANT_BUFFER_VIEW_DESC cbv_desc = {
+        .BufferLocation = ID3D12Resource_GetGPUVirtualAddress(d3dresource) + offset,
+        .SizeInBytes    = (UINT) align_memory_size(size, 256)    // CBVs must be 256-byte aligned
+    };
+
+    backend->cbv_desc = cbv_desc;
+
+    return view;
+}
+
+void dx12_destroy_uniform_buffer_resource_view(gfx_resource_view* view)
+{
+    dx12_internal_destroy_res_view(view);
 }
 
 //--------------------------------------------------------
@@ -2017,6 +2411,61 @@ rhi_error_codes dx12_device_bind_root_signature(const gfx_cmd_buf* cmd_buf, cons
 {
     ID3D12GraphicsCommandList* cmd_list = (ID3D12GraphicsCommandList*) (cmd_buf->backend);
     ID3D12GraphicsCommandList_SetGraphicsRootSignature(cmd_list, (ID3D12RootSignature*) root_signature->backend);
+
+    return Success;
+}
+
+rhi_error_codes dx12_bind_descriptor_table(const gfx_cmd_buf* cmd_buf, const gfx_descriptor_table* descriptor_table, gfx_pipeline_type pipeline_type)
+{
+    descriptor_table_backend* descriptor_backend = (descriptor_table_backend*) (descriptor_table->backend);
+
+    ID3D12DescriptorHeap* heaps[] = {
+        descriptor_backend->cbv_uav_srv_heap,
+        descriptor_backend->sampler_heap,
+        descriptor_backend->rtv_heap,
+        descriptor_backend->dsv_heap,
+    };
+
+    ID3D12GraphicsCommandList* cmd_list = (ID3D12GraphicsCommandList*) (cmd_buf->backend);
+
+    // Bind heaps and GPU descriptor handles
+    ID3D12GraphicsCommandList_SetDescriptorHeaps(cmd_list, descriptor_backend->heap_count, heaps);
+
+    D3D12_GPU_DESCRIPTOR_HANDLE cbv_srv_uav_base;
+    ID3D12DescriptorHeap_GetGPUDescriptorHandleForHeapStart(descriptor_backend->cbv_uav_srv_heap, &cbv_srv_uav_base);
+    D3D12_GPU_DESCRIPTOR_HANDLE sampler_base;
+    ID3D12DescriptorHeap_GetGPUDescriptorHandleForHeapStart(descriptor_backend->cbv_uav_srv_heap, &sampler_base);
+
+    //--------------------------------------------------------------------
+    // FIXME: This is a very fixed design assuming we have samplers at root param2 after CBV/SRV/UAV and only 2 root params but that's not the case
+    // Bind to root parameter index == set index
+    if (pipeline_type == GFX_PIPELINE_TYPE_GRAPHICS) {
+        ID3D12GraphicsCommandList_SetGraphicsRootDescriptorTable(cmd_list, 0, cbv_srv_uav_base);
+        ID3D12GraphicsCommandList_SetGraphicsRootDescriptorTable(cmd_list, 1, sampler_base);
+
+    } else {
+        ID3D12GraphicsCommandList_SetComputeRootDescriptorTable(cmd_list, 0, cbv_srv_uav_base);
+        ID3D12GraphicsCommandList_SetComputeRootDescriptorTable(cmd_list, 1, sampler_base);
+    }
+    //--------------------------------------------------------------------
+
+    return Success;
+}
+
+rhi_error_codes dx12_bind_push_constant(const gfx_cmd_buf* cmd_buf, const gfx_root_signature* root_sig, gfx_push_constant push_constant)
+{
+    ID3D12GraphicsCommandList* cmd_list = (ID3D12GraphicsCommandList*) cmd_buf->backend;
+
+    // STart off after the descriptor tables, just one per shader so we are good to go this way
+    uint32_t root_param_index = root_sig->descriptor_layout_count;
+
+    uint32_t num_values = push_constant.size / sizeof(uint32_t);
+
+    if (push_constant.stage == GFX_PIPELINE_TYPE_GRAPHICS) {
+        ID3D12GraphicsCommandList_SetGraphicsRoot32BitConstants(cmd_list, root_param_index, num_values, push_constant.data, push_constant.offset);
+    } else {
+        ID3D12GraphicsCommandList_SetComputeRoot32BitConstants(cmd_list, root_param_index, num_values, push_constant.data, push_constant.offset);
+    }
 
     return Success;
 }
