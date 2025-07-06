@@ -470,7 +470,6 @@ typedef enum gfx_resource_usage
     GFX_RESOURCE_USAGE_ALLOW_DISPLAY    = 0x02000000,    // Used for presentation/display surface
     GFX_RESOURCE_USAGE_ALLOW_CPU_ACCESS = 0x04000000,    // CPU visible (upload/readback)
 
-    GFX_RESOURCE_USAGE_MASK_ALL = 0xFFFFFFFF
 } gfx_resource_usage;
 //--------------------------------------------
 
