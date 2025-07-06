@@ -1267,38 +1267,37 @@ gfx_root_signature dx12_create_root_signature(const gfx_descriptor_set_layout* s
     UNUSED(push_constants);
     UNUSED(push_constant_count);
 
-    D3D12_ROOT_SIGNATURE_DESC desc                         = {0};
-    D3D12_ROOT_PARAMETER      root_params[MAX_ROOT_PARAMS] = {0};
+    D3D12_ROOT_SIGNATURE_DESC desc                                           = {0};
+    D3D12_ROOT_PARAMETER      root_params[MAX_ROOT_PARAMS]                   = {0};
+    D3D12_DESCRIPTOR_RANGE    ranges[MAX_ROOT_PARAMS][MAX_DESCRIPTOR_RANGES] = {0};
 
     desc.NumParameters = set_layout_count + push_constant_count;
-    desc.pParameters   = root_params;
 
     // Each set is a table entry
     for (uint32_t i = 0; i < set_layout_count; ++i) {
         const gfx_descriptor_set_layout* set_layout = &set_layouts[i];
 
-        D3D12_ROOT_DESCRIPTOR_TABLE table_entry                   = {0};
-        D3D12_DESCRIPTOR_RANGE      ranges[MAX_DESCRIPTOR_RANGES] = {0};
+        D3D12_ROOT_DESCRIPTOR_TABLE table_entry = {0};
 
         table_entry.NumDescriptorRanges = set_layout->binding_count;
 
         for (uint32_t j = 0; j < table_entry.NumDescriptorRanges; ++j) {
             const gfx_descriptor_binding binding = set_layout->bindings[j];
             // Add a range into descriptor table
-            ranges[j].RangeType                         = dx12_util_descriptor_range_type_translate(binding.type);
-            ranges[j].NumDescriptors                    = binding.count;
-            ranges[j].BaseShaderRegister                = binding.location.binding;
-            ranges[j].RegisterSpace                     = binding.location.set;
-            ranges[j].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-            ranges[j].OffsetInDescriptorsFromTableStart = i;
+            ranges[i][j].RangeType                         = dx12_util_descriptor_range_type_translate(binding.type);
+            ranges[i][j].NumDescriptors                    = binding.count;
+            ranges[i][j].BaseShaderRegister                = binding.location.binding;
+            ranges[i][j].RegisterSpace                     = binding.location.set;
+            ranges[i][j].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
         }
 
         root_params[i].ParameterType   = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-        table_entry.pDescriptorRanges  = ranges;
+        table_entry.pDescriptorRanges  = ranges[i];
         root_params[i].DescriptorTable = table_entry;
         // TODO: Implement shader visibility for each table in a more granular fashion
         root_params[i].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;    // Currently ALL!
     }
+    desc.pParameters = root_params;
 
     for (uint32_t i = 0; i < push_constant_count; ++i) {
         const gfx_push_constant_range pc    = push_constants[i];
