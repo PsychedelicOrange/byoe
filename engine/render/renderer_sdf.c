@@ -22,7 +22,7 @@
 // Image memory barrier
 // - [x] sdf_scene_texture image memory pipeline barrier before screen quad pass
 
-#define TRIANGLE_TEST 1
+#define TRIANGLE_TEST 0
 
 typedef struct SDFPushConstant
 {

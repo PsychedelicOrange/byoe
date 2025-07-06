@@ -1153,12 +1153,18 @@ gfx_shader dx12_create_compute_shader(const char* cso_file_path)
     if (backend) {
         shader.stages.CS = backend;
         backend->stage   = GFX_SHADER_STAGE_CS;
-        HRESULT hr       = D3DReadFileToBlob((LPCWSTR) full_path, &backend->bytecode);
+
+        int      len       = MultiByteToWideChar(CP_UTF8, 0, full_path, -1, NULL, 0);
+        wchar_t* wide_path = malloc(len * sizeof(wchar_t));
+        MultiByteToWideChar(CP_UTF8, 0, full_path, -1, wide_path, len);
+
+        HRESULT hr = D3DReadFileToBlob((LPCWSTR) wide_path, &backend->bytecode);
         if (FAILED(hr)) {
             LOG_ERROR("Failed to load shader blob from file: %s (HRESULT = 0x%08X)", full_path, hr);
             uuid_destroy(&shader.uuid);
             return shader;
         }
+        free(wide_path);
     }
     free(full_path);
     return shader;
