@@ -651,8 +651,7 @@ typedef struct gfx_resource_view
     random_uuid_t        uuid;
     void*                backend;
     gfx_resource_type    type;
-    gfx_binding_location location;
-    uint32_t             _pad0[3];
+    uint32_t             _pad0;
 } gfx_resource_view;
 
 typedef struct gfx_cmd_pool
