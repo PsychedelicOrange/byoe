@@ -215,22 +215,27 @@ static void renderer_internal_create_root_sigs(void)
 
         gfx_descriptor_binding screen_sampler_binding = {
             .location = {
-                .binding = 1,
-                .set     = 0,
+                .binding = 0,
+                .set     = 1,
             },
             .count       = 1,
             .type        = GFX_RESOURCE_TYPE_SAMPLER,
             .stage_flags = GFX_SHADER_STAGE_PS,
         };
 
-        gfx_descriptor_binding screen_bindings[] = {screen_tex_binding, screen_sampler_binding};
-
         gfx_descriptor_set_layout screen_set_layout_0 = {
-            .bindings      = screen_bindings,
-            .binding_count = 2,
+            .bindings      = &screen_tex_binding,
+            .binding_count = 1,
         };
 
-        s_RendererSDFInternalState.screen_quad_resources.root_sig = g_rhi.create_root_signature(&screen_set_layout_0, 1, NULL, 0);
+        gfx_descriptor_set_layout screen_set_layout_1 = {
+            .bindings      = &screen_sampler_binding,
+            .binding_count = 1,
+        };
+
+        gfx_descriptor_set_layout screen_set_layouts[] = {screen_set_layout_0, screen_set_layout_1};
+
+        s_RendererSDFInternalState.screen_quad_resources.root_sig = g_rhi.create_root_signature(screen_set_layouts, 2, NULL, 0);
     }
 #else
     // Nothing to bind
@@ -406,7 +411,7 @@ static void renderer_internal_create_screen_pass_descriptor_table(void)
     s_RendererSDFInternalState.screen_quad_resources.table = g_rhi.create_descriptor_table(&s_RendererSDFInternalState.screen_quad_resources.root_sig);
     gfx_descriptor_table_entry screen_table_entries[]      = {
         (gfx_descriptor_table_entry){&s_RendererSDFInternalState.sdfscene_resources.scene_texture, &s_RendererSDFInternalState.screen_quad_resources.shader_read_view, {0, 0}},
-        (gfx_descriptor_table_entry){&s_RendererSDFInternalState.screen_quad_resources.scene_tex_sampler, &s_RendererSDFInternalState.screen_quad_resources.sampler_view, {0, 1}},
+        (gfx_descriptor_table_entry){&s_RendererSDFInternalState.screen_quad_resources.scene_tex_sampler, &s_RendererSDFInternalState.screen_quad_resources.sampler_view, {1, 0}},
     };
     g_rhi.update_descriptor_table(&s_RendererSDFInternalState.screen_quad_resources.table, screen_table_entries, ARRAY_SIZE(screen_table_entries));
 }

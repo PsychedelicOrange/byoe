@@ -1,5 +1,5 @@
 Texture2D<float4> sceneTexture : register(t0, space0);
-SamplerState sceneSampler : register(s1, space0);
+SamplerState sceneSampler : register(s0, space1);
 
 static float4 outColorRenderTarget;
 static float2 inUV;

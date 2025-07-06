@@ -22,7 +22,7 @@ void engine_init(struct GLFWwindow** gameWindow, uint32_t width, uint32_t height
 
     cpu_caps_print_info();
     os_caps_print_info();
-      
+
     // Follow this order strictly to avoid load crashing
     render_utils_init_glfw();
     *gameWindow = render_utils_create_glfw_window("BYOE Game: Spooky Asteroids!", width, height);
@@ -30,7 +30,7 @@ void engine_init(struct GLFWwindow** gameWindow, uint32_t width, uint32_t height
 #if defined __APPLE__ || defined __linux__
     rhi_api api = Vulkan;
 #elif defined _WIN32
-    rhi_api api = D3D12;    // TODO: can use vulkan too, maybe check with command line options?
+    rhi_api api = Vulkan;    // TODO: can use vulkan too, maybe check with command line options?
 #endif
 
     if (gfx_init(api) != Success) {
