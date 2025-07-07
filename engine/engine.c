@@ -15,6 +15,8 @@ static GLFWwindow* g_GameWindowRef = NULL;
 static engine_version s_EngineVersion = {0, 1, 0, ""};
 static char           s_VersionString[64];
 
+static rhi_api api = 0;
+
 void engine_init(struct GLFWwindow** gameWindow, uint32_t width, uint32_t height)
 {
     LOG_SUCCESS("Welcome to Build your own engine! BYOE!!");
@@ -28,9 +30,9 @@ void engine_init(struct GLFWwindow** gameWindow, uint32_t width, uint32_t height
     *gameWindow = render_utils_create_glfw_window("BYOE Game: Spooky Asteroids!", width, height);
 
 #if defined __APPLE__ || defined __linux__
-    rhi_api api = Vulkan;
+    api = Vulkan;
 #elif defined _WIN32
-    rhi_api api = D3D12;    // TODO: can use vulkan too, maybe check with command line options?
+    api = Vulkan;    // TODO: can use vulkan too, maybe check with command line options?
 #endif
 
     if (gfx_init(api) != Success) {
@@ -95,7 +97,7 @@ void engine_run(void)
             FPSSamples++;
             AvgFPS += FPS;
             char windowTitle[250];
-            sprintf(windowTitle, "BYOE Game: spooky asteroids! | FPS: %llu | Avg. FPS: %llu | render dt: %2.2fms", FPS, engine_get_avg_fps(), deltaTime * 1000.0f);
+            sprintf(windowTitle, "BYOE Game: spooky asteroids! | FPS: %llu | Avg. FPS: %llu | render dt: %2.2fms | RHI: %s", FPS, engine_get_avg_fps(), deltaTime * 1000.0f, api == Vulkan ? "Vulkan" : "D3D12");
             glfwSetWindowTitle(g_GameWindowRef, windowTitle);
             elapsedTime = 0.0f;
         }

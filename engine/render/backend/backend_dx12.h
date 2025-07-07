@@ -99,7 +99,7 @@ rhi_error_codes dx12_set_scissor(const gfx_cmd_buf* cmd_buf, gfx_scissor scissor
 
 rhi_error_codes dx12_bind_gfx_pipeline(const gfx_cmd_buf* cmd_buf, const gfx_pipeline* pipeline);
 rhi_error_codes dx12_bind_compute_pipeline(const gfx_cmd_buf* cmd_buf, const gfx_pipeline* pipeline);
-rhi_error_codes dx12_device_bind_root_signature(const gfx_cmd_buf* cmd_buf, const gfx_root_signature* root_signature);
+rhi_error_codes dx12_device_bind_root_signature(const gfx_cmd_buf* cmd_buf, const gfx_root_signature* root_signature, gfx_pipeline_type pipeline_type);
 rhi_error_codes dx12_bind_descriptor_table(const gfx_cmd_buf* cmd_buf, const gfx_descriptor_table* descriptor_table, gfx_pipeline_type pipeline_type);
 rhi_error_codes dx12_bind_push_constant(const gfx_cmd_buf* cmd_buf, const gfx_root_signature* root_sig, gfx_push_constant push_constant);
 

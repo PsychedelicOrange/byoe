@@ -648,10 +648,10 @@ typedef struct gfx_binding_location
 
 typedef struct gfx_resource_view
 {
-    random_uuid_t        uuid;
-    void*                backend;
-    gfx_resource_type    type;
-    uint32_t             _pad0;
+    random_uuid_t     uuid;
+    void*             backend;
+    gfx_resource_type type;
+    uint32_t          _pad0;
 } gfx_resource_view;
 
 typedef struct gfx_cmd_pool
@@ -748,12 +748,12 @@ typedef struct gfx_descriptor_table_entry
 
 typedef struct gfx_root_signature
 {
-    random_uuid_t                    uuid;
-    const gfx_descriptor_set_layout* descriptor_set_layouts;
-    const gfx_push_constant_range*   push_constants;
-    uint32_t                         descriptor_layout_count;
-    uint32_t                         push_constant_count;
-    void*                            backend;
+    random_uuid_t              uuid;
+    gfx_descriptor_set_layout* descriptor_set_layouts;
+    gfx_push_constant_range*   push_constants;
+    uint32_t                   descriptor_layout_count;
+    uint32_t                   push_constant_count;
+    void*                      backend;
 } gfx_root_signature;
 
 typedef struct gfx_pipeline_create_info

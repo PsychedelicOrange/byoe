@@ -75,10 +75,10 @@
 //   - [x] Sampler
 // - [x] Descriptor Heaps/tables API + root signature hookup
 // - [x] Barriers API
-// - [x] Root Constants
+// - [x] Root Constants API
 // - [ ] Restore SDF renderer
-//   - [ ] Clear Image
 //   - [ ] Bindings stuff etc. and whatever needs to be done to not crash it
+//   - [ ] Clear Image
 // - [ ] Single time command buffer
 // - [ ] Swapchain read back
 // - [ ] Restore tests!
@@ -1262,10 +1262,30 @@ gfx_root_signature dx12_create_root_signature(const gfx_descriptor_set_layout* s
     gfx_root_signature root_sig = {0};
     uuid_generate(&root_sig.uuid);
 
-    UNUSED(set_layouts);
-    UNUSED(set_layout_count);
-    UNUSED(push_constants);
-    UNUSED(push_constant_count);
+    if (set_layout_count > 0) {
+        root_sig.descriptor_layout_count = set_layout_count;
+        root_sig.descriptor_set_layouts  = malloc(sizeof(gfx_descriptor_set_layout) * set_layout_count);
+
+        for (uint32_t i = 0; i < set_layout_count; ++i) {
+            const gfx_descriptor_set_layout* src_layout = &set_layouts[i];
+            gfx_descriptor_set_layout*       dst_layout = &root_sig.descriptor_set_layouts[i];
+
+            dst_layout->binding_count = src_layout->binding_count;
+
+            if (src_layout->binding_count > 0) {
+                dst_layout->bindings = malloc(sizeof(gfx_descriptor_binding) * src_layout->binding_count);
+                memcpy(dst_layout->bindings, src_layout->bindings, sizeof(gfx_descriptor_binding) * src_layout->binding_count);
+            } else {
+                dst_layout->bindings = NULL;
+            }
+        }
+    }
+
+    if (push_constant_count > 0) {
+        root_sig.push_constant_count = push_constant_count;
+        root_sig.push_constants      = malloc(sizeof(gfx_push_constant_range) * push_constant_count);
+        memcpy(root_sig.push_constants, push_constants, sizeof(gfx_push_constant_range) * push_constant_count);
+    }
 
     D3D12_ROOT_SIGNATURE_DESC desc                                           = {0};
     D3D12_ROOT_PARAMETER      root_params[MAX_ROOT_PARAMS]                   = {0};
@@ -1338,17 +1358,27 @@ gfx_root_signature dx12_create_root_signature(const gfx_descriptor_set_layout* s
     if (error_blob)
         ID3D10Blob_Release(error_blob);
 
-    root_sig.backend                 = d3d_root_sig;
-    root_sig.descriptor_set_layouts  = (gfx_descriptor_set_layout*) set_layouts;
-    root_sig.descriptor_layout_count = set_layout_count;
-    root_sig.push_constants          = (gfx_push_constant_range*) push_constants;
-    root_sig.push_constant_count     = push_constant_count;
+    root_sig.backend = d3d_root_sig;
+
     return root_sig;
 }
 
 void dx12_destroy_root_signature(gfx_root_signature* root_sig)
 {
     uuid_destroy(&root_sig->uuid);
+
+    if (root_sig->descriptor_set_layouts) {
+        for (uint32_t i = 0; i < root_sig->descriptor_layout_count; ++i) {
+            if (root_sig->descriptor_set_layouts[i].bindings)
+                free(root_sig->descriptor_set_layouts[i].bindings);
+        }
+        free(root_sig->descriptor_set_layouts);
+    }
+
+    if (root_sig->push_constant_count > 0) {
+        free(root_sig->push_constants);
+        root_sig->push_constants = NULL;
+    }
 
     if (root_sig->backend) {
         ID3D12RootSignature_Release((ID3D12RootSignature*) (root_sig->backend));
@@ -1697,40 +1727,40 @@ void dx12_update_descriptor_table(gfx_descriptor_table* descriptor_table, gfx_de
         const gfx_resource_view* res_view = entries[i].resource_view;
 
         // Note: maybe we can also combine location.set/binding to find the right offset position in the heap or use flattened out layout
-        // gfx_binding_location location = entries[i].location;
+        gfx_binding_location location = entries[i].location;
 
         switch (res_view->type) {
             case GFX_RESOURCE_TYPE_UNIFORM_BUFFER: {
                 D3D12_CONSTANT_BUFFER_VIEW_DESC cbv_desc = ((resource_view_backend*) (res_view->backend))->cbv_desc;
 
                 D3D12_CPU_DESCRIPTOR_HANDLE dst = cbv_srv_base;
-                dst.ptr += i * cbv_srv_stride;
+                dst.ptr += location.binding * cbv_srv_stride;
                 ID3D12Device10_CreateConstantBufferView(DXDevice, &cbv_desc, dst);
             } break;
             case GFX_RESOURCE_TYPE_STORAGE_BUFFER: {
                 D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc = ((resource_view_backend*) (res_view->backend))->uav_desc;
 
                 D3D12_CPU_DESCRIPTOR_HANDLE dst = cbv_srv_base;
-                dst.ptr += i * cbv_srv_stride;
+                dst.ptr += location.binding * cbv_srv_stride;
                 ID3D12Device10_CreateUnorderedAccessView(DXDevice, (ID3D12Resource*) res->ubo->backend, NULL, &uav_desc, dst);
             } break;
             case GFX_RESOURCE_TYPE_STORAGE_IMAGE: {
                 D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc = ((resource_view_backend*) (res_view->backend))->uav_desc;
 
                 D3D12_CPU_DESCRIPTOR_HANDLE dst = cbv_srv_base;
-                dst.ptr += i * cbv_srv_stride;
+                dst.ptr += location.binding * cbv_srv_stride;
                 ID3D12Device10_CreateUnorderedAccessView(DXDevice, (ID3D12Resource*) res->texture->backend, NULL, &uav_desc, dst);
             } break;
             case GFX_RESOURCE_TYPE_SAMPLER: {
                 D3D12_CPU_DESCRIPTOR_HANDLE dst = sampler_base;
-                dst.ptr += i * sampler_stride;
+                dst.ptr += location.binding * sampler_stride;
                 ID3D12Device10_CreateSampler(DXDevice, (D3D12_SAMPLER_DESC*) res->sampler->backend, dst);
             } break;
             case GFX_RESOURCE_TYPE_SAMPLED_IMAGE: {
                 D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc = ((resource_view_backend*) (res_view->backend))->srv_desc;
 
                 D3D12_CPU_DESCRIPTOR_HANDLE dst = cbv_srv_base;
-                dst.ptr += i * cbv_srv_stride;
+                dst.ptr += location.binding * cbv_srv_stride;
                 ID3D12Device10_CreateShaderResourceView(DXDevice, (ID3D12Resource*) res->texture->backend, &srv_desc, dst);
             } break;
             default:
@@ -1813,7 +1843,7 @@ gfx_resource dx12_create_sampler(gfx_sampler_create_info desc)
     samplerDesc.AddressU           = dx12_util_wrap_mode_translate(desc.wrap_mode);
     samplerDesc.AddressV           = dx12_util_wrap_mode_translate(desc.wrap_mode);
     samplerDesc.AddressW           = dx12_util_wrap_mode_translate(desc.wrap_mode);
-    samplerDesc.ComparisonFunc     = D3D12_COMPARISON_FUNC_ALWAYS;
+    samplerDesc.ComparisonFunc     = D3D12_COMPARISON_FUNC_NEVER;
     samplerDesc.MipLODBias         = 0.0f;
     samplerDesc.MaxAnisotropy      = (UINT) desc.max_anisotropy;
     samplerDesc.BorderColor[0]     = 1.0f;
@@ -1960,7 +1990,7 @@ gfx_resource_view dx12_create_texture_resource_view(const gfx_resource_view_crea
             srv_desc.Texture2D.PlaneSlice          = 0;
             srv_desc.Texture2D.ResourceMinLODClamp = 0.0f;
         } else {
-            assert(0 && "Unsupported SRV texture view type");
+            LOG_ERROR("Unsupported SRV texture view type");
         }
 
         backend->srv_desc = srv_desc;
@@ -1980,7 +2010,7 @@ gfx_resource_view dx12_create_texture_resource_view(const gfx_resource_view_crea
             rtv_desc.Texture2D.MipSlice   = desc.texture.base_mip;
             rtv_desc.Texture2D.PlaneSlice = 0;
         } else {
-            assert(0 && "Unsupported RTV texture view type");
+            LOG_ERROR("Unsupported RTV texture view type");
         }
 
         backend->rtv_desc = rtv_desc;
@@ -1998,7 +2028,7 @@ gfx_resource_view dx12_create_texture_resource_view(const gfx_resource_view_crea
             dsv_desc.ViewDimension      = D3D12_DSV_DIMENSION_TEXTURE2D;
             dsv_desc.Texture2D.MipSlice = desc.texture.base_mip;
         } else {
-            assert(0 && "Unsupported DSV texture view type");
+            LOG_ERROR("Unsupported DSV texture view type");
         }
 
         backend->dsv_desc = dsv_desc;
@@ -2417,10 +2447,13 @@ rhi_error_codes dx12_bind_compute_pipeline(const gfx_cmd_buf* cmd_buf, const gfx
     return Success;
 }
 
-rhi_error_codes dx12_device_bind_root_signature(const gfx_cmd_buf* cmd_buf, const gfx_root_signature* root_signature)
+rhi_error_codes dx12_device_bind_root_signature(const gfx_cmd_buf* cmd_buf, const gfx_root_signature* root_signature, gfx_pipeline_type pipeline_type)
 {
     ID3D12GraphicsCommandList* cmd_list = (ID3D12GraphicsCommandList*) (cmd_buf->backend);
-    ID3D12GraphicsCommandList_SetGraphicsRootSignature(cmd_list, (ID3D12RootSignature*) root_signature->backend);
+    if (pipeline_type == GFX_PIPELINE_TYPE_COMPUTE)
+        ID3D12GraphicsCommandList_SetComputeRootSignature(cmd_list, (ID3D12RootSignature*) root_signature->backend);
+    else
+        ID3D12GraphicsCommandList_SetGraphicsRootSignature(cmd_list, (ID3D12RootSignature*) root_signature->backend);
 
     return Success;
 }
@@ -2432,8 +2465,6 @@ rhi_error_codes dx12_bind_descriptor_table(const gfx_cmd_buf* cmd_buf, const gfx
     ID3D12DescriptorHeap* heaps[] = {
         descriptor_backend->cbv_uav_srv_heap,
         descriptor_backend->sampler_heap,
-        descriptor_backend->rtv_heap,
-        descriptor_backend->dsv_heap,
     };
 
     ID3D12GraphicsCommandList* cmd_list = (ID3D12GraphicsCommandList*) (cmd_buf->backend);
@@ -2441,21 +2472,27 @@ rhi_error_codes dx12_bind_descriptor_table(const gfx_cmd_buf* cmd_buf, const gfx
     // Bind heaps and GPU descriptor handles
     ID3D12GraphicsCommandList_SetDescriptorHeaps(cmd_list, descriptor_backend->heap_count, heaps);
 
-    D3D12_GPU_DESCRIPTOR_HANDLE cbv_srv_uav_base;
-    ID3D12DescriptorHeap_GetGPUDescriptorHandleForHeapStart(descriptor_backend->cbv_uav_srv_heap, &cbv_srv_uav_base);
-    D3D12_GPU_DESCRIPTOR_HANDLE sampler_base;
-    ID3D12DescriptorHeap_GetGPUDescriptorHandleForHeapStart(descriptor_backend->cbv_uav_srv_heap, &sampler_base);
+    D3D12_GPU_DESCRIPTOR_HANDLE cbv_srv_uav_base = {0};
+    if (descriptor_backend->cbv_uav_srv_heap)
+        ID3D12DescriptorHeap_GetGPUDescriptorHandleForHeapStart(descriptor_backend->cbv_uav_srv_heap, &cbv_srv_uav_base);
+    D3D12_GPU_DESCRIPTOR_HANDLE sampler_base = {0};
+    if (descriptor_backend->sampler_heap)
+        ID3D12DescriptorHeap_GetGPUDescriptorHandleForHeapStart(descriptor_backend->sampler_heap, &sampler_base);
 
     //--------------------------------------------------------------------
     // FIXME: This is a very fixed design assuming we have samplers at root param2 after CBV/SRV/UAV and only 2 root params but that's not the case
     // Bind to root parameter index == set index
     if (pipeline_type == GFX_PIPELINE_TYPE_GRAPHICS) {
-        ID3D12GraphicsCommandList_SetGraphicsRootDescriptorTable(cmd_list, 0, cbv_srv_uav_base);
-        ID3D12GraphicsCommandList_SetGraphicsRootDescriptorTable(cmd_list, 1, sampler_base);
+        if (descriptor_backend->cbv_uav_srv_heap)
+            ID3D12GraphicsCommandList_SetGraphicsRootDescriptorTable(cmd_list, 0, cbv_srv_uav_base);
+        if (descriptor_backend->sampler_heap)
+            ID3D12GraphicsCommandList_SetGraphicsRootDescriptorTable(cmd_list, 1, sampler_base);
 
     } else {
-        ID3D12GraphicsCommandList_SetComputeRootDescriptorTable(cmd_list, 0, cbv_srv_uav_base);
-        ID3D12GraphicsCommandList_SetComputeRootDescriptorTable(cmd_list, 1, sampler_base);
+        if (descriptor_backend->cbv_uav_srv_heap)
+            ID3D12GraphicsCommandList_SetComputeRootDescriptorTable(cmd_list, 0, cbv_srv_uav_base);
+        if (descriptor_backend->sampler_heap)
+            ID3D12GraphicsCommandList_SetComputeRootDescriptorTable(cmd_list, 1, sampler_base);
     }
     //--------------------------------------------------------------------
 

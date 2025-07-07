@@ -1643,6 +1643,29 @@ gfx_root_signature vulkan_device_create_root_signature(const gfx_descriptor_set_
     root_signature_backend* backend = malloc(sizeof(root_signature_backend));
     root_sig.backend                = backend;
 
+    if (set_layout_count > 0) {
+        root_sig.descriptor_layout_count = set_layout_count;
+        root_sig.descriptor_set_layouts  = malloc(sizeof(gfx_descriptor_set_layout) * set_layout_count);
+
+        for (uint32_t i = 0; i < set_layout_count; ++i) {
+            const gfx_descriptor_set_layout* src_layout = &set_layouts[i];
+            gfx_descriptor_set_layout*       dst_layout = &root_sig.descriptor_set_layouts[i];
+
+            dst_layout->binding_count = src_layout->binding_count;
+
+            if (src_layout->binding_count > 0) {
+                dst_layout->bindings = malloc(sizeof(gfx_descriptor_binding) * src_layout->binding_count);
+                memcpy(dst_layout->bindings, src_layout->bindings, sizeof(gfx_descriptor_binding) * src_layout->binding_count);
+            } else {
+                dst_layout->bindings = NULL;
+            }
+        }
+    }
+
+    root_sig.push_constants      = malloc(sizeof(gfx_push_constant_range) * push_constant_count);
+    root_sig.push_constant_count = push_constant_count;
+    memcpy(root_sig.push_constants, set_layouts, sizeof(gfx_push_constant_range) * push_constant_count);
+
     backend->vk_descriptor_set_layouts = malloc(sizeof(VkDescriptorSetLayout) * set_layout_count);
     for (uint32_t i = 0; i < set_layout_count; ++i) {
         const gfx_descriptor_set_layout* set_layout = &set_layouts[i];
@@ -1699,17 +1722,26 @@ gfx_root_signature vulkan_device_create_root_signature(const gfx_descriptor_set_
     VK_CHECK_RESULT(vkCreatePipelineLayout(VKDEVICE, &pipeline_layout_ci, NULL, &((root_signature_backend*) root_sig.backend)->pipeline_layout), "[Vulkan] cannot create pipeline layout");
     free(vk_push_constants);
 
-    root_sig.descriptor_set_layouts  = (gfx_descriptor_set_layout*) set_layouts;
-    root_sig.descriptor_layout_count = set_layout_count;
-    root_sig.push_constants          = (gfx_push_constant_range*) push_constants;
-    root_sig.push_constant_count     = push_constant_count;
-
     return root_sig;
 }
 
 void vulkan_device_destroy_root_signature(gfx_root_signature* root_sig)
 {
     uuid_destroy(&root_sig->uuid);
+
+    if (root_sig->descriptor_set_layouts) {
+        for (uint32_t i = 0; i < root_sig->descriptor_layout_count; ++i) {
+            if (root_sig->descriptor_set_layouts[i].bindings)
+                free(root_sig->descriptor_set_layouts[i].bindings);
+        }
+        free(root_sig->descriptor_set_layouts);
+    }
+
+    if (root_sig->push_constant_count > 0) {
+        free(root_sig->push_constants);
+        root_sig->push_constants = NULL;
+    }
+
     for (uint32_t i = 0; i < root_sig->descriptor_layout_count; i++) {
         vkDestroyDescriptorSetLayout(VKDEVICE, ((root_signature_backend*) (root_sig->backend))->vk_descriptor_set_layouts[i], NULL);
     }
@@ -2025,7 +2057,11 @@ void vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_tabl
     descriptor_table_backend* backend = (descriptor_table_backend*) (descriptor_table->backend);
     VkDescriptorSet*          sets    = backend->sets;
 
-    VkWriteDescriptorSet* writes = malloc(sizeof(VkWriteDescriptorSet) * num_entries);
+    VkWriteDescriptorSet*   writes       = malloc(sizeof(VkWriteDescriptorSet) * num_entries);
+    VkDescriptorBufferInfo* buffer_infos = malloc(sizeof(VkDescriptorBufferInfo) * num_entries);
+    VkDescriptorImageInfo*  image_infos  = malloc(sizeof(VkDescriptorImageInfo) * num_entries);
+
+    memset(writes, 0, sizeof(VkWriteDescriptorSet) * num_entries);
 
     for (uint32_t i = 0; i < num_entries; i++) {
         const gfx_resource*      res      = entries[i].resource;
@@ -2037,41 +2073,50 @@ void vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_tabl
             .dstBinding      = entries[i].location.binding,
             .dstArrayElement = 0,
             .descriptorType  = (VkDescriptorType) vulkan_util_descriptor_type_translate(res_view->type),
-            .descriptorCount = 1};
+            .descriptorCount = 1,
+        };
 
         switch (res_view->type) {
             case GFX_RESOURCE_TYPE_UNIFORM_BUFFER:
             case GFX_RESOURCE_TYPE_STORAGE_BUFFER: {
-                VkDescriptorBufferInfo buffer_info = {
+                buffer_infos[i] = (VkDescriptorBufferInfo){
                     .buffer = (VkBuffer) ((buffer_backend*) (res->ubo->backend))->buffer,
                     .offset = ((buffer_view_backend*) (res_view->backend))->offset,
-                    .range  = ((buffer_view_backend*) (res_view->backend))->range};
-                writes[i].pBufferInfo = &buffer_info;
+                    .range  = ((buffer_view_backend*) (res_view->backend))->range,
+                };
+                writes[i].pBufferInfo = &buffer_infos[i];
             } break;
             case GFX_RESOURCE_TYPE_SAMPLER: {
-                VkDescriptorImageInfo sampler_info = {
-                    .sampler = (VkSampler) ((sampler_backend*) (res->sampler->backend))->sampler};
-                writes[i].pImageInfo = &sampler_info;
+                image_infos[i] = (VkDescriptorImageInfo){
+                    .sampler = (VkSampler) ((sampler_backend*) (res->sampler->backend))->sampler,
+                };
+                writes[i].pImageInfo = &image_infos[i];
             } break;
             case GFX_RESOURCE_TYPE_STORAGE_IMAGE: {
-                VkDescriptorImageInfo storage_image_info = {
+                image_infos[i] = (VkDescriptorImageInfo){
                     .imageView   = (VkImageView) ((tex_resource_view_backend*) (res_view->backend))->view,
-                    .imageLayout = VK_IMAGE_LAYOUT_GENERAL};
-                writes[i].pImageInfo = &storage_image_info;
+                    .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+                };
+                writes[i].pImageInfo = &image_infos[i];
             } break;
             case GFX_RESOURCE_TYPE_SAMPLED_IMAGE: {
-                VkDescriptorImageInfo image_info = {
+                image_infos[i] = (VkDescriptorImageInfo){
                     .imageView   = (VkImageView) ((tex_resource_view_backend*) (res_view->backend))->view,
-                    .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
-                writes[i].pImageInfo = &image_info;
+                    .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                };
+                writes[i].pImageInfo = &image_infos[i];
             } break;
             default:
-                LOG_ERROR("[Vulkan] unknow resource type!");
+                LOG_ERROR("[Vulkan] Unknown resource type!");
                 break;
         }
     }
+
     vkUpdateDescriptorSets(VKDEVICE, num_entries, writes, 0, NULL);
+
     free(writes);
+    free(buffer_infos);
+    free(image_infos);
 }
 
 static uint32_t vulkan_internal_find_memory_type(VkPhysicalDevice physical_device, uint32_t type_filter, VkMemoryPropertyFlags properties)
@@ -2833,10 +2878,11 @@ rhi_error_codes vulkan_bind_compute_pipeline(const gfx_cmd_buf* cmd_buf, const g
     return Success;
 }
 
-rhi_error_codes vulkan_device_bind_root_signature(const gfx_cmd_buf* cmd_buf, const gfx_root_signature* root_signature)
+rhi_error_codes vulkan_device_bind_root_signature(const gfx_cmd_buf* cmd_buf, const gfx_root_signature* root_signature, gfx_pipeline_type pipeline_type)
 {
-    (void) cmd_buf;
-    (void) root_signature;
+    UNUSED(cmd_buf);
+    UNUSED(root_signature);
+    UNUSED(pipeline_type);
     return Success;
 }
 

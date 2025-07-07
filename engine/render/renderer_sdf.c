@@ -510,7 +510,9 @@ static void renderer_internal_scene_clear_pass(gfx_cmd_buf* cmd_buff)
     if (!scene)
         return;
 
-    g_rhi.clear_image(cmd_buff, &s_RendererSDFInternalState.sdfscene_resources.scene_texture);
+    UNUSED(cmd_buff);
+
+    //g_rhi.clear_image(cmd_buff, &s_RendererSDFInternalState.sdfscene_resources.scene_texture);
 
     // gfx_render_pass scene_clear_pass = {.is_compute_pass = true};
     // g_rhi.begin_render_pass(cmd_buff, scene_clear_pass, s_RendererSDFInternalState.gfxcontext.swapchain.current_backbuffer_idx);
@@ -532,12 +534,12 @@ static void renderer_internal_scene_draw_pass(gfx_cmd_buf* cmd_buff)
     if (!scene)
         return;
 
-    g_rhi.insert_image_layout_barrier(cmd_buff, &s_RendererSDFInternalState.sdfscene_resources.scene_texture, GFX_IMAGE_LAYOUT_GENERAL, GFX_IMAGE_LAYOUT_GENERAL);
+    //g_rhi.insert_image_layout_barrier(cmd_buff, &s_RendererSDFInternalState.sdfscene_resources.scene_texture, GFX_IMAGE_LAYOUT_GENERAL, GFX_IMAGE_LAYOUT_GENERAL);
 
     gfx_render_pass scene_draw_pass = {.is_compute_pass = true};
     g_rhi.begin_render_pass(cmd_buff, scene_draw_pass, s_RendererSDFInternalState.gfxcontext.swapchain.current_backbuffer_idx);
     {
-        g_rhi.bind_root_signature(cmd_buff, &s_RendererSDFInternalState.sdfscene_resources.root_sig);
+        g_rhi.bind_root_signature(cmd_buff, &s_RendererSDFInternalState.sdfscene_resources.root_sig, GFX_PIPELINE_TYPE_COMPUTE);
         g_rhi.bind_compute_pipeline(cmd_buff, &s_RendererSDFInternalState.sdfscene_resources.pipeline);
 
         g_rhi.bind_descriptor_table(cmd_buff, &s_RendererSDFInternalState.sdfscene_resources.table, GFX_PIPELINE_TYPE_COMPUTE);
@@ -581,7 +583,7 @@ static void renderer_internal_sdf_screen_quad_pass(gfx_cmd_buf* cmd_buff)
                .clear_color = clear_color}};
     g_rhi.begin_render_pass(cmd_buff, clear_screen_pass, s_RendererSDFInternalState.gfxcontext.swapchain.current_backbuffer_idx);
     {
-        g_rhi.bind_root_signature(cmd_buff, &s_RendererSDFInternalState.screen_quad_resources.root_sig);
+        g_rhi.bind_root_signature(cmd_buff, &s_RendererSDFInternalState.screen_quad_resources.root_sig, GFX_PIPELINE_TYPE_GRAPHICS);
         g_rhi.bind_gfx_pipeline(cmd_buff, &s_RendererSDFInternalState.screen_quad_resources.pipeline);
 
         g_rhi.set_viewport(cmd_buff, (gfx_viewport){.x = 0, .y = 0, .width = s_RendererSDFInternalState.width, .height = s_RendererSDFInternalState.height, .min_depth = 0, .max_depth = 1});
@@ -715,7 +717,7 @@ void renderer_sdf_draw_scene(const SDF_Scene* scene)
 
         {
 #if !TRIANGLE_TEST
-            // Pass_1: SDF Scene Texture clear
+            // Pass_0: SDF Scene Texture clear
             renderer_internal_scene_clear_pass(cmd_buff);
 
             // Pass_1: SDF CS rendering
