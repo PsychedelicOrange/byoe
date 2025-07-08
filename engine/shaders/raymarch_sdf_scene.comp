@@ -643,8 +643,6 @@ void main() {
     vec2 uv = vec2(gl_GlobalInvocationID.xy) / vec2(pc_data.resolution);
     // convert UV to -1, +1 NDC
     vec2 ndcPos = ((uv * 2.0f) - 1.0f) * vec2(1, -1);
-    imageStore(outColorRenderTarget, ivec2(gl_GlobalInvocationID.xy), vec4(ndcPos, 1.0f, 1.0f));
-    return;
     vec4 nearp = inverse(pc_data.view_proj) * vec4(ndcPos, -1.0, 1.0); 
     vec4 farp = inverse(pc_data.view_proj) * vec4(ndcPos, 1.0, 1.0);  
     

@@ -217,12 +217,14 @@ typedef struct shader_backend
     } modules;
 } shader_backend;
 
+typedef struct descriptor_heap_backend
+{
+    VkDescriptorPool pool;
+} descriptor_heap_backend;
+
 typedef struct descriptor_table_backend
 {
-    VkPipelineLayout pipeline_layout_ref_handle;
-    VkDescriptorPool pool;
-    VkDescriptorSet* sets;
-    uint32_t         num_sets;
+    VkDescriptorSet set;
 } descriptor_table_backend;
 
 typedef struct texture_backend
@@ -1636,7 +1638,7 @@ void vulkan_device_destroy_vs_ps_shader(gfx_shader* shader)
     free(backend_ps);
 }
 
-gfx_root_signature vulkan_device_create_root_signature(const gfx_descriptor_set_layout* set_layouts, uint32_t set_layout_count, const gfx_push_constant_range* push_constants, uint32_t push_constant_count)
+gfx_root_signature vulkan_device_create_root_signature(const gfx_descriptor_table_layout* set_layouts, uint32_t set_layout_count, const gfx_root_constant_range* push_constants, uint32_t push_constant_count)
 {
     gfx_root_signature root_sig = {0};
     uuid_generate(&root_sig.uuid);
@@ -1645,11 +1647,11 @@ gfx_root_signature vulkan_device_create_root_signature(const gfx_descriptor_set_
 
     if (set_layout_count > 0) {
         root_sig.descriptor_layout_count = set_layout_count;
-        root_sig.descriptor_set_layouts  = malloc(sizeof(gfx_descriptor_set_layout) * set_layout_count);
+        root_sig.descriptor_set_layouts  = malloc(sizeof(gfx_descriptor_table_layout) * set_layout_count);
 
         for (uint32_t i = 0; i < set_layout_count; ++i) {
-            const gfx_descriptor_set_layout* src_layout = &set_layouts[i];
-            gfx_descriptor_set_layout*       dst_layout = &root_sig.descriptor_set_layouts[i];
+            const gfx_descriptor_table_layout* src_layout = &set_layouts[i];
+            gfx_descriptor_table_layout*       dst_layout = &root_sig.descriptor_set_layouts[i];
 
             dst_layout->binding_count = src_layout->binding_count;
 
@@ -1662,13 +1664,13 @@ gfx_root_signature vulkan_device_create_root_signature(const gfx_descriptor_set_
         }
     }
 
-    root_sig.push_constants      = malloc(sizeof(gfx_push_constant_range) * push_constant_count);
+    root_sig.push_constants      = malloc(sizeof(gfx_root_constant_range) * push_constant_count);
     root_sig.push_constant_count = push_constant_count;
-    memcpy(root_sig.push_constants, set_layouts, sizeof(gfx_push_constant_range) * push_constant_count);
+    memcpy(root_sig.push_constants, set_layouts, sizeof(gfx_root_constant_range) * push_constant_count);
 
     backend->vk_descriptor_set_layouts = malloc(sizeof(VkDescriptorSetLayout) * set_layout_count);
     for (uint32_t i = 0; i < set_layout_count; ++i) {
-        const gfx_descriptor_set_layout* set_layout = &set_layouts[i];
+        const gfx_descriptor_table_layout* set_layout = &set_layouts[i];
 
         VkDescriptorSetLayoutBinding* vk_bindings = malloc(sizeof(VkDescriptorSetLayoutBinding) * set_layout->binding_count);
 
@@ -1700,7 +1702,7 @@ gfx_root_signature vulkan_device_create_root_signature(const gfx_descriptor_set_
         vk_push_constants = malloc(sizeof(VkPushConstantRange) * push_constant_count);
 
         for (uint32_t i = 0; i < push_constant_count; ++i) {
-            const gfx_push_constant_range push_constant = push_constants[i];
+            const gfx_root_constant_range push_constant = push_constants[i];
             vk_push_constants[i]                        = (VkPushConstantRange){
                                        .offset     = push_constant.offset,
                                        .size       = push_constant.size,
@@ -2894,7 +2896,7 @@ rhi_error_codes vulkan_device_bind_descriptor_table(const gfx_cmd_buf* cmd_buf, 
     return Success;
 }
 
-rhi_error_codes vulkan_device_bind_push_constant(const gfx_cmd_buf* cmd_buf, gfx_root_signature* root_sig, gfx_push_constant push_constant)
+rhi_error_codes vulkan_device_bind_push_constant(const gfx_cmd_buf* cmd_buf, gfx_root_signature* root_sig, gfx_root_constant push_constant)
 {
     VkCommandBuffer         commandBuffer     = *(VkCommandBuffer*) cmd_buf->backend;
     root_signature_backend* rootS_sig_backend = root_sig->backend;

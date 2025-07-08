@@ -708,27 +708,26 @@ typedef struct gfx_descriptor_binding
     gfx_shader_stage     stage_flags;
 } gfx_descriptor_binding;
 
-typedef struct gfx_descriptor_set_layout
+typedef struct gfx_descriptor_table_layout
 {
     gfx_descriptor_binding* bindings;
     uint32_t                binding_count;
-} gfx_descriptor_set_layout;
+} gfx_descriptor_table_layout;
 
-typedef struct gfx_push_constant
+// These 2 structs are used to define root constants in the root signature and bind during runtime
+typedef struct gfx_root_constant_range
 {
     uint32_t         size;
     uint32_t         offset;
     gfx_shader_stage stage;
-    uint32_t         _pad0;
-    void*            data;
-} gfx_push_constant;
+    uint32_t         location;    // Relevant in DX12
+} gfx_root_constant_range;
 
-typedef struct gfx_push_constant_range
+typedef struct gfx_root_constant
 {
-    uint32_t         size;
-    uint32_t         offset;
-    gfx_shader_stage stage;
-} gfx_push_constant_range;
+    gfx_root_constant_range range;
+    void*                   data;
+} gfx_root_constant;
 
 typedef struct gfx_descriptor_table
 {
@@ -745,14 +744,21 @@ typedef struct gfx_descriptor_table_entry
     gfx_binding_location     location;
 } gfx_descriptor_table_entry;
 
+typedef struct gfx_descriptor_heap
+{
+    random_uuid_t     uuid;
+    void*             backend;
+    gfx_resource_type res_alloc_type;    // The kind of resources that this heap allocates
+} gfx_descriptor_heap;
+
 typedef struct gfx_root_signature
 {
-    random_uuid_t              uuid;
-    gfx_descriptor_set_layout* descriptor_set_layouts;
-    gfx_push_constant_range*   push_constants;
-    uint32_t                   descriptor_layout_count;
-    uint32_t                   push_constant_count;
-    void*                      backend;
+    random_uuid_t                uuid;
+    gfx_descriptor_table_layout* descriptor_set_layouts;    // each table corresponds to a register space
+    gfx_root_constant_range*     push_constants;
+    uint32_t                     descriptor_layout_count;
+    uint32_t                     push_constant_count;
+    void*                        backend;
 } gfx_root_signature;
 
 typedef struct gfx_pipeline_create_info

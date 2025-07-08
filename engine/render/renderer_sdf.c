@@ -154,7 +154,7 @@ static void renderer_internal_create_root_sigs(void)
             .stage_flags = GFX_SHADER_STAGE_CS,
         };
 
-        gfx_descriptor_set_layout set_layout_0 = {
+        gfx_descriptor_table_layout set_layout_0 = {
             .bindings      = &tex_binding,
             .binding_count = 1,
         };
@@ -187,12 +187,12 @@ static void renderer_internal_create_root_sigs(void)
 
         gfx_descriptor_binding sdf_bindings[] = {sdf_scene_tex_binding, sdf_scene_ubo_binding};
 
-        gfx_descriptor_set_layout set_layout_0 = {
+        gfx_descriptor_table_layout set_layout_0 = {
             .bindings      = sdf_bindings,
             .binding_count = ARRAY_SIZE(sdf_bindings),
         };
 
-        gfx_push_constant_range pc_range = {
+        gfx_root_constant_range pc_range = {
             .size   = sizeof(SDFPushConstant),
             .offset = 0,
             .stage  = GFX_SHADER_STAGE_CS};
@@ -223,17 +223,17 @@ static void renderer_internal_create_root_sigs(void)
             .stage_flags = GFX_SHADER_STAGE_PS,
         };
 
-        gfx_descriptor_set_layout screen_set_layout_0 = {
+        gfx_descriptor_table_layout screen_set_layout_0 = {
             .bindings      = &screen_tex_binding,
             .binding_count = 1,
         };
 
-        gfx_descriptor_set_layout screen_set_layout_1 = {
+        gfx_descriptor_table_layout screen_set_layout_1 = {
             .bindings      = &screen_sampler_binding,
             .binding_count = 1,
         };
 
-        gfx_descriptor_set_layout screen_set_layouts[] = {screen_set_layout_0, screen_set_layout_1};
+        gfx_descriptor_table_layout screen_set_layouts[] = {screen_set_layout_0, screen_set_layout_1};
 
         s_RendererSDFInternalState.screen_quad_resources.root_sig = g_rhi.create_root_signature(screen_set_layouts, 2, NULL, 0);
     }
@@ -559,7 +559,7 @@ static void renderer_internal_scene_draw_pass(gfx_cmd_buf* cmd_buff)
             if (scene->nodes[i].is_ref_node) continue;
 
             s_RendererSDFInternalState.sdfscene_resources.pc_data.curr_draw_node_idx = i;
-            gfx_push_constant pc                                                     = {.stage = GFX_SHADER_STAGE_CS, .size = sizeof(SDFPushConstant), .offset = 0, .data = &s_RendererSDFInternalState.sdfscene_resources.pc_data};
+            gfx_root_constant pc                                                     = {.stage = GFX_SHADER_STAGE_CS, .size = sizeof(SDFPushConstant), .offset = 0, .data = &s_RendererSDFInternalState.sdfscene_resources.pc_data};
             g_rhi.bind_push_constant(cmd_buff, &s_RendererSDFInternalState.sdfscene_resources.root_sig, pc);
 
             g_rhi.dispatch(cmd_buff, (s_RendererSDFInternalState.width + DISPATCH_LOCAL_DIM) / DISPATCH_LOCAL_DIM, (s_RendererSDFInternalState.height + DISPATCH_LOCAL_DIM) / DISPATCH_LOCAL_DIM, 1);

@@ -171,6 +171,7 @@ const rhi_jumptable dx12_jumptable = {
     #define SHADER_BINARY_EXT          "cso"
     #define DX_SWAPCHAIN_FORMAT        DXGI_FORMAT_B8G8R8A8_UNORM
     #define DX12_DESCRIPTOR_SIZE(type) s_DXCtx.device->lpVtbl->GetDescriptorHandleIncrementSize(s_DXCtx.device, type)
+    #define MAX_BINDINGS_PER_SPACE     32
 
 //--------------------------------------------------------
 // Internal Types
@@ -263,14 +264,21 @@ typedef struct resource_view_backend
     };
 } resource_view_backend;
 
-// TODO: Make this a global ring buffer like descriptor allocator
+typedef struct descriptor_heap_backend
+{
+    union
+    {
+        ID3D12DescriptorHeap* cbv_uav_srv_heap;
+        ID3D12DescriptorHeap* sampler_heap;
+        ID3D12DescriptorHeap* rtv_heap;
+        ID3D12DescriptorHeap* dsv_heap;
+    };
+} descriptor_heap_backend;
+
 typedef struct descriptor_table_backend
 {
-    ID3D12DescriptorHeap* cbv_uav_srv_heap;
-    ID3D12DescriptorHeap* sampler_heap;
-    ID3D12DescriptorHeap* rtv_heap;
-    ID3D12DescriptorHeap* dsv_heap;
-    uint32_t              heap_count;
+    D3D12_CPU_DESCRIPTOR_HANDLE cpu_base;
+    D3D12_GPU_DESCRIPTOR_HANDLE gpu_base;
 } descriptor_table_backend;
 
 //--------------------------------------------------------
@@ -1257,18 +1265,18 @@ void dx12_destroy_vs_ps_shader(gfx_shader* shader)
     }
 }
 
-gfx_root_signature dx12_create_root_signature(const gfx_descriptor_set_layout* set_layouts, uint32_t set_layout_count, const gfx_push_constant_range* push_constants, uint32_t push_constant_count)
+gfx_root_signature dx12_create_root_signature(const gfx_descriptor_table_layout* set_layouts, uint32_t set_layout_count, const gfx_root_constant_range* push_constants, uint32_t push_constant_count)
 {
     gfx_root_signature root_sig = {0};
     uuid_generate(&root_sig.uuid);
 
     if (set_layout_count > 0) {
         root_sig.descriptor_layout_count = set_layout_count;
-        root_sig.descriptor_set_layouts  = malloc(sizeof(gfx_descriptor_set_layout) * set_layout_count);
+        root_sig.descriptor_set_layouts  = malloc(sizeof(gfx_descriptor_table_layout) * set_layout_count);
 
         for (uint32_t i = 0; i < set_layout_count; ++i) {
-            const gfx_descriptor_set_layout* src_layout = &set_layouts[i];
-            gfx_descriptor_set_layout*       dst_layout = &root_sig.descriptor_set_layouts[i];
+            const gfx_descriptor_table_layout* src_layout = &set_layouts[i];
+            gfx_descriptor_table_layout*       dst_layout = &root_sig.descriptor_set_layouts[i];
 
             dst_layout->binding_count = src_layout->binding_count;
 
@@ -1283,8 +1291,8 @@ gfx_root_signature dx12_create_root_signature(const gfx_descriptor_set_layout* s
 
     if (push_constant_count > 0) {
         root_sig.push_constant_count = push_constant_count;
-        root_sig.push_constants      = malloc(sizeof(gfx_push_constant_range) * push_constant_count);
-        memcpy(root_sig.push_constants, push_constants, sizeof(gfx_push_constant_range) * push_constant_count);
+        root_sig.push_constants      = malloc(sizeof(gfx_root_constant_range) * push_constant_count);
+        memcpy(root_sig.push_constants, push_constants, sizeof(gfx_root_constant_range) * push_constant_count);
     }
 
     D3D12_ROOT_SIGNATURE_DESC desc                                           = {0};
@@ -1295,7 +1303,7 @@ gfx_root_signature dx12_create_root_signature(const gfx_descriptor_set_layout* s
 
     // Each set is a table entry
     for (uint32_t i = 0; i < set_layout_count; ++i) {
-        const gfx_descriptor_set_layout* set_layout = &set_layouts[i];
+        const gfx_descriptor_table_layout* set_layout = &set_layouts[i];
 
         D3D12_ROOT_DESCRIPTOR_TABLE table_entry = {0};
 
@@ -1320,7 +1328,7 @@ gfx_root_signature dx12_create_root_signature(const gfx_descriptor_set_layout* s
     desc.pParameters = root_params;
 
     for (uint32_t i = 0; i < push_constant_count; ++i) {
-        const gfx_push_constant_range pc    = push_constants[i];
+        const gfx_root_constant_range pc    = push_constants[i];
         D3D12_ROOT_PARAMETER*         param = &root_params[set_layout_count + i];
 
         param->ParameterType            = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
@@ -1572,7 +1580,7 @@ gfx_descriptor_table dx12_create_descriptor_table(const gfx_root_signature* root
     // Count descriptors per set and accumulate them, we create heaps with max sets
     // TODO: If this is taking too much time, use global heaps or ring buffer
     for (uint32_t set = 0; set < root_signature->descriptor_layout_count; ++set) {
-        const gfx_descriptor_set_layout* set_layout = &root_signature->descriptor_set_layouts[set];
+        const gfx_descriptor_table_layout* set_layout = &root_signature->descriptor_set_layouts[set];
 
         for (uint32_t i = 0; i < set_layout->binding_count; ++i) {
             const gfx_descriptor_binding* binding = &set_layout->bindings[i];
@@ -1727,7 +1735,8 @@ void dx12_update_descriptor_table(gfx_descriptor_table* descriptor_table, gfx_de
         const gfx_resource_view* res_view = entries[i].resource_view;
 
         // Note: maybe we can also combine location.set/binding to find the right offset position in the heap or use flattened out layout
-        gfx_binding_location location = entries[i].location;
+        gfx_binding_location location           = entries[i].location;
+        uint32_t             flat_binding_index = location.binding + (location.set * MAX_BINDINGS_PER_SPACE);
 
         switch (res_view->type) {
             case GFX_RESOURCE_TYPE_UNIFORM_BUFFER: {
@@ -2499,7 +2508,7 @@ rhi_error_codes dx12_bind_descriptor_table(const gfx_cmd_buf* cmd_buf, const gfx
     return Success;
 }
 
-rhi_error_codes dx12_bind_push_constant(const gfx_cmd_buf* cmd_buf, const gfx_root_signature* root_sig, gfx_push_constant push_constant)
+rhi_error_codes dx12_bind_push_constant(const gfx_cmd_buf* cmd_buf, const gfx_root_signature* root_sig, gfx_root_constant push_constant)
 {
     ID3D12GraphicsCommandList* cmd_list = (ID3D12GraphicsCommandList*) cmd_buf->backend;
 
