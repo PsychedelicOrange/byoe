@@ -79,6 +79,8 @@ typedef struct rhi_jumptablefrontend
     void                (*destroy_descriptor_heap)(gfx_descriptor_heap*);
 
     gfx_descriptor_table (*build_descriptor_table)(gfx_descriptor_heap*, gfx_descriptor_table_entry*, uint32_t);
+    // TODO: To destroy vkDescriptorSets, not useful for DX12 destroying heaps will take care of it
+    void (*release_descriptor_table)(gfx_descriptor_table*);
 
     gfx_resource (*create_texture_resource)(gfx_texture_create_info);
     void         (*destroy_texture_resource)(gfx_resource*);

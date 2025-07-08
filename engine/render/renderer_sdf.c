@@ -487,18 +487,18 @@ static void renderer_internal_destroy_sdf_pass_resources(void)
 
 #if !TRIANGLE_TEST
     g_rhi.destroy_texture_resource_view(&s_RendererSDFInternalState.clear_tex_resources.shader_read_view);
-    g_rhi.destroy_descriptor_table(&s_RendererSDFInternalState.clear_tex_resources.table);
+    g_rhi.destroy_descriptor_heap(&s_RendererSDFInternalState.clear_tex_resources.table);
 
     g_rhi.destroy_texture_resource(&s_RendererSDFInternalState.sdfscene_resources.scene_texture);
     g_rhi.destroy_texture_resource_view(&s_RendererSDFInternalState.sdfscene_resources.scene_cs_write_view);
-    g_rhi.destroy_descriptor_table(&s_RendererSDFInternalState.sdfscene_resources.table);
+    g_rhi.destroy_descriptor_heap(&s_RendererSDFInternalState.sdfscene_resources.table);
     g_rhi.destroy_uniform_buffer_resource(&s_RendererSDFInternalState.sdfscene_resources.scene_nodes_uniform_buffer);
     g_rhi.destroy_uniform_buffer_resource_view(&s_RendererSDFInternalState.sdfscene_resources.scene_nodes_ubo_view);
 
     g_rhi.destroy_texture_resource_view(&s_RendererSDFInternalState.screen_quad_resources.shader_read_view);
     g_rhi.destroy_sampler_resource_view(&s_RendererSDFInternalState.screen_quad_resources.sampler_view);
     g_rhi.destroy_sampler(&s_RendererSDFInternalState.screen_quad_resources.scene_tex_sampler);
-    g_rhi.destroy_descriptor_table(&s_RendererSDFInternalState.screen_quad_resources.table);
+    g_rhi.destroy_descriptor_heap(&s_RendererSDFInternalState.screen_quad_resources.table);
 #endif
 }
 
@@ -542,7 +542,8 @@ static void renderer_internal_scene_draw_pass(gfx_cmd_buf* cmd_buff)
         g_rhi.bind_root_signature(cmd_buff, &s_RendererSDFInternalState.sdfscene_resources.root_sig, GFX_PIPELINE_TYPE_COMPUTE);
         g_rhi.bind_compute_pipeline(cmd_buff, &s_RendererSDFInternalState.sdfscene_resources.pipeline);
 
-        g_rhi.bind_descriptor_table(cmd_buff, &s_RendererSDFInternalState.sdfscene_resources.table, GFX_PIPELINE_TYPE_COMPUTE);
+        g_rhi.bind_descriptor_heaps(cmd_buff, &heap, 1);
+        g_rhi.bind_descriptor_tables(cmd_buff, &s_RendererSDFInternalState.sdfscene_resources.table, GFX_PIPELINE_TYPE_COMPUTE);
 
         const Camera camera     = gamestate_get_global_instance()->camera;
         mat4s        projection = glms_perspective(camera.fov, (float) s_RendererSDFInternalState.width / (float) s_RendererSDFInternalState.height, camera.near_plane, camera.far_plane);
@@ -559,8 +560,14 @@ static void renderer_internal_scene_draw_pass(gfx_cmd_buf* cmd_buff)
             if (scene->nodes[i].is_ref_node) continue;
 
             s_RendererSDFInternalState.sdfscene_resources.pc_data.curr_draw_node_idx = i;
-            gfx_root_constant pc                                                     = {.stage = GFX_SHADER_STAGE_CS, .size = sizeof(SDFPushConstant), .offset = 0, .data = &s_RendererSDFInternalState.sdfscene_resources.pc_data};
-            g_rhi.bind_push_constant(cmd_buff, &s_RendererSDFInternalState.sdfscene_resources.root_sig, pc);
+            gfx_root_constant pc =
+                {(gfx_root_constant_range){
+                     .stage  = GFX_SHADER_STAGE_CS,
+                     .size   = sizeof(SDFPushConstant),
+                     .offset = 0,
+                 },
+                    .data = &s_RendererSDFInternalState.sdfscene_resources.pc_data};
+            g_rhi.bind_root_constant(cmd_buff, &s_RendererSDFInternalState.sdfscene_resources.root_sig, pc);
 
             g_rhi.dispatch(cmd_buff, (s_RendererSDFInternalState.width + DISPATCH_LOCAL_DIM) / DISPATCH_LOCAL_DIM, (s_RendererSDFInternalState.height + DISPATCH_LOCAL_DIM) / DISPATCH_LOCAL_DIM, 1);
         }
