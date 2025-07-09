@@ -189,7 +189,6 @@ typedef struct cmd_pool_backend
     VkCommandPool pool;
 } cmd_pool_backend;
 
-//---------------------------------
 typedef struct tex_resource_view_backend
 {
     VkImageView view;
@@ -251,7 +250,7 @@ typedef struct sampler_backend
 } sampler_backend;
 
 //-------------------------
-// TODO: Combing these 2 structs
+// TODO: Combine these 2 structs
 typedef struct queue_indices
 {
     uint32_t gfx;
@@ -279,7 +278,7 @@ typedef struct device_create_info_ex
     TypedGrowableArray queue_cis;
 } device_create_info_ex;
 
-//---------------------------------
+
 typedef struct context_backend
 {
     GLFWwindow*                      hwnd;

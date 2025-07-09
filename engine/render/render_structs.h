@@ -851,14 +851,14 @@ typedef struct gfx_context
         struct
         {
             gfx_syncobj    timeline_syncobj;
-            gfx_sync_point frame_syncpoint[MAX_FRAMES_INFLIGHT];    // last timeline value signaled
+            gfx_sync_point frame_syncpoint[MAX_FRAMES_INFLIGHT];    // last timeline value signaled for the given frame
             gfx_sync_point global_syncpoint;
             uint32_t       _pad[8];
         };
     } frame_sync;
     // NOTE: Add all the command buffers you want here...Draw, Async etc.
     // 1 per thread, only single threaded for now
-    // IN DX12 we need one per frame to reset memory when we are done with a command buffer recording and need to reset
+    // In DX12 we need one per frame to reset memory when we are done with a command buffer recording and need to reset
     // If we use a single pool, DX12 would never be able to re-use memory that was used by the command buffer even if
     // we reset it, so vulkan should also suffer this wrath of multiple pools per frame in flight
     gfx_cmd_pool draw_cmds_pool[MAX_FRAMES_INFLIGHT];

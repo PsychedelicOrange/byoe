@@ -47,9 +47,11 @@ void               dx12_destroy_root_signature(gfx_root_signature* root_sig);
 gfx_pipeline dx12_create_pipeline(gfx_pipeline_create_info info);
 void         dx12_destroy_pipeline(gfx_pipeline* pipeline);
 
-gfx_descriptor_table dx12_create_descriptor_table(const gfx_root_signature* root_signature);
-void                 dx12_destroy_descriptor_table(gfx_descriptor_table* descriptor_table);
-void                 dx12_update_descriptor_table(gfx_descriptor_table* descriptor_table, gfx_descriptor_table_entry* entries, uint32_t num_entries);
+gfx_descriptor_heap dx12_create_descriptor_heap(gfx_resource_type res_type, uint32_t num_descriptors);
+void                dx12_destroy_descriptor_heap(gfx_descriptor_heap* heap);
+
+gfx_descriptor_table dx12_create_descriptor_table(gfx_descriptor_heap* heap, gfx_descriptor_table_entry* entries, uint32_t num_entries);
+void                 dx12_destroy_descriptor_tables(gfx_descriptor_table* tables, uint32_t num_tables);
 
 gfx_resource dx12_create_texture_resource(gfx_texture_create_info desc);
 void         dx12_destroy_texture_resource(gfx_resource* resource);
@@ -100,7 +102,8 @@ rhi_error_codes dx12_set_scissor(const gfx_cmd_buf* cmd_buf, gfx_scissor scissor
 rhi_error_codes dx12_bind_gfx_pipeline(const gfx_cmd_buf* cmd_buf, const gfx_pipeline* pipeline);
 rhi_error_codes dx12_bind_compute_pipeline(const gfx_cmd_buf* cmd_buf, const gfx_pipeline* pipeline);
 rhi_error_codes dx12_device_bind_root_signature(const gfx_cmd_buf* cmd_buf, const gfx_root_signature* root_signature, gfx_pipeline_type pipeline_type);
-rhi_error_codes dx12_bind_descriptor_table(const gfx_cmd_buf* cmd_buf, const gfx_descriptor_table* descriptor_table, gfx_pipeline_type pipeline_type);
+rhi_error_codes dx12_bind_descriptor_heaps(const gfx_cmd_buf* cmd_buf, const gfx_descriptor_heap* heaps, uint32_t num_heaps);
+rhi_error_codes dx12_bind_descriptor_tables(const gfx_cmd_buf* cmd_buf, const gfx_descriptor_table* tables, uint32_t num_tables, gfx_pipeline_type pipeline_type);
 rhi_error_codes dx12_bind_push_constant(const gfx_cmd_buf* cmd_buf, const gfx_root_signature* root_sig, gfx_root_constant push_constant);
 
 rhi_error_codes dx12_draw(const gfx_cmd_buf* cmd_buf, uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance);
