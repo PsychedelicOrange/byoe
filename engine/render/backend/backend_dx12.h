@@ -103,7 +103,7 @@ rhi_error_codes dx12_bind_compute_pipeline(const gfx_cmd_buf* cmd_buf, const gfx
 rhi_error_codes dx12_device_bind_root_signature(const gfx_cmd_buf* cmd_buf, const gfx_root_signature* root_signature, gfx_pipeline_type pipeline_type);
 rhi_error_codes dx12_bind_descriptor_heaps(const gfx_cmd_buf* cmd_buf, const gfx_descriptor_heap* heaps, uint32_t num_heaps);
 rhi_error_codes dx12_bind_descriptor_tables(const gfx_cmd_buf* cmd_buf, const gfx_descriptor_table* tables, uint32_t num_tables, gfx_pipeline_type pipeline_type);
-rhi_error_codes dx12_bind_push_constant(const gfx_cmd_buf* cmd_buf, const gfx_root_signature* root_sig, gfx_root_constant push_constant);
+rhi_error_codes dx12_bind_root_constant(const gfx_cmd_buf* cmd_buf, const gfx_root_signature* root_sig, gfx_root_constant push_constant);
 
 rhi_error_codes dx12_draw(const gfx_cmd_buf* cmd_buf, uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance);
 rhi_error_codes dx12_dispatch(const gfx_cmd_buf* cmd_buf, uint32_t dimX, uint32_t dimY, uint32_t dimZ);

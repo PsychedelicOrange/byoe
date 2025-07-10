@@ -144,7 +144,7 @@ const rhi_jumptable dx12_jumptable = {
     dx12_device_bind_root_signature,
     dx12_bind_descriptor_heaps,
     dx12_bind_descriptor_tables,
-    dx12_bind_push_constant,
+    dx12_bind_root_constant,
     dx12_draw,
     dx12_dispatch,
     dx12_transition_image_layout,
@@ -1701,6 +1701,8 @@ gfx_descriptor_table dx12_build_descriptor_table(gfx_descriptor_heap* heap, gfx_
     // Store the new heap start for new tables
     heap_backend->cpu_curr_offset.ptr += (size_t) num_entries * heap_backend->descriptor_size;
     heap_backend->gpu_curr_offset.ptr += (size_t) num_entries * heap_backend->descriptor_size;
+
+    return table;
 }
 
 gfx_resource dx12_create_texture_resource(gfx_texture_create_info desc)
@@ -2393,17 +2395,34 @@ rhi_error_codes dx12_device_bind_root_signature(const gfx_cmd_buf* cmd_buf, cons
 
 rhi_error_codes dx12_bind_descriptor_heaps(const gfx_cmd_buf* cmd_buf, const gfx_descriptor_heap* heaps, uint32_t num_heaps)
 {
+    ID3D12GraphicsCommandList* cmd_list = (ID3D12GraphicsCommandList*) (cmd_buf->backend);
+    for (uint32_t i = 0; i < num_heaps; i++)
+        ID3D12GraphicsCommandList_SetDescriptorHeaps(cmd_list, 1, &((descriptor_heap_backend*) (heaps[i].backend))->heap);
+
+    return Success;
 }
 
 rhi_error_codes dx12_bind_descriptor_tables(const gfx_cmd_buf* cmd_buf, const gfx_descriptor_table* tables, uint32_t num_tables, gfx_pipeline_type pipeline_type)
 {
+    ID3D12GraphicsCommandList* cmd_list = (ID3D12GraphicsCommandList*) (cmd_buf->backend);
+
+    // We hope and enforce to bind tables in the order of monotonically increasing register spaces
+    for (uint32_t i = 0; i < num_tables; i++) {
+        if (pipeline_type == GFX_PIPELINE_TYPE_GRAPHICS) {
+            ID3D12GraphicsCommandList_SetGraphicsRootDescriptorTable(cmd_list, i, ((descriptor_table_backend*) (tables[i].backend))->gpu_base);
+        } else {
+            ID3D12GraphicsCommandList_SetComputeRootDescriptorTable(cmd_list, i, ((descriptor_table_backend*) (tables[i].backend))->gpu_base);
+        }
+    }
+
+    return Success;
 }
 
-rhi_error_codes dx12_bind_push_constant(const gfx_cmd_buf* cmd_buf, const gfx_root_signature* root_sig, gfx_root_constant push_constant)
+rhi_error_codes dx12_bind_root_constant(const gfx_cmd_buf* cmd_buf, const gfx_root_signature* root_sig, gfx_root_constant push_constant)
 {
     ID3D12GraphicsCommandList* cmd_list = (ID3D12GraphicsCommandList*) cmd_buf->backend;
 
-    // STart off after the descriptor tables, just one per shader so we are good to go this way
+    // Start off after the descriptor tables, just one per shader so we are good to go this way
     uint32_t root_param_index = root_sig->descriptor_layout_count;
 
     uint32_t num_values = push_constant.range.size / sizeof(uint32_t);
