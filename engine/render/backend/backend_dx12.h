@@ -50,7 +50,7 @@ void         dx12_destroy_pipeline(gfx_pipeline* pipeline);
 gfx_descriptor_heap dx12_create_descriptor_heap(gfx_resource_type res_type, uint32_t num_descriptors);
 void                dx12_destroy_descriptor_heap(gfx_descriptor_heap* heap);
 
-gfx_descriptor_table dx12_build_descriptor_table(gfx_descriptor_heap* heap, gfx_descriptor_table_entry* entries, uint32_t num_entries);
+gfx_descriptor_table dx12_build_descriptor_table(const gfx_root_signature* root_sig, gfx_descriptor_heap* heap, gfx_descriptor_table_entry* entries, uint32_t num_entries);
 
 gfx_resource dx12_create_texture_resource(gfx_texture_create_info desc);
 void         dx12_destroy_texture_resource(gfx_resource* resource);

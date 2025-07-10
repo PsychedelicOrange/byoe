@@ -45,9 +45,9 @@ const rhi_jumptable vulkan_jumptable = {
     vulkan_device_create_pipeline,
     vulkan_device_destroy_pipeline,
 
-    vulkan_device_create_descriptor_table,
-    vulkan_device_destroy_descriptor_table,
-    vulkan_device_update_descriptor_table,
+    vulkan_device_create_descriptor_heap,
+    vulkan_device_destroy_descriptor_heap,
+    vulkan_device_build_descriptor_table,
 
     vulkan_device_create_texture_resource,
     vulkan_device_destroy_texture_resource,
@@ -97,7 +97,8 @@ const rhi_jumptable vulkan_jumptable = {
     vulkan_bind_gfx_pipeline,
     vulkan_bind_compute_pipeline,
     vulkan_device_bind_root_signature,
-    vulkan_device_bind_descriptor_table,
+    vulkan_device_bind_descriptor_heaps,
+    vulkan_device_bind_descriptor_tables,
     vulkan_device_bind_push_constant,
 
     vulkan_draw,
@@ -223,7 +224,8 @@ typedef struct descriptor_heap_backend
 
 typedef struct descriptor_table_backend
 {
-    VkDescriptorSet set;
+    VkDescriptorSet  set;
+    VkPipelineLayout pipeline_layout_ref;
 } descriptor_table_backend;
 
 typedef struct texture_backend
@@ -277,7 +279,6 @@ typedef struct device_create_info_ex
     VkPhysicalDevice   gpu;
     TypedGrowableArray queue_cis;
 } device_create_info_ex;
-
 
 typedef struct context_backend
 {
@@ -1992,71 +1993,61 @@ void vulkan_device_destroy_pipeline(gfx_pipeline* pipeline)
     pipeline->backend = NULL;
 }
 
-gfx_descriptor_table vulkan_device_create_descriptor_table(const gfx_root_signature* root_signature)
+gfx_descriptor_heap vulkan_device_create_descriptor_heap(gfx_resource_type res_type, uint32_t num_descriptors)
 {
-    gfx_descriptor_table descriptor_table = {0};
-    uuid_generate(&descriptor_table.uuid);
+    gfx_descriptor_heap heap = {0};
+    uuid_generate(&heap.uuid);
 
-    descriptor_table_backend* backend = malloc(sizeof(descriptor_table_backend));
+    descriptor_heap_backend* backend = malloc(sizeof(descriptor_heap_backend));
 
-    root_signature_backend* root_sig_backend = ((root_signature_backend*) (root_signature->backend));
-
-    // cache pipeline layout from root_signature vulkan backend
-    backend->pipeline_layout_ref_handle = ((root_signature_backend*) (root_signature->backend))->pipeline_layout;
-    backend->num_sets                   = root_signature->descriptor_layout_count;
-
-    // TODO: either expose customization options or make it generic enough without affecting perf!
     VkDescriptorPoolSize pool_sizes[] = {
-        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 128},
-        {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 128},
-        {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 32},
-        {VK_DESCRIPTOR_TYPE_SAMPLER, 32},
-        {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 32},
+        {vulkan_util_descriptor_type_translate(res_type), num_descriptors},
     };
 
     VkDescriptorPoolCreateInfo pool_ci = {
         .sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
         .pNext         = NULL,
         .flags         = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
-        .maxSets       = root_signature->descriptor_layout_count,
+        .maxSets       = num_descriptors,
         .poolSizeCount = sizeof(pool_sizes) / sizeof(VkDescriptorPoolSize),
         .pPoolSizes    = pool_sizes,
     };
 
     VK_CHECK_RESULT(vkCreateDescriptorPool(VKDEVICE, &pool_ci, NULL, &backend->pool), "[Vulkan] Failed to allocate descriptor pool");
+    heap.backend = backend;
 
-    VkDescriptorSetAllocateInfo alloc_info = {
-        .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-        .pNext              = NULL,
-        .descriptorPool     = backend->pool,
-        .descriptorSetCount = root_signature->descriptor_layout_count,
-        .pSetLayouts        = (const VkDescriptorSetLayout*) root_sig_backend->vk_descriptor_set_layouts,
-    };
-
-    backend->sets = (VkDescriptorSet*) malloc(sizeof(VkDescriptorSet) * root_signature->descriptor_layout_count);
-    VK_CHECK_RESULT(vkAllocateDescriptorSets(VKDEVICE, &alloc_info, backend->sets), "[Vulkan] Failed to allocated descriptor sets");
-
-    descriptor_table.backend   = backend;
-    descriptor_table.set_count = root_signature->descriptor_layout_count;
-
-    return descriptor_table;
+    return heap;
 }
 
-void vulkan_device_destroy_descriptor_table(gfx_descriptor_table* descriptor_table)
+void vulkan_device_destroy_descriptor_heap(gfx_descriptor_heap* descriptor_table)
 {
-    (void) descriptor_table;
     uuid_destroy(&descriptor_table->uuid);
-    descriptor_table_backend* backend = ((descriptor_table_backend*) (descriptor_table->backend));
-    vkDestroyDescriptorPool(VKDEVICE, backend->pool, NULL);
-    free(backend->sets);
-    free(backend);
-    descriptor_table->backend = NULL;
+    if (descriptor_table->backend) {
+        descriptor_heap_backend* backend = ((descriptor_heap_backend*) (descriptor_table->backend));
+        vkDestroyDescriptorPool(VKDEVICE, ((descriptor_heap_backend*) (backend))->pool, NULL);
+        free(backend);
+        descriptor_table->backend = NULL;
+    }
 }
 
-void vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_table, gfx_descriptor_table_entry* entries, uint32_t num_entries)
+gfx_descriptor_table vulkan_device_build_descriptor_table(const gfx_root_signature* root_sig, gfx_descriptor_heap* heap, gfx_descriptor_table_entry* entries, uint32_t num_entries)
 {
-    descriptor_table_backend* backend = (descriptor_table_backend*) (descriptor_table->backend);
-    VkDescriptorSet*          sets    = backend->sets;
+    gfx_descriptor_table table = {0};
+    uuid_generate(&table.uuid);
+
+    descriptor_heap_backend*  heap_backend  = ((descriptor_heap_backend*) heap->backend);
+    descriptor_table_backend* table_backend = malloc(sizeof(descriptor_table_backend));
+    table.backend                           = table_backend;
+    table_backend->pipeline_layout_ref      = ((root_signature_backend*) (root_sig->backend))->pipeline_layout;
+
+    VkDescriptorSetAllocateInfo info = {0};
+    info.sType                       = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    info.pNext                       = NULL;
+    info.descriptorPool              = heap_backend->pool;
+    info.descriptorSetCount          = root_sig->descriptor_layout_count;
+    info.pSetLayouts                 = ((root_signature_backend*) (root_sig->backend))->vk_descriptor_set_layouts;
+
+    VK_CHECK_RESULT(vkAllocateDescriptorSets(VKDEVICE, &info, &table_backend->set), "[Vulkan] Failed to allocate descriptor set");
 
     VkWriteDescriptorSet*   writes       = malloc(sizeof(VkWriteDescriptorSet) * num_entries);
     VkDescriptorBufferInfo* buffer_infos = malloc(sizeof(VkDescriptorBufferInfo) * num_entries);
@@ -2070,7 +2061,7 @@ void vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_tabl
 
         writes[i] = (VkWriteDescriptorSet){
             .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet          = sets[entries[i].location.set],
+            .dstSet          = table_backend->set,
             .dstBinding      = entries[i].location.binding,
             .dstArrayElement = 0,
             .descriptorType  = (VkDescriptorType) vulkan_util_descriptor_type_translate(res_view->type),
@@ -2118,6 +2109,8 @@ void vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_tabl
     free(writes);
     free(buffer_infos);
     free(image_infos);
+
+    return table;
 }
 
 static uint32_t vulkan_internal_find_memory_type(VkPhysicalDevice physical_device, uint32_t type_filter, VkMemoryPropertyFlags properties)
@@ -2887,11 +2880,21 @@ rhi_error_codes vulkan_device_bind_root_signature(const gfx_cmd_buf* cmd_buf, co
     return Success;
 }
 
-rhi_error_codes vulkan_device_bind_descriptor_table(const gfx_cmd_buf* cmd_buf, const gfx_descriptor_table* descriptor_table, gfx_pipeline_type pipeline_type)
+rhi_error_codes vulkan_device_bind_descriptor_heaps(const gfx_cmd_buf* cmd_buf, const gfx_descriptor_heap* heaps, uint32_t num_heaps)
 {
-    VkCommandBuffer           commandBuffer = *(VkCommandBuffer*) cmd_buf->backend;
-    descriptor_table_backend* backend       = descriptor_table->backend;
-    vkCmdBindDescriptorSets(commandBuffer, vulkan_util_pipeline_type_bindpoint_translate(pipeline_type), backend->pipeline_layout_ref_handle, 0, backend->num_sets, backend->sets, 0, NULL);
+    UNUSED(cmd_buf);
+    UNUSED(heaps);
+    UNUSED(num_heaps);
+    return Success;
+}
+
+rhi_error_codes vulkan_device_bind_descriptor_tables(const gfx_cmd_buf* cmd_buf, const gfx_descriptor_table* tables, uint32_t num_tables, gfx_pipeline_type pipeline_type)
+{
+    VkCommandBuffer commandBuffer = *(VkCommandBuffer*) cmd_buf->backend;
+    for (uint32_t i = 0; i < num_tables; i++) {
+        descriptor_table_backend* backend = (descriptor_table_backend*) tables[i].backend;
+        vkCmdBindDescriptorSets(commandBuffer, vulkan_util_pipeline_type_bindpoint_translate(pipeline_type), backend->pipeline_layout_ref, 0, 1, &backend->set, 0, NULL);
+    }
     return Success;
 }
 
@@ -2899,7 +2902,7 @@ rhi_error_codes vulkan_device_bind_push_constant(const gfx_cmd_buf* cmd_buf, gfx
 {
     VkCommandBuffer         commandBuffer     = *(VkCommandBuffer*) cmd_buf->backend;
     root_signature_backend* rootS_sig_backend = root_sig->backend;
-    vkCmdPushConstants(commandBuffer, rootS_sig_backend->pipeline_layout, vulkan_util_shader_stage_bits(push_constant.stage), push_constant.offset, push_constant.size, push_constant.data);
+    vkCmdPushConstants(commandBuffer, rootS_sig_backend->pipeline_layout, vulkan_util_shader_stage_bits(push_constant.range.stage), push_constant.range.offset, push_constant.range.size, push_constant.data);
     return Success;
 }
 

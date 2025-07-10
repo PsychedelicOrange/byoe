@@ -1622,8 +1622,10 @@ void dx12_destroy_descriptor_heap(gfx_descriptor_heap* heap)
     }
 }
 
-gfx_descriptor_table dx12_build_descriptor_table(gfx_descriptor_heap* heap, gfx_descriptor_table_entry* entries, uint32_t num_entries)
+gfx_descriptor_table dx12_build_descriptor_table(const gfx_root_signature* root_sig, gfx_descriptor_heap* heap, gfx_descriptor_table_entry* entries, uint32_t num_entries)
 {
+    UNUSED(root_sig);
+
     gfx_descriptor_table table = {0};
     uuid_generate(&table.uuid);
 

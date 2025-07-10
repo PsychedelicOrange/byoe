@@ -543,7 +543,7 @@ static void renderer_internal_scene_draw_pass(gfx_cmd_buf* cmd_buff)
         g_rhi.bind_compute_pipeline(cmd_buff, &s_RendererSDFInternalState.sdfscene_resources.pipeline);
 
         g_rhi.bind_descriptor_heaps(cmd_buff, &heap, 1);
-        g_rhi.bind_descriptor_tables(cmd_buff, &s_RendererSDFInternalState.sdfscene_resources.table, GFX_PIPELINE_TYPE_COMPUTE);
+        g_rhi.bind_descriptor_tables(cmd_buff, &s_RendererSDFInternalState.sdfscene_resources.table, 1, GFX_PIPELINE_TYPE_COMPUTE);
 
         const Camera camera     = gamestate_get_global_instance()->camera;
         mat4s        projection = glms_perspective(camera.fov, (float) s_RendererSDFInternalState.width / (float) s_RendererSDFInternalState.height, camera.near_plane, camera.far_plane);

@@ -78,7 +78,7 @@ typedef struct rhi_jumptablefrontend
     gfx_descriptor_heap (*create_descriptor_heap)(gfx_resource_type, uint32_t);
     void                (*destroy_descriptor_heap)(gfx_descriptor_heap*);
 
-    gfx_descriptor_table (*build_descriptor_table)(gfx_descriptor_heap*, gfx_descriptor_table_entry*, uint32_t);
+    gfx_descriptor_table (*build_descriptor_table)(const gfx_root_signature*, gfx_descriptor_heap*, gfx_descriptor_table_entry*, uint32_t);
 
     gfx_resource (*create_texture_resource)(gfx_texture_create_info);
     void         (*destroy_texture_resource)(gfx_resource*);
