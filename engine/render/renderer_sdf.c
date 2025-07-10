@@ -22,6 +22,12 @@
 // Image memory barrier
 // - [x] sdf_scene_texture image memory pipeline barrier before screen quad pass
 
+// Descriptor Rework TODO:
+// - [ ] create heaps based on new gfx_heap_type instead of gfx_res_type
+// - [ ] Create new global heaps for Images, CBV etc. (for resource type needed)
+// - [ ] build descriptor tables using new API
+// - [ ] bind heaps and tables
+
 #define TRIANGLE_TEST 0
 
 typedef struct SDFPushConstant
@@ -90,6 +96,8 @@ typedef struct renderer_internal_state
     mat4s                viewproj;
     gfx_texture_readback lastSwapchainReadback;
     gfx_context          gfxcontext;
+    gfx_descriptor_heap  images_heap;
+    gfx_descriptor_heap  ubo_heap;
 #if !TRIANGLE_TEST
     screen_quad_resoruces   screen_quad_resources;
     sdf_resources           sdfscene_resources;

@@ -411,23 +411,21 @@ typedef enum gfx_resource_type
     GFX_RESOURCE_TYPE_STORAGE_TEXEL_BUFFER,        // UAV
     GFX_RESOURCE_TYPE_UNIFORM_BUFFER,              // CBV
     GFX_RESOURCE_TYPE_COLOR_ATTACHMENT,            // RTV
-    GFX_RESOURCE_TYPE_DEPTH_STENCIL_ATTACHMENT,    // DSV
-} gfx_resource_type;
+    GFX_RESOURCE_TYPE_DEPTH_STENCIL_ATTACHMPENT,    // DSV
+} gfx_resource_type;                       
+                                          
+typedef enum gfx_heap_type                 
+{                                          
+    GFX_HEAP_TYPE_SAMPLER,             
+    GFX_HEAP_TYPE_SRV,
+    GFX_HEAP_TYPE_UAV,
+    GFX_HEAP_TYPE_CBV,
+    GFX_HEAP_TYPE_RTV,
+    GFX_HEAP_TYPE_DSV,
+} gfx_heap_type;
 
 //--------------------------------------------
 // TODO: Future use
-typedef enum gfx_binding_usage
-{
-
-    GFX_BINDING_USAGE_SAMPLER,
-    GFX_BINDING_USAGE_SRV,
-    GFX_BINDING_USAGE_UAV,
-    GFX_BINDING_USAGE_CBV,
-    GFX_BINDING_USAGE_RTV,
-    GFX_BINDING_USAGE_DSV,
-    GFX_BINDING_USAGE_ACCELERATION_STRUCTURE,
-} gfx_binding_type;
-
 typedef enum gfx_resource_usage
 {
     // -------------------
