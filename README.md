@@ -1,3 +1,9 @@
+| Compiler |Build Status |
+|---------|--------|
+|GCC | ![Linux Build](https://github.com/PsychedelicOrange/byoe/actions/workflows/build_linux.yml/badge.svg?branch=ci) |
+|Clang | ![MacOS Build](https://github.com/PsychedelicOrange/byoe/actions/workflows/build_mac.yml/badge.svg?branch=ci) |
+|MSVC | ![Windows Build](https://github.com/PsychedelicOrange/byoe/actions/workflows/build_win.yml/badge.svg?branch=ci) |
+
 # BYOE : Asteroids adventure
 A while ago some of us came together to make a game for BYOG (Build Your Own Game) a game jam that happend just before IGDC. Initially we hoped to make a BYOE (Build Your Own Engine) game from scratch but realized it'll take a longer time given our requirements. 
 

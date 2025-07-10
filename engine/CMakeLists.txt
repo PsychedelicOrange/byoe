@@ -41,13 +41,16 @@ endif()
 set_target_properties(engine PROPERTIES OUTPUT_NAME "engine")
 ####################################################################
 # BUILDING SHADERS
+
+
+if(NOT CI)
 find_program(GLSLC_EXECUTABLE glslc HINTS $ENV{VULKAN_SDK}/Bin $ENV{VULKAN_SDK}/bin)
 find_program(SPIRV_CROSS_EXECUTABLE spirv-cross)
 find_program(DXC_EXECUTABLE dxc)
 
-if(NOT GLSLC_EXECUTABLE)
-    message(FATAL_ERROR "Could not find glslc. Ensure the Vulkan SDK is installed and VULKAN_SDK is set.")
-endif()
+	if(NOT GLSLC_EXECUTABLE)
+		message(FATAL_ERROR "Could not find glslc. Ensure the Vulkan SDK is installed and VULKAN_SDK is set.")
+	endif()
 
 # Function to compile shaders
 function(compile_shader SHADER_SRC SHADER_DST)
@@ -118,7 +121,8 @@ foreach(SHADER ${shaders})
     endif()
 endforeach()
 
-add_custom_target(compile_shaders ALL DEPENDS ${COMPILED_SHADERS})
+	add_custom_target(compile_shaders ALL DEPENDS ${COMPILED_SHADERS})
+endif() 
 ####################################################################
 # COMPILATION AND LINKING
 # Platform-specific configuration

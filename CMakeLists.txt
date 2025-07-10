@@ -3,8 +3,11 @@ cmake_minimum_required(VERSION 3.15)
 project(byoe_ghost_asteroids)
 ####################################################################
 ## OPTIONS
-# Options to build the engine as DLL or static library
+# Option to build the engine as DLL or static library
 option(BUILD_SHARED_ENGINE "Build engine as shared library (DLL)" OFF)
+# Skip steps for CI build
+option(CI "If building in CI" OFF)
+
 ####################################################################
 ## GLOBAL COMPILATION SETTINGS
 set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
