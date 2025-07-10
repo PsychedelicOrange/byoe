@@ -405,11 +405,11 @@ typedef enum gfx_resource_type
 {
     GFX_RESOURCE_TYPE_SAMPLER,                     // Sampler
     GFX_RESOURCE_TYPE_SAMPLED_IMAGE,               // SRV
+    GFX_RESOURCE_TYPE_UNIFORM_TEXEL_BUFFER,        // SRV
     GFX_RESOURCE_TYPE_STORAGE_IMAGE,               // UAV
     GFX_RESOURCE_TYPE_STORAGE_BUFFER,              // UAV
     GFX_RESOURCE_TYPE_STORAGE_TEXEL_BUFFER,        // UAV
     GFX_RESOURCE_TYPE_UNIFORM_BUFFER,              // CBV
-    GFX_RESOURCE_TYPE_UNIFORM_TEXEL_BUFFER,        // CBV
     GFX_RESOURCE_TYPE_COLOR_ATTACHMENT,            // RTV
     GFX_RESOURCE_TYPE_DEPTH_STENCIL_ATTACHMENT,    // DSV
 } gfx_resource_type;

@@ -107,8 +107,7 @@ const rhi_jumptable dx12_jumptable = {
     dx12_destroy_pipeline,
     dx12_create_descriptor_heap,
     dx12_destroy_descriptor_heap,
-    dx12_create_descriptor_table,
-    dx12_destroy_descriptor_tables,
+    dx12_build_descriptor_table,
     dx12_create_texture_resource,
     dx12_destroy_texture_resource,
     dx12_create_sampler,
@@ -270,6 +269,7 @@ typedef struct descriptor_heap_backend
     ID3D12DescriptorHeap*       heap;
     D3D12_CPU_DESCRIPTOR_HANDLE cpu_curr_offset;    // for placing multiple tables in the same heap (support for global heaps)
     D3D12_GPU_DESCRIPTOR_HANDLE gpu_curr_offset;    // for placing multiple tables in the same heap (support for global heaps)
+    uint32_t                    descriptor_size;
 } descriptor_heap_backend;
 
 typedef struct descriptor_table_backend
@@ -280,7 +280,28 @@ typedef struct descriptor_table_backend
 
 //--------------------------------------------------------
 
-static D3D12_DESCRIPTOR_RANGE_TYPE dx12_util_descriptor_range_type_translate(gfx_resource_type res_type)
+static D3D12_DESCRIPTOR_RANGE_TYPE dx12_util_res_type_descriptor_type_translate(gfx_resource_type res_type)
+{
+    switch (res_type) {
+        case GFX_RESOURCE_TYPE_SAMPLER:
+            return D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
+        case GFX_RESOURCE_TYPE_SAMPLED_IMAGE:
+        case GFX_RESOURCE_TYPE_UNIFORM_TEXEL_BUFFER:
+        case GFX_RESOURCE_TYPE_STORAGE_IMAGE:
+        case GFX_RESOURCE_TYPE_STORAGE_TEXEL_BUFFER:
+        case GFX_RESOURCE_TYPE_STORAGE_BUFFER:
+        case GFX_RESOURCE_TYPE_UNIFORM_BUFFER:
+            return D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+        case GFX_RESOURCE_TYPE_COLOR_ATTACHMENT:
+            return D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+        case GFX_RESOURCE_TYPE_DEPTH_STENCIL_ATTACHMENT:
+            return D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+        default:
+            return (D3D12_DESCRIPTOR_RANGE_TYPE) -1;
+    }
+}
+
+static D3D12_DESCRIPTOR_RANGE_TYPE dx12_util_res_type_descriptor_range_type_translate(gfx_resource_type res_type)
 {
     switch (res_type) {
         case GFX_RESOURCE_TYPE_SAMPLER:
@@ -297,7 +318,7 @@ static D3D12_DESCRIPTOR_RANGE_TYPE dx12_util_descriptor_range_type_translate(gfx
         case GFX_RESOURCE_TYPE_COLOR_ATTACHMENT:
         case GFX_RESOURCE_TYPE_DEPTH_STENCIL_ATTACHMENT:
         default:
-            return (D3D12_DESCRIPTOR_RANGE_TYPE) -1;    // Invalid/unsupported
+            return (D3D12_DESCRIPTOR_RANGE_TYPE) -1;
     }
 }
 
@@ -1266,6 +1287,7 @@ gfx_root_signature dx12_create_root_signature(const gfx_descriptor_table_layout*
     gfx_root_signature root_sig = {0};
     uuid_generate(&root_sig.uuid);
 
+    // Deep Copy table layout and bindings in each table layout to root signature
     if (set_layout_count > 0) {
         root_sig.descriptor_layout_count = set_layout_count;
         root_sig.descriptor_set_layouts  = malloc(sizeof(gfx_descriptor_table_layout) * set_layout_count);
@@ -1308,7 +1330,7 @@ gfx_root_signature dx12_create_root_signature(const gfx_descriptor_table_layout*
         for (uint32_t j = 0; j < table_entry.NumDescriptorRanges; ++j) {
             const gfx_descriptor_binding binding = set_layout->bindings[j];
             // Add a range into descriptor table
-            ranges[i][j].RangeType                         = dx12_util_descriptor_range_type_translate(binding.type);
+            ranges[i][j].RangeType                         = dx12_util_res_type_descriptor_range_type_translate(binding.type);
             ranges[i][j].NumDescriptors                    = binding.count;
             ranges[i][j].BaseShaderRegister                = binding.location.binding;
             ranges[i][j].RegisterSpace                     = binding.location.set;
@@ -1560,18 +1582,125 @@ void dx12_destroy_pipeline(gfx_pipeline* pipeline)
 
 gfx_descriptor_heap dx12_create_descriptor_heap(gfx_resource_type res_type, uint32_t num_descriptors)
 {
+    gfx_descriptor_heap heap = {0};
+    uuid_generate(&heap.uuid);
+    heap.res_alloc_type = res_type;
+
+    D3D12_DESCRIPTOR_HEAP_DESC desc = {0};
+    desc.NumDescriptors             = num_descriptors;
+    desc.Type                       = dx12_util_res_type_descriptor_type_translate(res_type);
+    desc.NodeMask                   = 0;
+    desc.Flags                      = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+
+    descriptor_heap_backend* backend = malloc(sizeof(descriptor_heap_backend));
+    heap.backend                     = backend;
+
+    HRESULT hr = ID3D12Device10_CreateDescriptorHeap(DXDevice, &desc, &IID_ID3D12DescriptorHeap, &backend->heap);
+    if (FAILED(hr)) {
+        uuid_destroy(&heap.uuid);
+        free(heap.backend);
+        heap.backend = NULL;
+        return heap;
+    }
+
+    // cache the CPU/GPU offsets
+    ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(backend->heap, &backend->cpu_curr_offset);
+    ID3D12DescriptorHeap_GetGPUDescriptorHandleForHeapStart(backend->heap, &backend->gpu_curr_offset);
+
+    backend->descriptor_size = ID3D12Device10_GetDescriptorHandleIncrementSize(DXDevice, desc.Type);
+
+    return heap;
 }
 
 void dx12_destroy_descriptor_heap(gfx_descriptor_heap* heap)
 {
+    uuid_destroy(&heap->uuid);
+    if (heap->backend) {
+        ID3D12DescriptorHeap_Release(((descriptor_heap_backend*) (heap->backend))->heap);
+        free(heap->backend);
+        heap->backend = NULL;
+    }
 }
 
-gfx_descriptor_table dx12_create_descriptor_table(gfx_descriptor_heap* heap, gfx_descriptor_table_entry* entries, uint32_t num_entries)
+gfx_descriptor_table dx12_build_descriptor_table(gfx_descriptor_heap* heap, gfx_descriptor_table_entry* entries, uint32_t num_entries)
 {
-}
+    gfx_descriptor_table table = {0};
+    uuid_generate(&table.uuid);
 
-void dx12_destroy_descriptor_tables(gfx_descriptor_table* tables, uint32_t num_tables)
-{
+    descriptor_heap_backend*  heap_backend  = ((descriptor_heap_backend*) heap->backend);
+    descriptor_table_backend* table_backend = malloc(sizeof(descriptor_table_backend));
+    table.backend                           = table_backend;
+
+    // Store the start of heap CPU/GPU descriptor pointer for the table start
+    D3D12_CPU_DESCRIPTOR_HANDLE table_cpu_start = heap_backend->cpu_curr_offset;
+    D3D12_GPU_DESCRIPTOR_HANDLE table_gpu_start = heap_backend->gpu_curr_offset;
+    table_backend->cpu_base                     = table_cpu_start;
+    table_backend->gpu_base                     = table_gpu_start;
+
+    for (uint32_t i = 0; i < num_entries; i++) {
+        const gfx_resource*      res      = entries[i].resource;
+        const gfx_resource_view* res_view = entries[i].resource_view;
+
+        switch (res_view->type) {
+            case GFX_RESOURCE_TYPE_SAMPLER: {
+                ID3D12Device_CreateSampler(DXDevice, (D3D12_SAMPLER_DESC*) res->sampler->backend, table_cpu_start);
+            } break;
+            case GFX_RESOURCE_TYPE_SAMPLED_IMAGE:
+            case GFX_RESOURCE_TYPE_UNIFORM_TEXEL_BUFFER: {
+                ID3D12Device_CreateShaderResourceView(
+                    DXDevice,
+                    (ID3D12Resource*) (res->texture->backend),
+                    &((resource_view_backend*) (res_view->backend))->srv_desc,
+                    table_cpu_start);
+            } break;
+            case GFX_RESOURCE_TYPE_STORAGE_IMAGE:
+            case GFX_RESOURCE_TYPE_STORAGE_TEXEL_BUFFER:
+            case GFX_RESOURCE_TYPE_STORAGE_BUFFER: {
+                ID3D12Device_CreateUnorderedAccessView(
+                    DXDevice,
+                    (ID3D12Resource*) (res->texture->backend),
+                    NULL,    // No counters for UAV yet!
+                    &((resource_view_backend*) (res_view->backend))->uav_desc,
+                    table_cpu_start);
+                break;
+            }
+
+            case GFX_RESOURCE_TYPE_UNIFORM_BUFFER: {
+                ID3D12Device_CreateConstantBufferView(
+                    DXDevice,
+                    &((resource_view_backend*) (res_view->backend))->cbv_desc,
+                    table_cpu_start);
+                break;
+            }
+
+            case GFX_RESOURCE_TYPE_COLOR_ATTACHMENT: {
+                ID3D12Device_CreateRenderTargetView(
+                    DXDevice,
+                    (ID3D12Resource*) (res->texture->backend),
+                    &((resource_view_backend*) (res_view->backend))->rtv_desc,
+                    table_cpu_start);
+                break;
+            }
+
+            case GFX_RESOURCE_TYPE_DEPTH_STENCIL_ATTACHMENT: {
+                ID3D12Device_CreateDepthStencilView(
+                    DXDevice,
+                    (ID3D12Resource*) (res->texture->backend),
+                    &((resource_view_backend*) (res_view->backend))->dsv_desc,
+                    table_cpu_start);
+                break;
+            }
+            default:
+                LOG_ERROR("[D3D12] Unknown gfx_resource_type while building descriptor table");
+                break;
+        }
+        // Increment the CPU/GPU descriptor handle per each descriptor inserted
+        table_cpu_start.ptr += heap_backend->descriptor_size;
+    }
+
+    // Store the new heap start for new tables
+    heap_backend->cpu_curr_offset.ptr += (size_t) num_entries * heap_backend->descriptor_size;
+    heap_backend->gpu_curr_offset.ptr += (size_t) num_entries * heap_backend->descriptor_size;
 }
 
 gfx_resource dx12_create_texture_resource(gfx_texture_create_info desc)
@@ -1818,6 +1947,7 @@ gfx_resource_view dx12_create_texture_resource_view(const gfx_resource_view_crea
         }
 
         backend->rtv_desc = rtv_desc;
+
     } else if (desc.res_type == GFX_RESOURCE_TYPE_DEPTH_STENCIL_ATTACHMENT) {
         D3D12_DEPTH_STENCIL_VIEW_DESC dsv_desc = {0};
         dsv_desc.Format                        = dx12_util_format_translate(desc.texture.format);
@@ -2020,7 +2150,6 @@ rhi_error_codes dx12_gfx_cmd_submit_queue(const gfx_cmd_queue* cmd_queue, gfx_su
     // if we go this route, we can enqueue the sync points and pass it off to gfx_submit_syncobj for vulkan
     // but for simple single queue sync we can ignore it.
     UNUSED(submit_sync);
-    UNUSED(cmd_queue);
     TracyCZoneNC(ctx, "ExecuteCommandLists", COLOR_CMD_SUBMIT, true);
 
     if (cmd_queue->cmds_count > 0)
@@ -2350,5 +2479,4 @@ rhi_error_codes dx12_transition_swapchain_layout(const gfx_cmd_buf* cmd_buf, con
     TracyCZoneEnd(ctx);
     return Success;
 }
-
 #endif    // _WIN32
