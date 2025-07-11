@@ -50,7 +50,7 @@ void               vulkan_device_destroy_root_signature(gfx_root_signature* root
 gfx_pipeline vulkan_device_create_pipeline(gfx_pipeline_create_info info);
 void         vulkan_device_destroy_pipeline(gfx_pipeline* pipeline);
 
-gfx_descriptor_heap vulkan_device_create_descriptor_heap(gfx_resource_type res_type, uint32_t num_descriptors);
+gfx_descriptor_heap vulkan_device_create_descriptor_heap(gfx_heap_type heap_type, uint32_t num_descriptors);
 void                vulkan_device_destroy_descriptor_heap(gfx_descriptor_heap* heap);
 
 gfx_descriptor_table vulkan_device_build_descriptor_table(const gfx_root_signature*, gfx_descriptor_heap* heap, gfx_descriptor_table_entry* entries, uint32_t num_entries);

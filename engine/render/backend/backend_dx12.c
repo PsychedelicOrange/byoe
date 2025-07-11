@@ -1018,7 +1018,7 @@ gfx_swapchain dx12_create_swapchain(uint32_t width, uint32_t height)
     swapChainDesc.Height                = height;
     swapChainDesc.Format                = DX_SWAPCHAIN_FORMAT;
     swapChainDesc.Stereo                = FALSE;
-    swapChainDesc.SampleDesc            = (DXGI_SAMPLE_DESC){1, 0};
+    swapChainDesc.SampleDesc            = (DXGI_SAMPLE_DESC) {1, 0};
     swapChainDesc.BufferUsage           = DXGI_USAGE_RENDER_TARGET_OUTPUT;
     swapChainDesc.BufferCount           = MAX_DX_SWAPCHAIN_BUFFERS;
     swapChainDesc.Scaling               = DXGI_SCALING_STRETCH;
@@ -1504,7 +1504,7 @@ static gfx_pipeline dx12_internal_create_gfx_pipeline(gfx_pipeline_create_info i
     depth.StencilEnable            = FALSE;
     depth.StencilReadMask          = D3D12_DEFAULT_STENCIL_READ_MASK;
     depth.StencilWriteMask         = D3D12_DEFAULT_STENCIL_WRITE_MASK;
-    depth.FrontFace                = (D3D12_DEPTH_STENCILOP_DESC){
+    depth.FrontFace                = (D3D12_DEPTH_STENCILOP_DESC) {
                        .StencilFailOp      = D3D12_STENCIL_OP_KEEP,
                        .StencilDepthFailOp = D3D12_STENCIL_OP_KEEP,
                        .StencilPassOp      = D3D12_STENCIL_OP_KEEP,

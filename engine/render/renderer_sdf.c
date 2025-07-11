@@ -28,7 +28,7 @@
 // - [ ] build descriptor tables using new API
 // - [ ] bind heaps and tables
 
-#define TRIANGLE_TEST 0
+#define TRIANGLE_TEST 1
 
 typedef struct SDFPushConstant
 {
@@ -49,7 +49,7 @@ typedef struct sdf_resources
     gfx_shader           shader;
     gfx_pipeline         pipeline;
     gfx_root_signature   root_sig;
-    gfx_descriptor_table table;
+    gfx_descriptor_table tables[2];
     SDFPushConstant      pc_data;
 } sdf_resources;
 
@@ -61,7 +61,7 @@ typedef struct screen_quad_resoruces
     gfx_shader           shader;
     gfx_pipeline         pipeline;
     gfx_root_signature   root_sig;
-    gfx_descriptor_table table;
+    gfx_descriptor_table tables[1];
 } screen_quad_resoruces;
 
 typedef struct clear_texture_resources
@@ -71,7 +71,7 @@ typedef struct clear_texture_resources
     gfx_shader           shader;
     gfx_pipeline         pipeline;
     gfx_root_signature   root_sig;
-    gfx_descriptor_table table;
+    gfx_descriptor_table tables[2];
 } clear_texture_resources;
 #else
 typedef struct triangle_resources
@@ -96,8 +96,8 @@ typedef struct renderer_internal_state
     mat4s                viewproj;
     gfx_texture_readback lastSwapchainReadback;
     gfx_context          gfxcontext;
-    gfx_descriptor_heap  images_heap;
-    gfx_descriptor_heap  ubo_heap;
+    gfx_descriptor_heap  generic_heap;
+    gfx_descriptor_heap  samplers_heap;
 #if !TRIANGLE_TEST
     screen_quad_resoruces   screen_quad_resources;
     sdf_resources           sdfscene_resources;
@@ -331,8 +331,9 @@ static void renderer_internal_destroy_pipelines(void)
 }
 
 #if !TRIANGLE_TEST
-static void renderer_internal_create_scene_pass_descriptor_table(void)
+static void renderer_internal_create_scene_pass_descriptors(void)
 {
+    
     //--------------------------------------------------
     // create the root signature and table to hold the resources/
     // in this pass it's an RW texture2d and it's view
@@ -360,7 +361,6 @@ static void renderer_internal_create_scene_pass_descriptor_table(void)
 
     s_RendererSDFInternalState.sdfscene_resources.scene_nodes_ubo_view = g_rhi.create_uniform_buffer_resource_view(&s_RendererSDFInternalState.sdfscene_resources.scene_nodes_uniform_buffer, MAX_GPU_NODES_SIZE, 0);
 
-    s_RendererSDFInternalState.sdfscene_resources.table = g_rhi.create_descriptor_table(&s_RendererSDFInternalState.sdfscene_resources.root_sig);
     gfx_descriptor_table_entry table_entries[]          = {
         (gfx_descriptor_table_entry){&s_RendererSDFInternalState.sdfscene_resources.scene_nodes_uniform_buffer, &s_RendererSDFInternalState.sdfscene_resources.scene_nodes_ubo_view, {0, 0}},
         (gfx_descriptor_table_entry){&s_RendererSDFInternalState.sdfscene_resources.scene_texture, &s_RendererSDFInternalState.sdfscene_resources.scene_cs_write_view, {0, 1}},
@@ -456,6 +456,10 @@ static bool render_internal_sdf_init_gfx_ctx(uint32_t width, uint32_t height)
             s_RendererSDFInternalState.gfxcontext.draw_cmds[i]      = g_rhi.create_gfx_cmd_buf(&s_RendererSDFInternalState.gfxcontext.draw_cmds_pool[i]);
         }
 
+        // Create the global pools
+        s_RendererSDFInternalState.generic_heap = g_rhi.create_descriptor_heap(GFX_HEAP_TYPE_SRV_UAV_CBV, 1024);
+        s_RendererSDFInternalState.samplers_heap = g_rhi.create_descriptor_heap(GFX_HEAP_TYPE_SAMPLER, 1024);
+        
         return true;
     } else {
         LOG_ERROR("Failed to create gfx backend!");
@@ -465,6 +469,10 @@ static bool render_internal_sdf_init_gfx_ctx(uint32_t width, uint32_t height)
 
 static void renderer_internal_sdf_destroy_gfx_ctx(void)
 {
+   
+    g_rhi.destroy_descriptor_heap(&s_RendererSDFInternalState.generic_heap);
+    g_rhi.destroy_descriptor_heap(&s_RendererSDFInternalState.samplers_heap);
+
     for (uint32_t i = 0; i < MAX_FRAMES_INFLIGHT; i++) {
         g_rhi.destroy_gfx_cmd_pool(&s_RendererSDFInternalState.gfxcontext.draw_cmds_pool[i]);
         g_rhi.free_gfx_cmd_buf(&s_RendererSDFInternalState.gfxcontext.draw_cmds[i]);
@@ -632,7 +640,7 @@ static void renderer_internal_clear_screen_no_rendering(gfx_cmd_buf* cmd_buff)
                .clear_color = clear_color}};
     g_rhi.begin_render_pass(cmd_buff, clear_screen_pass, s_RendererSDFInternalState.gfxcontext.swapchain.current_backbuffer_idx);
     {
-        g_rhi.bind_root_signature(cmd_buff, &s_RendererSDFInternalState.triangle.root_sig);
+        g_rhi.bind_root_signature(cmd_buff, &s_RendererSDFInternalState.triangle.root_sig, GFX_PIPELINE_TYPE_GRAPHICS);
         g_rhi.bind_gfx_pipeline(cmd_buff, &s_RendererSDFInternalState.triangle.pipeline);
         g_rhi.set_viewport(cmd_buff, (gfx_viewport){.x = 0, .y = 0, .width = s_RendererSDFInternalState.width, .height = s_RendererSDFInternalState.height, .min_depth = 0, .max_depth = 1});
         g_rhi.set_scissor(cmd_buff, (gfx_scissor){.x = 0, .y = 0, .width = s_RendererSDFInternalState.width, .height = s_RendererSDFInternalState.height});

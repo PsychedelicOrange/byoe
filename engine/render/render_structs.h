@@ -411,15 +411,13 @@ typedef enum gfx_resource_type
     GFX_RESOURCE_TYPE_STORAGE_TEXEL_BUFFER,        // UAV
     GFX_RESOURCE_TYPE_UNIFORM_BUFFER,              // CBV
     GFX_RESOURCE_TYPE_COLOR_ATTACHMENT,            // RTV
-    GFX_RESOURCE_TYPE_DEPTH_STENCIL_ATTACHMPENT,    // DSV
-} gfx_resource_type;                       
-                                          
-typedef enum gfx_heap_type                 
-{                                          
-    GFX_HEAP_TYPE_SAMPLER,             
-    GFX_HEAP_TYPE_SRV,
-    GFX_HEAP_TYPE_UAV,
-    GFX_HEAP_TYPE_CBV,
+    GFX_RESOURCE_TYPE_DEPTH_STENCIL_ATTACHMENT,    // DSV
+} gfx_resource_type;
+
+typedef enum gfx_heap_type
+{
+    GFX_HEAP_TYPE_SAMPLER,
+    GFX_HEAP_TYPE_SRV_UAV_CBV,
     GFX_HEAP_TYPE_RTV,
     GFX_HEAP_TYPE_DSV,
 } gfx_heap_type;
@@ -744,9 +742,9 @@ typedef struct gfx_descriptor_table_entry
 
 typedef struct gfx_descriptor_heap
 {
-    random_uuid_t     uuid;
-    void*             backend;
-    gfx_resource_type res_alloc_type;    // The kind of resources that this heap allocates
+    random_uuid_t uuid;
+    void*         backend;
+    gfx_heap_type heap_type;    // The kind of resources that this heap allocates
 } gfx_descriptor_heap;
 
 typedef struct gfx_root_signature
