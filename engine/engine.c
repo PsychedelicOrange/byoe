@@ -1,6 +1,7 @@
 #include "engine.h"
 
 #include <GLFW/glfw3.h>
+#include <inttypes.h>
 
 #include "../render/frontend/gfx_frontend.h"
 
@@ -97,7 +98,13 @@ void engine_run(void)
             FPSSamples++;
             AvgFPS += FPS;
             char windowTitle[250];
-            sprintf(windowTitle, "BYOE Game: spooky asteroids! | FPS: %llu | Avg. FPS: %llu | render dt: %2.2fms | RHI: %s", FPS, engine_get_avg_fps(), deltaTime * 1000.0f, api == Vulkan ? "Vulkan" : "D3D12");
+            sprintf(
+                windowTitle,
+                "BYOE Game: spooky asteroids! | FPS: %" PRIu64 " | Avg. FPS: %" PRIu64 " | render dt: %2.2fms | RHI: %s",
+                FPS,
+                engine_get_avg_fps(),
+                deltaTime * 1000.0f,
+                api == Vulkan ? "Vulkan" : "D3D12");
             glfwSetWindowTitle(g_GameWindowRef, windowTitle);
             elapsedTime = 0.0f;
         }
