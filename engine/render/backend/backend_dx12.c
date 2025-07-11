@@ -679,7 +679,7 @@ static void dx12_internal_register_debug_interface(context_backend* backend)
 {
     if (SUCCEEDED(D3D12GetDebugInterface(&IID_ID3D12Debug3, (void**) &backend->d3d12_debug))) {
         ID3D12Debug3_EnableDebugLayer(backend->d3d12_debug);
-        ID3D12Debug3_SetEnableGPUBasedValidation(backend->d3d12_debug, TRUE);
+        //ID3D12Debug3_SetEnableGPUBasedValidation(backend->d3d12_debug, TRUE);
         LOG_INFO("D3D12 debug layer and GPU-based validation enabled");
     } else {
         LOG_WARN("D3D12 debug interface not available. Debug layer not enabled.");
@@ -2393,10 +2393,10 @@ rhi_error_codes dx12_bind_compute_pipeline(const gfx_cmd_buf* cmd_buf, const gfx
 rhi_error_codes dx12_device_bind_root_signature(const gfx_cmd_buf* cmd_buf, const gfx_root_signature* root_signature, gfx_pipeline_type pipeline_type)
 {
     ID3D12GraphicsCommandList* cmd_list = (ID3D12GraphicsCommandList*) (cmd_buf->backend);
-    if (pipeline_type == GFX_PIPELINE_TYPE_COMPUTE)
-        ID3D12GraphicsCommandList_SetComputeRootSignature(cmd_list, (ID3D12RootSignature*) root_signature->backend);
-    else
+    if (pipeline_type == GFX_PIPELINE_TYPE_GRAPHICS)
         ID3D12GraphicsCommandList_SetGraphicsRootSignature(cmd_list, (ID3D12RootSignature*) root_signature->backend);
+    else
+        ID3D12GraphicsCommandList_SetComputeRootSignature(cmd_list, (ID3D12RootSignature*) root_signature->backend);
 
     return Success;
 }
