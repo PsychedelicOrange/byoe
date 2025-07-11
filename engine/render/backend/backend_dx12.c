@@ -280,24 +280,20 @@ typedef struct descriptor_table_backend
 
 //--------------------------------------------------------
 
-static D3D12_DESCRIPTOR_RANGE_TYPE dx12_util_res_type_descriptor_type_translate(gfx_resource_type res_type)
+static D3D12_DESCRIPTOR_HEAP_TYPE dx12_util_heap_descriptor_type_translate(gfx_heap_type heap_type)
 {
-    switch (res_type) {
-        case GFX_RESOURCE_TYPE_SAMPLER:
-            return D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
-        case GFX_RESOURCE_TYPE_SAMPLED_IMAGE:
-        case GFX_RESOURCE_TYPE_UNIFORM_TEXEL_BUFFER:
-        case GFX_RESOURCE_TYPE_STORAGE_IMAGE:
-        case GFX_RESOURCE_TYPE_STORAGE_TEXEL_BUFFER:
-        case GFX_RESOURCE_TYPE_STORAGE_BUFFER:
-        case GFX_RESOURCE_TYPE_UNIFORM_BUFFER:
+    switch (heap_type) {
+        case GFX_HEAP_TYPE_SRV_UAV_CBV:
             return D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-        case GFX_RESOURCE_TYPE_COLOR_ATTACHMENT:
+        case GFX_HEAP_TYPE_SAMPLER:
+            return D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
+        case GFX_HEAP_TYPE_RTV:
             return D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-        case GFX_RESOURCE_TYPE_DEPTH_STENCIL_ATTACHMENT:
+        case GFX_HEAP_TYPE_DSV:
             return D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
         default:
-            return (D3D12_DESCRIPTOR_RANGE_TYPE) -1;
+            return D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+            break;
     }
 }
 
@@ -1018,7 +1014,7 @@ gfx_swapchain dx12_create_swapchain(uint32_t width, uint32_t height)
     swapChainDesc.Height                = height;
     swapChainDesc.Format                = DX_SWAPCHAIN_FORMAT;
     swapChainDesc.Stereo                = FALSE;
-    swapChainDesc.SampleDesc            = (DXGI_SAMPLE_DESC) {1, 0};
+    swapChainDesc.SampleDesc            = (DXGI_SAMPLE_DESC){1, 0};
     swapChainDesc.BufferUsage           = DXGI_USAGE_RENDER_TARGET_OUTPUT;
     swapChainDesc.BufferCount           = MAX_DX_SWAPCHAIN_BUFFERS;
     swapChainDesc.Scaling               = DXGI_SCALING_STRETCH;
@@ -1504,7 +1500,7 @@ static gfx_pipeline dx12_internal_create_gfx_pipeline(gfx_pipeline_create_info i
     depth.StencilEnable            = FALSE;
     depth.StencilReadMask          = D3D12_DEFAULT_STENCIL_READ_MASK;
     depth.StencilWriteMask         = D3D12_DEFAULT_STENCIL_WRITE_MASK;
-    depth.FrontFace                = (D3D12_DEPTH_STENCILOP_DESC) {
+    depth.FrontFace                = (D3D12_DEPTH_STENCILOP_DESC){
                        .StencilFailOp      = D3D12_STENCIL_OP_KEEP,
                        .StencilDepthFailOp = D3D12_STENCIL_OP_KEEP,
                        .StencilPassOp      = D3D12_STENCIL_OP_KEEP,
@@ -1580,17 +1576,17 @@ void dx12_destroy_pipeline(gfx_pipeline* pipeline)
     }
 }
 
-gfx_descriptor_heap dx12_create_descriptor_heap(gfx_resource_type res_type, uint32_t num_descriptors)
+gfx_descriptor_heap dx12_create_descriptor_heap(gfx_heap_type heap_type, uint32_t num_descriptors)
 {
     gfx_descriptor_heap heap = {0};
     uuid_generate(&heap.uuid);
-    heap.res_alloc_type = res_type;
+    heap.heap_type = heap_type;
 
     D3D12_DESCRIPTOR_HEAP_DESC desc = {0};
     desc.NumDescriptors             = num_descriptors;
-    desc.Type                       = dx12_util_res_type_descriptor_type_translate(res_type);
+    desc.Type                       = dx12_util_heap_descriptor_type_translate(heap_type);
     desc.NodeMask                   = 0;
-    desc.Flags                      = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+    desc.Flags                      = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 
     descriptor_heap_backend* backend = malloc(sizeof(descriptor_heap_backend));
     heap.backend                     = backend;
