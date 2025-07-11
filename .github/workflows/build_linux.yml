@@ -13,7 +13,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install dependencies
-        run: sudo apt install libxkbcommon-dev xorg-dev #GLFW
+        run: | 
+            sudo apt update
+            sudo apt install --fix-missing libxkbcommon-dev xorg-dev #GLFW
 
       - name: Prepare Vulkan SDK
         uses: humbletim/setup-vulkan-sdk@v1.2.1

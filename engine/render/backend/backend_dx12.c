@@ -184,7 +184,6 @@ typedef struct D3D12FeatureCache
     D3D12_FEATURE_DATA_D3D12_OPTIONS1  options1;
     D3D12_FEATURE_DATA_D3D12_OPTIONS5  options5;
     D3D12_FEATURE_DATA_D3D12_OPTIONS10 options10;
-    D3D12_FEATURE_DATA_D3D12_OPTIONS12 options12;
 
     D3D12_FEATURE_DATA_ARCHITECTURE1  architecture;
     D3D12_FEATURE_DATA_SHADER_MODEL   shaderModel;
@@ -619,7 +618,6 @@ static void dx12_internal_cache_features(context_backend* backend)
     ID3D12Device10_CheckFeatureSupport(device, D3D12_FEATURE_D3D12_OPTIONS1, &f->options1, sizeof(f->options1));
     ID3D12Device10_CheckFeatureSupport(device, D3D12_FEATURE_D3D12_OPTIONS5, &f->options5, sizeof(f->options5));
     ID3D12Device10_CheckFeatureSupport(device, D3D12_FEATURE_D3D12_OPTIONS10, &f->options10, sizeof(f->options10));
-    ID3D12Device10_CheckFeatureSupport(device, D3D12_FEATURE_D3D12_OPTIONS12, &f->options12, sizeof(f->options12));
 
     f->architecture.NodeIndex = 0;
     ID3D12Device10_CheckFeatureSupport(device, D3D12_FEATURE_ARCHITECTURE1, &f->architecture, sizeof(f->architecture));
@@ -668,9 +666,6 @@ static void dx12_internal_print_features(const D3D12FeatureCache* f)
 
     // D3D12_OPTIONS5
     LOG_INFO("Raytracing Tier       : Tier %d", f->options5.RaytracingTier);
-
-    // D3D12_OPTIONS12
-    LOG_INFO("Enhanced Barriers     : %s", f->options12.EnhancedBarriersSupported ? "Yes" : "No");
 
     // VA support
     LOG_INFO("VA 64-bit Support     : %s", f->vaSupport.MaxGPUVirtualAddressBitsPerResource >= 44 ? "Yes" : "Partial/No");
