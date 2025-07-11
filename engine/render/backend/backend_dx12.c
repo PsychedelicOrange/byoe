@@ -41,6 +41,24 @@
 
     #include <tracy/TracyC.h>
 
+static LPCWSTR string_to_lpcwstr(const char* input)
+{
+    if (!input) return NULL;
+
+    int wide_len = MultiByteToWideChar(CP_UTF8, 0, input, -1, NULL, 0);
+    if (wide_len == 0) return NULL;
+
+    wchar_t* wide_str = (wchar_t*) malloc(wide_len * sizeof(wchar_t));
+    if (!wide_str) return NULL;
+
+    if (MultiByteToWideChar(CP_UTF8, 0, input, -1, wide_str, wide_len) == 0) {
+        free(wide_str);
+        return NULL;
+    }
+
+    return wide_str;
+}
+
 //--------------------------------------------------------
 // TODO:
 // - [x] Use the IDXGIFactory7 to query for the best GPUa and create the IDXGIAdapter4 or use AgilitySDK with DeviceFactory
@@ -944,6 +962,7 @@ static void dx12_internal_update_swapchain_rtv(gfx_swapchain* sc)
         D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = backend->rtv_handle_start;
         rtvHandle.ptr += i * ID3D12Device10_GetDescriptorHandleIncrementSize(DXDevice, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
         ID3D12Device10_CreateRenderTargetView(DXDevice, backend->backbuffers[i], NULL, rtvHandle);
+        ID3D12Resource_SetName(backend->backbuffers[i], string_to_lpcwstr("Swapchain Image"));
     }
 }
 
