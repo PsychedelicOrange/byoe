@@ -28,7 +28,7 @@
 // - [ ] build descriptor tables using new API
 // - [ ] bind heaps and tables
 
-#define TRIANGLE_TEST 1
+#define TRIANGLE_TEST 0
 
 typedef struct SDFPushConstant
 {
@@ -49,7 +49,7 @@ typedef struct sdf_resources
     gfx_shader           shader;
     gfx_pipeline         pipeline;
     gfx_root_signature   root_sig;
-    gfx_descriptor_table tables[2];
+    gfx_descriptor_table tables[1];
     SDFPushConstant      pc_data;
 } sdf_resources;
 
@@ -61,7 +61,7 @@ typedef struct screen_quad_resoruces
     gfx_shader           shader;
     gfx_pipeline         pipeline;
     gfx_root_signature   root_sig;
-    gfx_descriptor_table tables[1];
+    gfx_descriptor_table tables[2];    // samplers need different heap so different table for it
 } screen_quad_resoruces;
 
 typedef struct clear_texture_resources
@@ -71,7 +71,7 @@ typedef struct clear_texture_resources
     gfx_shader           shader;
     gfx_pipeline         pipeline;
     gfx_root_signature   root_sig;
-    gfx_descriptor_table tables[2];
+    gfx_descriptor_table tables[1];
 } clear_texture_resources;
 #else
 typedef struct triangle_resources
@@ -217,7 +217,7 @@ static void renderer_internal_create_root_sigs(void)
                 .set     = 0,
             },
             .count       = 1,
-            .type        = GFX_RESOURCE_TYPE_SAMPLED_IMAGE,    ///////////////////
+            .type        = GFX_RESOURCE_TYPE_SAMPLED_IMAGE,
             .stage_flags = GFX_SHADER_STAGE_PS,
         };
 
@@ -331,9 +331,8 @@ static void renderer_internal_destroy_pipelines(void)
 }
 
 #if !TRIANGLE_TEST
-static void renderer_internal_create_scene_pass_descriptors(void)
+static void renderer_internal_create_scene_pass_descriptor_table(void)
 {
-    
     //--------------------------------------------------
     // create the root signature and table to hold the resources/
     // in this pass it's an RW texture2d and it's view
@@ -361,11 +360,11 @@ static void renderer_internal_create_scene_pass_descriptors(void)
 
     s_RendererSDFInternalState.sdfscene_resources.scene_nodes_ubo_view = g_rhi.create_uniform_buffer_resource_view(&s_RendererSDFInternalState.sdfscene_resources.scene_nodes_uniform_buffer, MAX_GPU_NODES_SIZE, 0);
 
-    gfx_descriptor_table_entry table_entries[]          = {
+    gfx_descriptor_table_entry table_entries[] = {
         (gfx_descriptor_table_entry){&s_RendererSDFInternalState.sdfscene_resources.scene_nodes_uniform_buffer, &s_RendererSDFInternalState.sdfscene_resources.scene_nodes_ubo_view, {0, 0}},
         (gfx_descriptor_table_entry){&s_RendererSDFInternalState.sdfscene_resources.scene_texture, &s_RendererSDFInternalState.sdfscene_resources.scene_cs_write_view, {0, 1}},
     };
-    g_rhi.update_descriptor_table(&s_RendererSDFInternalState.sdfscene_resources.table, table_entries, ARRAY_SIZE(table_entries));
+    s_RendererSDFInternalState.sdfscene_resources.tables[0] = g_rhi.build_descriptor_table(&s_RendererSDFInternalState.sdfscene_resources.root_sig, &s_RendererSDFInternalState.generic_heap, table_entries, ARRAY_SIZE(table_entries));
 }
 
 static void renderer_internal_create_clear_tex_pass_descriptor_table(void)
@@ -382,11 +381,10 @@ static void renderer_internal_create_clear_tex_pass_descriptor_table(void)
         },
         .res_type = GFX_RESOURCE_TYPE_STORAGE_IMAGE});
 
-    s_RendererSDFInternalState.clear_tex_resources.table = g_rhi.create_descriptor_table(&s_RendererSDFInternalState.clear_tex_resources.root_sig);
-    gfx_descriptor_table_entry table_entries[]           = {
+    gfx_descriptor_table_entry table_entries[] = {
         (gfx_descriptor_table_entry){&s_RendererSDFInternalState.sdfscene_resources.scene_texture, &s_RendererSDFInternalState.clear_tex_resources.shader_read_view, {0, 0}},
     };
-    g_rhi.update_descriptor_table(&s_RendererSDFInternalState.clear_tex_resources.table, table_entries, ARRAY_SIZE(table_entries));
+    s_RendererSDFInternalState.clear_tex_resources.tables[0] = g_rhi.build_descriptor_table(&s_RendererSDFInternalState.clear_tex_resources.root_sig, &s_RendererSDFInternalState.generic_heap, table_entries, ARRAY_SIZE(table_entries));
 }
 
 static void renderer_internal_create_screen_pass_descriptor_table(void)
@@ -416,12 +414,10 @@ static void renderer_internal_create_screen_pass_descriptor_table(void)
         .resource = &s_RendererSDFInternalState.screen_quad_resources.scene_tex_sampler,
         .res_type = GFX_RESOURCE_TYPE_SAMPLER});
 
-    s_RendererSDFInternalState.screen_quad_resources.table = g_rhi.create_descriptor_table(&s_RendererSDFInternalState.screen_quad_resources.root_sig);
-    gfx_descriptor_table_entry screen_table_entries[]      = {
-        (gfx_descriptor_table_entry){&s_RendererSDFInternalState.sdfscene_resources.scene_texture, &s_RendererSDFInternalState.screen_quad_resources.shader_read_view, {0, 0}},
-        (gfx_descriptor_table_entry){&s_RendererSDFInternalState.screen_quad_resources.scene_tex_sampler, &s_RendererSDFInternalState.screen_quad_resources.sampler_view, {1, 0}},
-    };
-    g_rhi.update_descriptor_table(&s_RendererSDFInternalState.screen_quad_resources.table, screen_table_entries, ARRAY_SIZE(screen_table_entries));
+    gfx_descriptor_table_entry entry_0                         = (gfx_descriptor_table_entry){&s_RendererSDFInternalState.sdfscene_resources.scene_texture, &s_RendererSDFInternalState.screen_quad_resources.shader_read_view, {0, 0}};
+    gfx_descriptor_table_entry entry_1                         = (gfx_descriptor_table_entry){&s_RendererSDFInternalState.screen_quad_resources.scene_tex_sampler, &s_RendererSDFInternalState.screen_quad_resources.sampler_view, {1, 0}};
+    s_RendererSDFInternalState.screen_quad_resources.tables[0] = g_rhi.build_descriptor_table(&s_RendererSDFInternalState.screen_quad_resources.root_sig, &s_RendererSDFInternalState.generic_heap, &entry_0, 1);
+    s_RendererSDFInternalState.screen_quad_resources.tables[1] = g_rhi.build_descriptor_table(&s_RendererSDFInternalState.screen_quad_resources.root_sig, &s_RendererSDFInternalState.samplers_heap, &entry_1, 1);
 }
 #endif
 
@@ -457,9 +453,9 @@ static bool render_internal_sdf_init_gfx_ctx(uint32_t width, uint32_t height)
         }
 
         // Create the global pools
-        s_RendererSDFInternalState.generic_heap = g_rhi.create_descriptor_heap(GFX_HEAP_TYPE_SRV_UAV_CBV, 1024);
+        s_RendererSDFInternalState.generic_heap  = g_rhi.create_descriptor_heap(GFX_HEAP_TYPE_SRV_UAV_CBV, 1024);
         s_RendererSDFInternalState.samplers_heap = g_rhi.create_descriptor_heap(GFX_HEAP_TYPE_SAMPLER, 1024);
-        
+
         return true;
     } else {
         LOG_ERROR("Failed to create gfx backend!");
@@ -469,7 +465,6 @@ static bool render_internal_sdf_init_gfx_ctx(uint32_t width, uint32_t height)
 
 static void renderer_internal_sdf_destroy_gfx_ctx(void)
 {
-   
     g_rhi.destroy_descriptor_heap(&s_RendererSDFInternalState.generic_heap);
     g_rhi.destroy_descriptor_heap(&s_RendererSDFInternalState.samplers_heap);
 
@@ -503,18 +498,15 @@ static void renderer_internal_destroy_sdf_pass_resources(void)
 
 #if !TRIANGLE_TEST
     g_rhi.destroy_texture_resource_view(&s_RendererSDFInternalState.clear_tex_resources.shader_read_view);
-    g_rhi.destroy_descriptor_heap(&s_RendererSDFInternalState.clear_tex_resources.table);
 
     g_rhi.destroy_texture_resource(&s_RendererSDFInternalState.sdfscene_resources.scene_texture);
     g_rhi.destroy_texture_resource_view(&s_RendererSDFInternalState.sdfscene_resources.scene_cs_write_view);
-    g_rhi.destroy_descriptor_heap(&s_RendererSDFInternalState.sdfscene_resources.table);
     g_rhi.destroy_uniform_buffer_resource(&s_RendererSDFInternalState.sdfscene_resources.scene_nodes_uniform_buffer);
     g_rhi.destroy_uniform_buffer_resource_view(&s_RendererSDFInternalState.sdfscene_resources.scene_nodes_ubo_view);
 
     g_rhi.destroy_texture_resource_view(&s_RendererSDFInternalState.screen_quad_resources.shader_read_view);
     g_rhi.destroy_sampler_resource_view(&s_RendererSDFInternalState.screen_quad_resources.sampler_view);
     g_rhi.destroy_sampler(&s_RendererSDFInternalState.screen_quad_resources.scene_tex_sampler);
-    g_rhi.destroy_descriptor_heap(&s_RendererSDFInternalState.screen_quad_resources.table);
 #endif
 }
 
@@ -528,7 +520,7 @@ static void renderer_internal_scene_clear_pass(gfx_cmd_buf* cmd_buff)
 
     UNUSED(cmd_buff);
 
-    //g_rhi.clear_image(cmd_buff, &s_RendererSDFInternalState.sdfscene_resources.scene_texture);
+    g_rhi.clear_image(cmd_buff, &s_RendererSDFInternalState.sdfscene_resources.scene_texture);
 
     // gfx_render_pass scene_clear_pass = {.is_compute_pass = true};
     // g_rhi.begin_render_pass(cmd_buff, scene_clear_pass, s_RendererSDFInternalState.gfxcontext.swapchain.current_backbuffer_idx);
@@ -558,8 +550,8 @@ static void renderer_internal_scene_draw_pass(gfx_cmd_buf* cmd_buff)
         g_rhi.bind_root_signature(cmd_buff, &s_RendererSDFInternalState.sdfscene_resources.root_sig, GFX_PIPELINE_TYPE_COMPUTE);
         g_rhi.bind_compute_pipeline(cmd_buff, &s_RendererSDFInternalState.sdfscene_resources.pipeline);
 
-        g_rhi.bind_descriptor_heaps(cmd_buff, &heap, 1);
-        g_rhi.bind_descriptor_tables(cmd_buff, &s_RendererSDFInternalState.sdfscene_resources.table, 1, GFX_PIPELINE_TYPE_COMPUTE);
+        g_rhi.bind_descriptor_heaps(cmd_buff, &s_RendererSDFInternalState.generic_heap, 1);
+        g_rhi.bind_descriptor_tables(cmd_buff, s_RendererSDFInternalState.sdfscene_resources.tables, ARRAY_SIZE(s_RendererSDFInternalState.sdfscene_resources.tables), GFX_PIPELINE_TYPE_COMPUTE);
 
         const Camera camera     = gamestate_get_global_instance()->camera;
         mat4s        projection = glms_perspective(camera.fov, (float) s_RendererSDFInternalState.width / (float) s_RendererSDFInternalState.height, camera.near_plane, camera.far_plane);
@@ -609,10 +601,12 @@ static void renderer_internal_sdf_screen_quad_pass(gfx_cmd_buf* cmd_buff)
         g_rhi.bind_root_signature(cmd_buff, &s_RendererSDFInternalState.screen_quad_resources.root_sig, GFX_PIPELINE_TYPE_GRAPHICS);
         g_rhi.bind_gfx_pipeline(cmd_buff, &s_RendererSDFInternalState.screen_quad_resources.pipeline);
 
+        g_rhi.bind_descriptor_heaps(cmd_buff, &s_RendererSDFInternalState.generic_heap, 1);
+        g_rhi.bind_descriptor_heaps(cmd_buff, &s_RendererSDFInternalState.samplers_heap, 1);
+        g_rhi.bind_descriptor_tables(cmd_buff, s_RendererSDFInternalState.screen_quad_resources.tables, ARRAY_SIZE(s_RendererSDFInternalState.screen_quad_resources.tables), GFX_PIPELINE_TYPE_GRAPHICS);
+
         g_rhi.set_viewport(cmd_buff, (gfx_viewport){.x = 0, .y = 0, .width = s_RendererSDFInternalState.width, .height = s_RendererSDFInternalState.height, .min_depth = 0, .max_depth = 1});
         g_rhi.set_scissor(cmd_buff, (gfx_scissor){.x = 0, .y = 0, .width = s_RendererSDFInternalState.width, .height = s_RendererSDFInternalState.height});
-
-        g_rhi.bind_descriptor_table(cmd_buff, &s_RendererSDFInternalState.screen_quad_resources.table, GFX_PIPELINE_TYPE_GRAPHICS);
 
         g_rhi.draw(cmd_buff, 3, 1, 0, 0);
     }

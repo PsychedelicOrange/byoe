@@ -226,6 +226,7 @@ typedef struct descriptor_table_backend
 {
     VkDescriptorSet  set;
     VkPipelineLayout pipeline_layout_ref;
+    uint32_t         set_idx;
 } descriptor_table_backend;
 
 typedef struct texture_backend
@@ -997,7 +998,7 @@ static TypedGrowableArray vulkan_internal_create_queue_family_infos(queue_indice
     static float queuePriority = 1.0f;
 
     VkDeviceQueueCreateInfo* gfxQueueInfo = malloc(sizeof(VkDeviceQueueCreateInfo));
-    *gfxQueueInfo                         = (VkDeviceQueueCreateInfo) {
+    *gfxQueueInfo                         = (VkDeviceQueueCreateInfo){
                                 .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
                                 .queueFamilyIndex = indices.gfx,
                                 .queueCount       = 1,
@@ -1006,7 +1007,7 @@ static TypedGrowableArray vulkan_internal_create_queue_family_infos(queue_indice
 
     if (indices.gfx != indices.present) {
         VkDeviceQueueCreateInfo* presentQueueInfo = malloc(sizeof(VkDeviceQueueCreateInfo));
-        *presentQueueInfo                         = (VkDeviceQueueCreateInfo) {
+        *presentQueueInfo                         = (VkDeviceQueueCreateInfo){
                                     .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
                                     .queueFamilyIndex = indices.present,
                                     .queueCount       = 1,
@@ -1016,7 +1017,7 @@ static TypedGrowableArray vulkan_internal_create_queue_family_infos(queue_indice
 
     if (indices.async_compute != indices.gfx) {
         VkDeviceQueueCreateInfo* computeQueueInfo = malloc(sizeof(VkDeviceQueueCreateInfo));
-        *computeQueueInfo                         = (VkDeviceQueueCreateInfo) {
+        *computeQueueInfo                         = (VkDeviceQueueCreateInfo){
                                     .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
                                     .queueFamilyIndex = indices.async_compute,
                                     .queueCount       = 1,
@@ -1562,7 +1563,7 @@ gfx_shader vulkan_device_create_compute_shader(const char* spv_file_path)
 
         backend->modules.CS = vulkan_internal_create_shader_handle(full_path);
 
-        backend->stage_ci = (VkPipelineShaderStageCreateInfo) {
+        backend->stage_ci = (VkPipelineShaderStageCreateInfo){
             .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage  = VK_SHADER_STAGE_COMPUTE_BIT,
             .pName  = "main",
@@ -1598,7 +1599,7 @@ gfx_shader vulkan_device_create_vs_ps_shader(const char* spv_file_path_vs, const
         backend_vs->modules.VS = vulkan_internal_create_shader_handle(full_path);
         free(full_path);
 
-        backend_vs->stage_ci = (VkPipelineShaderStageCreateInfo) {
+        backend_vs->stage_ci = (VkPipelineShaderStageCreateInfo){
             .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage  = VK_SHADER_STAGE_VERTEX_BIT,
             .pName  = "main",
@@ -1614,7 +1615,7 @@ gfx_shader vulkan_device_create_vs_ps_shader(const char* spv_file_path_vs, const
         backend_ps->modules.PS = vulkan_internal_create_shader_handle(full_path);
         free(full_path);
 
-        backend_ps->stage_ci = (VkPipelineShaderStageCreateInfo) {
+        backend_ps->stage_ci = (VkPipelineShaderStageCreateInfo){
             .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage  = VK_SHADER_STAGE_FRAGMENT_BIT,
             .pName  = "main",
@@ -1676,7 +1677,7 @@ gfx_root_signature vulkan_device_create_root_signature(const gfx_descriptor_tabl
 
         for (uint32_t j = 0; j < set_layout->binding_count; ++j) {
             const gfx_descriptor_binding binding = set_layout->bindings[j];
-            vk_bindings[j]                       = (VkDescriptorSetLayoutBinding) {
+            vk_bindings[j]                       = (VkDescriptorSetLayoutBinding){
                                       .binding            = binding.location.binding,
                                       .descriptorType     = vulkan_util_descriptor_type_translate(binding.type),
                                       .descriptorCount    = binding.count,
@@ -1703,7 +1704,7 @@ gfx_root_signature vulkan_device_create_root_signature(const gfx_descriptor_tabl
 
         for (uint32_t i = 0; i < push_constant_count; ++i) {
             const gfx_root_constant_range push_constant = push_constants[i];
-            vk_push_constants[i]                        = (VkPushConstantRange) {
+            vk_push_constants[i]                        = (VkPushConstantRange){
                                        .offset     = push_constant.offset,
                                        .size       = push_constant.size,
                                        .stageFlags = vulkan_util_shader_stage_bits(push_constant.stage),
@@ -1890,7 +1891,7 @@ static gfx_pipeline vulkan_internal_create_gfx_pipeline(gfx_pipeline_create_info
         .maxDepthBounds        = 0,
     };
 
-    depthStencilSCI.front = (VkStencilOpState) {
+    depthStencilSCI.front = (VkStencilOpState){
         .failOp      = VK_STENCIL_OP_KEEP,
         .passOp      = VK_STENCIL_OP_KEEP,
         .depthFailOp = VK_STENCIL_OP_KEEP,
@@ -2041,17 +2042,21 @@ gfx_descriptor_table vulkan_device_build_descriptor_table(const gfx_root_signatu
     gfx_descriptor_table table = {0};
     uuid_generate(&table.uuid);
 
+    // Assuming all the tables entries belong to the same set
+    uint32_t set_idx = entries[0].location.set;
+
     descriptor_heap_backend*  heap_backend  = ((descriptor_heap_backend*) heap->backend);
     descriptor_table_backend* table_backend = malloc(sizeof(descriptor_table_backend));
     table.backend                           = table_backend;
     table_backend->pipeline_layout_ref      = ((root_signature_backend*) (root_sig->backend))->pipeline_layout;
+    table_backend->set_idx                  = set_idx;
 
     VkDescriptorSetAllocateInfo info = {0};
     info.sType                       = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     info.pNext                       = NULL;
     info.descriptorPool              = heap_backend->pool;
-    info.descriptorSetCount          = root_sig->descriptor_layout_count;
-    info.pSetLayouts                 = ((root_signature_backend*) (root_sig->backend))->vk_descriptor_set_layouts;
+    info.descriptorSetCount          = 1;
+    info.pSetLayouts                 = &((root_signature_backend*) (root_sig->backend))->vk_descriptor_set_layouts[set_idx];
 
     VK_CHECK_RESULT(vkAllocateDescriptorSets(VKDEVICE, &info, &table_backend->set), "[Vulkan] Failed to allocate descriptor set");
 
@@ -2065,7 +2070,10 @@ gfx_descriptor_table vulkan_device_build_descriptor_table(const gfx_root_signatu
         const gfx_resource*      res      = entries[i].resource;
         const gfx_resource_view* res_view = entries[i].resource_view;
 
-        writes[i] = (VkWriteDescriptorSet) {
+        if (entries[i].location.set != set_idx)
+            LOG_ERROR("[Vulkan] set index mismatch for the entry: %d", i);
+
+        writes[i] = (VkWriteDescriptorSet){
             .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
             .dstSet          = table_backend->set,
             .dstBinding      = entries[i].location.binding,
@@ -2077,7 +2085,7 @@ gfx_descriptor_table vulkan_device_build_descriptor_table(const gfx_root_signatu
         switch (res_view->type) {
             case GFX_RESOURCE_TYPE_UNIFORM_BUFFER:
             case GFX_RESOURCE_TYPE_STORAGE_BUFFER: {
-                buffer_infos[i] = (VkDescriptorBufferInfo) {
+                buffer_infos[i] = (VkDescriptorBufferInfo){
                     .buffer = (VkBuffer) ((buffer_backend*) (res->ubo->backend))->buffer,
                     .offset = ((buffer_view_backend*) (res_view->backend))->offset,
                     .range  = ((buffer_view_backend*) (res_view->backend))->range,
@@ -2085,20 +2093,20 @@ gfx_descriptor_table vulkan_device_build_descriptor_table(const gfx_root_signatu
                 writes[i].pBufferInfo = &buffer_infos[i];
             } break;
             case GFX_RESOURCE_TYPE_SAMPLER: {
-                image_infos[i] = (VkDescriptorImageInfo) {
+                image_infos[i] = (VkDescriptorImageInfo){
                     .sampler = (VkSampler) ((sampler_backend*) (res->sampler->backend))->sampler,
                 };
                 writes[i].pImageInfo = &image_infos[i];
             } break;
             case GFX_RESOURCE_TYPE_STORAGE_IMAGE: {
-                image_infos[i] = (VkDescriptorImageInfo) {
+                image_infos[i] = (VkDescriptorImageInfo){
                     .imageView   = (VkImageView) ((tex_resource_view_backend*) (res_view->backend))->view,
                     .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
                 };
                 writes[i].pImageInfo = &image_infos[i];
             } break;
             case GFX_RESOURCE_TYPE_SAMPLED_IMAGE: {
-                image_infos[i] = (VkDescriptorImageInfo) {
+                image_infos[i] = (VkDescriptorImageInfo){
                     .imageView   = (VkImageView) ((tex_resource_view_backend*) (res_view->backend))->view,
                     .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                 };
@@ -2222,7 +2230,7 @@ gfx_resource_view vulkan_device_create_texture_resource_view(const gfx_resource_
         .image            = tex_backend->image,
         .format           = vulkan_util_format_translate(desc.texture.format),
         .viewType         = vulkan_util_texture_view_type_translate(desc.texture.texture_type),
-        .components       = (VkComponentMapping) {VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A},
+        .components       = (VkComponentMapping){VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A},
         .subresourceRange = {
             .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,    // FIXME: hard coded shit since depth texture should have VK_IMAGE_ASPECT_DEPTH_BIT aspect mask
             .baseArrayLayer = desc.texture.base_layer,
@@ -2899,7 +2907,7 @@ rhi_error_codes vulkan_device_bind_descriptor_tables(const gfx_cmd_buf* cmd_buf,
     VkCommandBuffer commandBuffer = *(VkCommandBuffer*) cmd_buf->backend;
     for (uint32_t i = 0; i < num_tables; i++) {
         descriptor_table_backend* backend = (descriptor_table_backend*) tables[i].backend;
-        vkCmdBindDescriptorSets(commandBuffer, vulkan_util_pipeline_type_bindpoint_translate(pipeline_type), backend->pipeline_layout_ref, 0, 1, &backend->set, 0, NULL);
+        vkCmdBindDescriptorSets(commandBuffer, vulkan_util_pipeline_type_bindpoint_translate(pipeline_type), backend->pipeline_layout_ref, backend->set_idx, 1, &backend->set, 0, NULL);
     }
     return Success;
 }
