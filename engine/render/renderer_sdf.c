@@ -193,7 +193,7 @@ static void renderer_internal_create_root_sigs(void)
             .stage_flags = GFX_SHADER_STAGE_CS,
         };
 
-        gfx_descriptor_binding sdf_bindings[] = {sdf_scene_tex_binding, sdf_scene_ubo_binding};
+        gfx_descriptor_binding sdf_bindings[] = {sdf_scene_ubo_binding, sdf_scene_tex_binding};
 
         gfx_descriptor_table_layout set_layout_0 = {
             .bindings      = sdf_bindings,
@@ -733,6 +733,8 @@ void renderer_sdf_draw_scene(const SDF_Scene* scene)
         g_rhi.begin_gfx_cmd_recording(cmd_pool, cmd_buff);
 
         {
+            g_rhi.insert_swapchain_layout_barrier(cmd_buff, &s_RendererSDFInternalState.gfxcontext.swapchain, GFX_IMAGE_LAYOUT_PRESENTATION, GFX_IMAGE_LAYOUT_COLOR_ATTACHMENT);
+
 #if !TRIANGLE_TEST
             // Pass_0: SDF Scene Texture clear
             renderer_internal_scene_clear_pass(cmd_buff);
@@ -745,6 +747,7 @@ void renderer_sdf_draw_scene(const SDF_Scene* scene)
 #else
             renderer_internal_clear_screen_no_rendering(cmd_buff);
 #endif
+            g_rhi.insert_swapchain_layout_barrier(cmd_buff, &s_RendererSDFInternalState.gfxcontext.swapchain, GFX_IMAGE_LAYOUT_COLOR_ATTACHMENT, GFX_IMAGE_LAYOUT_PRESENTATION);
         }
 
         g_rhi.end_gfx_cmd_recording(cmd_buff);
