@@ -2071,7 +2071,7 @@ gfx_descriptor_table vulkan_device_build_descriptor_table(const gfx_root_signatu
         const gfx_resource_view* res_view = entries[i].resource_view;
 
         if (entries[i].location.set != set_idx)
-            LOG_ERROR("[Vulkan] set index mismatch for the entry: %d", i);
+            LOG_ERROR("[Vulkan] set index mismatch for the entry:%d @ registerspace: %d", i, set_idx);
 
         writes[i] = (VkWriteDescriptorSet){
             .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,

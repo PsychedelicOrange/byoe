@@ -275,6 +275,7 @@ typedef struct descriptor_table_backend
 {
     D3D12_CPU_DESCRIPTOR_HANDLE cpu_base;
     D3D12_GPU_DESCRIPTOR_HANDLE gpu_base;
+    uint32_t                    root_index;
 } descriptor_table_backend;
 
 //--------------------------------------------------------
@@ -1409,9 +1410,10 @@ static gfx_pipeline dx12_internal_create_gfx_pipeline(gfx_pipeline_create_info i
     uuid_generate(&pipeline.uuid);
 
     pipeline_backend* backend = malloc(sizeof(pipeline_backend));
-    pipeline.backend          = backend;
+    memset(backend, 0, sizeof(pipeline_backend));
+    pipeline.backend = backend;
     if (!backend) {
-        LOG_ERROR("[D3D12] Failed to malloc pipeline_backend");
+        LOG_ERROR("[D3D12] Failed to malloc gfx_pipeline_backend");
         uuid_destroy(&pipeline.uuid);
         return pipeline;
     }
@@ -1514,14 +1516,12 @@ static gfx_pipeline dx12_internal_create_gfx_pipeline(gfx_pipeline_create_info i
     // Gfx Pipeline
     //----------------------------
 
-    ID3D12PipelineState* pso = NULL;
-    HRESULT              hr  = ID3D12Device10_CreateGraphicsPipelineState(DXDevice, &desc, &IID_ID3D12PipelineState, &pso);
+    HRESULT hr = ID3D12Device10_CreateGraphicsPipelineState(DXDevice, &desc, &IID_ID3D12PipelineState, &backend->pso);
     if (FAILED(hr)) {
         LOG_ERROR("[D3D12] Failed to create gfx PSO (HRESULT=0x%08X)", hr);
         uuid_destroy(&pipeline.uuid);
         return pipeline;
     }
-    backend->pso = pso;
 
     return pipeline;
 }
@@ -1530,6 +1530,15 @@ static gfx_pipeline dx12_internal_create_compute_pipeline(gfx_pipeline_create_in
 {
     gfx_pipeline pipeline = {0};
     uuid_generate(&pipeline.uuid);
+
+    pipeline_backend* backend = malloc(sizeof(pipeline_backend));
+    memset(backend, 0, sizeof(pipeline_backend));
+    pipeline.backend = backend;
+    if (!backend) {
+        LOG_ERROR("[D3D12] Failed to malloc compute_pipeline_backend");
+        uuid_destroy(&pipeline.uuid);
+        return pipeline;
+    }
 
     D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {0};
     desc.NodeMask                          = 0;
@@ -1548,8 +1557,7 @@ static gfx_pipeline dx12_internal_create_compute_pipeline(gfx_pipeline_create_in
         uuid_destroy(&pipeline.uuid);
         return pipeline;
     }
-    pipeline.backend = pso;
-
+    backend->pso = pso;
     return pipeline;
 }
 
@@ -1620,6 +1628,10 @@ gfx_descriptor_table dx12_build_descriptor_table(const gfx_root_signature* root_
     gfx_descriptor_table table = {0};
     uuid_generate(&table.uuid);
 
+    // Assuming all the tables entries belong to the same set
+    // This is also the root param index each table is at it's own index
+    uint32_t root_idx = entries[0].location.set;
+
     descriptor_heap_backend*  heap_backend  = ((descriptor_heap_backend*) heap->backend);
     descriptor_table_backend* table_backend = malloc(sizeof(descriptor_table_backend));
     table.backend                           = table_backend;
@@ -1629,10 +1641,14 @@ gfx_descriptor_table dx12_build_descriptor_table(const gfx_root_signature* root_
     D3D12_GPU_DESCRIPTOR_HANDLE table_gpu_start = heap_backend->gpu_curr_offset;
     table_backend->cpu_base                     = table_cpu_start;
     table_backend->gpu_base                     = table_gpu_start;
+    table_backend->root_index                   = root_idx;
 
     for (uint32_t i = 0; i < num_entries; i++) {
         const gfx_resource*      res      = entries[i].resource;
         const gfx_resource_view* res_view = entries[i].resource_view;
+
+        if (entries[i].location.set != root_idx)
+            LOG_ERROR("[D3D12] space mismatch for the entry: %d @ registerspace: %d", i, root_idx);
 
         switch (res_view->type) {
             case GFX_RESOURCE_TYPE_SAMPLER: {
@@ -1704,18 +1720,17 @@ gfx_resource dx12_create_texture_resource(gfx_texture_create_info desc)
     resource.texture      = malloc(sizeof(gfx_texture));
     uuid_generate(&resource.texture->uuid);
 
-    ID3D12Resource*     d3dresource = NULL;
-    D3D12_RESOURCE_DESC res_desc    = {0};
-    res_desc.Width                  = desc.width;
-    res_desc.Height                 = desc.height;
-    res_desc.DepthOrArraySize       = (UINT16) desc.depth;
-    res_desc.MipLevels              = 1;    // No mip-maps support for RHI yet
-    res_desc.Dimension              = dx12_util_tex_type_dimensions_translate(desc.tex_type);
-    res_desc.Format                 = dx12_util_format_translate(desc.format);
-    res_desc.SampleDesc.Count       = 1;
-    res_desc.SampleDesc.Quality     = 0;
-    res_desc.Layout                 = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-    res_desc.Flags                  = D3D12_RESOURCE_FLAG_NONE;
+    D3D12_RESOURCE_DESC res_desc = {0};
+    res_desc.Width               = desc.width;
+    res_desc.Height              = desc.height;
+    res_desc.DepthOrArraySize    = (UINT16) desc.depth;
+    res_desc.MipLevels           = 1;    // No mip-maps support for RHI yet
+    res_desc.Dimension           = dx12_util_tex_type_dimensions_translate(desc.tex_type);
+    res_desc.Format              = dx12_util_format_translate(desc.format);
+    res_desc.SampleDesc.Count    = 1;
+    res_desc.SampleDesc.Quality  = 0;
+    res_desc.Layout              = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+    res_desc.Flags               = D3D12_RESOURCE_FLAG_NONE;
 
     if (desc.res_type >= GFX_RESOURCE_TYPE_STORAGE_IMAGE && desc.res_type <= GFX_RESOURCE_TYPE_STORAGE_TEXEL_BUFFER)
         res_desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
@@ -1731,14 +1746,14 @@ gfx_resource dx12_create_texture_resource(gfx_texture_create_info desc)
     heapProps.MemoryPoolPreference     = D3D12_MEMORY_POOL_UNKNOWN;
     D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON;
 
-    HRESULT hr = ID3D12Device10_CreateCommittedResource(DXDevice, &heapProps, D3D12_HEAP_FLAG_NONE, &res_desc, initialState, NULL, &IID_ID3D12Resource, &d3dresource);
+    ID3D12Resource* d3dresource = NULL;
+    HRESULT         hr          = ID3D12Device10_CreateCommittedResource(DXDevice, &heapProps, D3D12_HEAP_FLAG_NONE, &res_desc, initialState, NULL, &IID_ID3D12Resource, &d3dresource);
     if (FAILED(hr)) {
         if (resource.texture)
             uuid_destroy(&resource.texture->uuid);
         LOG_ERROR("[D3D12] Failed to create commited texture resource! (HRESULT=0x%08X)", hr);
         return resource;
     }
-
     resource.texture->backend = d3dresource;
 
     return resource;
@@ -2358,9 +2373,8 @@ rhi_error_codes dx12_set_scissor(const gfx_cmd_buf* cmd_buf, gfx_scissor scissor
 
 rhi_error_codes dx12_bind_gfx_pipeline(const gfx_cmd_buf* cmd_buf, const gfx_pipeline* pipeline)
 {
-    pipeline_backend* backend = (pipeline_backend*) (pipeline->backend);
-
     ID3D12GraphicsCommandList* cmd_list = (ID3D12GraphicsCommandList*) (cmd_buf->backend);
+    pipeline_backend*          backend  = (pipeline_backend*) (pipeline->backend);
     ID3D12GraphicsCommandList_IASetPrimitiveTopology(cmd_list, backend->topology);
     ID3D12GraphicsCommandList_SetPipelineState(cmd_list, backend->pso);
 
@@ -2370,7 +2384,8 @@ rhi_error_codes dx12_bind_gfx_pipeline(const gfx_cmd_buf* cmd_buf, const gfx_pip
 rhi_error_codes dx12_bind_compute_pipeline(const gfx_cmd_buf* cmd_buf, const gfx_pipeline* pipeline)
 {
     ID3D12GraphicsCommandList* cmd_list = (ID3D12GraphicsCommandList*) (cmd_buf->backend);
-    ID3D12GraphicsCommandList_SetPipelineState(cmd_list, (ID3D12PipelineState*) pipeline->backend);
+    pipeline_backend*          backend  = (pipeline_backend*) (pipeline->backend);
+    ID3D12GraphicsCommandList_SetPipelineState(cmd_list, backend->pso);
 
     return Success;
 }
@@ -2388,10 +2403,15 @@ rhi_error_codes dx12_device_bind_root_signature(const gfx_cmd_buf* cmd_buf, cons
 
 rhi_error_codes dx12_bind_descriptor_heaps(const gfx_cmd_buf* cmd_buf, const gfx_descriptor_heap* heaps, uint32_t num_heaps)
 {
-    ID3D12GraphicsCommandList* cmd_list = (ID3D12GraphicsCommandList*) (cmd_buf->backend);
-    for (uint32_t i = 0; i < num_heaps; i++)
-        ID3D12GraphicsCommandList_SetDescriptorHeaps(cmd_list, 1, &((descriptor_heap_backend*) (heaps[i].backend))->heap);
+    if (num_heaps > D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES)
+        LOG_ERROR("[D3D12] MaxAllowedHeapsToBind=4; while using global heaps please bind one per type");
 
+    ID3D12GraphicsCommandList* cmd_list                                       = (ID3D12GraphicsCommandList*) (cmd_buf->backend);
+    ID3D12DescriptorHeap*      d3dheaps[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES] = {0};
+    for (uint32_t i = 0; i < num_heaps; i++)
+        d3dheaps[i] = ((descriptor_heap_backend*) (heaps[i].backend))->heap;
+
+    ID3D12GraphicsCommandList_SetDescriptorHeaps(cmd_list, num_heaps, d3dheaps);
     return Success;
 }
 

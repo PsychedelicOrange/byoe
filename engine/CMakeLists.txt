@@ -47,7 +47,7 @@ if(NOT CI)
     find_program(DXC_EXECUTABLE dxc)
 
     if(NOT GLSLC_EXECUTABLE)
-            message(FATAL_ERROR "Could not find glslc. Ensure the Vulkan SDK is installed and VULKAN_SDK is set.")
+        message(FATAL_ERROR "Could not find glslc. Ensure the Vulkan SDK is installed and VULKAN_SDK is set.")
     endif()
 
     # Function to compile shaders
