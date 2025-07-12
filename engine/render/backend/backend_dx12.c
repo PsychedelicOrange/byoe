@@ -139,8 +139,8 @@ const rhi_jumptable dx12_jumptable = {
     dx12d_destroy_sampler_resource_view,
     dx12_create_uniform_buffer_resource_view,
     dx12_destroy_uniform_buffer_resource_view,
-    NULL,    // create single time cmd buffer
-    NULL,    // destroy single time cmd buffer
+    dx12_create_single_time_command_buffer,
+    dx12_destroy_single_time_command_buffer,
     NULL,    // read back swapchain
     dx12_frame_begin,
     dx12_frame_end,
@@ -159,7 +159,7 @@ const rhi_jumptable dx12_jumptable = {
     dx12_set_scissor,
     dx12_bind_gfx_pipeline,
     dx12_bind_compute_pipeline,
-    dx12_device_bind_root_signature,
+    dx12_bind_root_signature,
     dx12_bind_descriptor_heaps,
     dx12_bind_descriptor_tables,
     dx12_bind_root_constant,
@@ -2043,6 +2043,103 @@ void dx12_destroy_uniform_buffer_resource_view(gfx_resource_view* view)
     dx12_internal_destroy_res_view(view);
 }
 
+gfx_cmd_buf dx12_create_single_time_command_buffer(void)
+{
+    gfx_cmd_buf cmd_buf = {0};
+    uuid_generate(&cmd_buf.uuid);
+
+    typedef struct
+    {
+        ID3D12CommandAllocator*    allocator;
+        ID3D12GraphicsCommandList* cmd_list;
+    } single_time_cmd_buf_backend;
+
+    single_time_cmd_buf_backend* backend = malloc(sizeof(single_time_cmd_buf_backend));
+
+    // Create command allocator
+    HRESULT hr = ID3D12Device_CreateCommandAllocator(
+        DXDevice,
+        D3D12_COMMAND_LIST_TYPE_DIRECT,
+        &IID_ID3D12CommandAllocator,
+        (void**) &backend->allocator);
+    DX_CHECK_HR(hr);
+
+    // Create command list
+    hr = ID3D12Device_CreateCommandList(
+        DXDevice,
+        0,
+        D3D12_COMMAND_LIST_TYPE_DIRECT,
+        backend->allocator,
+        NULL,
+        &IID_ID3D12GraphicsCommandList,
+        (void**) &backend->cmd_list);
+    DX_CHECK_HR(hr);
+
+    cmd_buf.backend = backend;
+    return cmd_buf;
+}
+
+void dx12_destroy_single_time_command_buffer(gfx_cmd_buf* cmd_buf)
+{
+    typedef struct
+    {
+        ID3D12GraphicsCommandList2* cmd_list;
+        ID3D12CommandAllocator*     allocator;
+    } dx12_cmd_buf_backend;
+
+    dx12_cmd_buf_backend* backend = (dx12_cmd_buf_backend*) cmd_buf->backend;
+
+    HRESULT hr = ID3D12GraphicsCommandList2_Close(backend->cmd_list);
+    DX_CHECK_HR(hr);
+
+    ID3D12CommandList* ppCommandLists[] = {
+        (ID3D12CommandList*) backend->cmd_list};
+
+    ID3D12CommandQueue* queue = s_DXCtx.direct_queue;
+    ID3D12CommandQueue_ExecuteCommandLists(queue, 1, ppCommandLists);
+
+    ID3D12Fence* fence       = NULL;
+    UINT64       fence_value = 1;
+
+    hr = ID3D12Device_CreateFence(
+        DXDevice,
+        0,
+        D3D12_FENCE_FLAG_NONE,
+        &IID_ID3D12Fence,
+        (void**) &fence);
+    DX_CHECK_HR(hr);
+
+    hr = ID3D12CommandQueue_Signal(queue, fence, fence_value);
+    DX_CHECK_HR(hr);
+
+    if (ID3D12Fence_GetCompletedValue(fence) < fence_value) {
+        HANDLE event_handle = CreateEvent(NULL, FALSE, FALSE, NULL);
+        if (event_handle == NULL)
+            LOG_ERROR("Failed to create fence event handle");
+
+        hr = ID3D12Fence_SetEventOnCompletion(fence, fence_value, event_handle);
+        DX_CHECK_HR(hr);
+
+        WaitForSingleObject(event_handle, INFINITE);
+        CloseHandle(event_handle);
+    }
+
+    ID3D12Fence_Release(fence);
+    ID3D12GraphicsCommandList2_Release(backend->cmd_list);
+    ID3D12CommandAllocator_Release(backend->allocator);
+
+    uuid_destroy(&cmd_buf->uuid);
+    free(cmd_buf->backend);
+}
+
+gfx_texture_readback dx12_readback_swapchain(const gfx_swapchain* swapchain)
+{
+    gfx_texture_readback readback = {0};
+    UNUSED(swapchain);
+
+    return readback;
+}
+
 //--------------------------------------------------------
 
 rhi_error_codes dx12_frame_begin(gfx_context* context)
@@ -2407,7 +2504,7 @@ rhi_error_codes dx12_bind_compute_pipeline(const gfx_cmd_buf* cmd_buf, const gfx
     return Success;
 }
 
-rhi_error_codes dx12_device_bind_root_signature(const gfx_cmd_buf* cmd_buf, const gfx_root_signature* root_signature, gfx_pipeline_type pipeline_type)
+rhi_error_codes dx12_bind_root_signature(const gfx_cmd_buf* cmd_buf, const gfx_root_signature* root_signature, gfx_pipeline_type pipeline_type)
 {
     ID3D12GraphicsCommandList* cmd_list = (ID3D12GraphicsCommandList*) (cmd_buf->backend);
     if (pipeline_type == GFX_PIPELINE_TYPE_GRAPHICS)

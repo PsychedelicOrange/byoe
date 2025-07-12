@@ -71,8 +71,10 @@ void              dx12d_destroy_sampler_resource_view(gfx_resource_view* view);
 gfx_resource_view dx12_create_uniform_buffer_resource_view(gfx_resource* resource, uint32_t size, uint32_t offset);
 void              dx12_destroy_uniform_buffer_resource_view(gfx_resource_view* view);
 
-// ...
+gfx_cmd_buf dx12_create_single_time_command_buffer(void);
+void        dx12_destroy_single_time_command_buffer(gfx_cmd_buf* cmd_buf);
 
+gfx_texture_readback dx12_readback_swapchain(const gfx_swapchain* swapchain);
 //------------------------------------------
 // RHI
 //------------------------------------------
@@ -100,7 +102,7 @@ rhi_error_codes dx12_set_scissor(const gfx_cmd_buf* cmd_buf, gfx_scissor scissor
 
 rhi_error_codes dx12_bind_gfx_pipeline(const gfx_cmd_buf* cmd_buf, const gfx_pipeline* pipeline);
 rhi_error_codes dx12_bind_compute_pipeline(const gfx_cmd_buf* cmd_buf, const gfx_pipeline* pipeline);
-rhi_error_codes dx12_device_bind_root_signature(const gfx_cmd_buf* cmd_buf, const gfx_root_signature* root_signature, gfx_pipeline_type pipeline_type);
+rhi_error_codes dx12_bind_root_signature(const gfx_cmd_buf* cmd_buf, const gfx_root_signature* root_signature, gfx_pipeline_type pipeline_type);
 rhi_error_codes dx12_bind_descriptor_heaps(const gfx_cmd_buf* cmd_buf, const gfx_descriptor_heap* heaps, uint32_t num_heaps);
 rhi_error_codes dx12_bind_descriptor_tables(const gfx_cmd_buf* cmd_buf, const gfx_descriptor_table* tables, uint32_t num_tables, gfx_pipeline_type pipeline_type);
 rhi_error_codes dx12_bind_root_constant(const gfx_cmd_buf* cmd_buf, const gfx_root_signature* root_sig, gfx_root_constant push_constant);
