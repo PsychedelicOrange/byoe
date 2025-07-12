@@ -28,8 +28,10 @@ jobs:
         run: |
           mkdir build
           cd build
-          cmake .. -DCI=ON -G "Ninja"
+          cmake .. -DCI=ON -G "Ninja" -DCMAKE_BUILD_TYPE=Release
           ninja -j4
 
       - name: Test
-        run: ninja run.tests
+        run: |
+          cd build
+          ninja run.tests

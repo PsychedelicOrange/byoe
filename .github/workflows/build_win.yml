@@ -24,7 +24,7 @@ jobs:
           mkdir build
           cd build
           cmake .. -DCI=ON
-          cmake --build . --config Release
+          cmake --build . --config Release --parallel 32
           cd ..
       
       - name: Test
