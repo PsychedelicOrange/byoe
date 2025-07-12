@@ -27,10 +27,14 @@ char* readFileToString(const char* filename, uint32_t* file_size)
         fclose(file);
         return NULL;
     }
-    //for (size_t i = 0; i < *file_size + 1; i++) {
-    //    content[i] = '\0';
-    //}
-    fread(content, sizeof(char), *file_size, file);
+
+    size_t read_count = fread(content, sizeof(char), *file_size, file);
+    if (read_count != *file_size) {
+        fprintf(stderr, "Error: Could not read the entire file.\n");
+        fclose(file);
+        free(content);
+        return NULL;
+    }
 
     fclose(file);
     return content;

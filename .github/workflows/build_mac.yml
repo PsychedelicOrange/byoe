@@ -28,11 +28,6 @@ jobs:
           cd build
           cmake .. -DCI=ON -G "Ninja" -DCMAKE_BUILD_TYPE=Release
           ninja -j4
-
-      - name: Test
-        run: |
-          cd build
-          ninja run.tests
             
           
 

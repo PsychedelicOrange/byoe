@@ -17,7 +17,8 @@ Maanyavar       | [Github: ]() | [Discord: earnestly]()
 Phani Srikar    | [Github: Pikachuxxxx](https://github.com/Pikachuxxxx) | [Discord: pikachuxxx]()
 
 ## Engine 
-The engine is completely made in C and uses SDFs for rendering all it's primitives and uses Vulkan 1.2 (cause of VK_KHR_Dynamic_rendering extension) for rendering. This engine runs on Windows/Mac/Linux and is tested from time to time. We will add more info on how the SDF renderer works and architecture details in the PRs and link them here as we develop.
+The engine is completely made in C and uses SDFs for rendering all it's primitives and uses Vulkan 1.2 (cause of VK_KHR_Dynamic_rendering extension) for rendering and DirectX12. This engine runs on Windows/Mac/Linux and is tested from time to time. We will add more info on how the SDF renderer works and architecture details in the PRs and link them here as we develop.
+You can switch the Rendering APIs dynamically.
 
 ### Scripting
 We have a simple *C-based Scripting system*. Check the PR#2 for details on [Scripting in engine using C](https://github.com/PsychedelicOrange/byoe/pull/2). Check the [game folder and specificaly the camera_controller](https://github.com/PsychedelicOrange/byoe/blob/sdf-renderer-draft-1/game/camera_controller.c) for examples on how scripting can be added to game objects in the game side.
@@ -44,31 +45,31 @@ Folow these instructions to build the engine and run the game. All the dependenc
 git clone https://github.com/PsychedelicOrange/byoe.git
 mkdir build
 cd build
-cmake ..
-make 
+cmake .. -G "Ninja" -DCMAKE_BUILT_TYPE=Release
+ninja -j32 
 ```
 
 you can configure cmake to generate project files (XCode/VS22 etc.) for you and build using your favourite IDE in the usual way 
 
 ### Building the targets
 ```
-make
+ninja -j32 # or use -j$(nproc) on linux and -j$(sysctl -n hw.physicalcpu) on macos
 ```
 Execute this command  to build all the targets that have changes (such as dependencies, engine, game, tests and benchmarks).
 
 ### Running the game
 ```
-make run
+ninja run
 ```
 
 **Running Tests**
 we use a custom test header to test the engine API, no engine start and shut down/gfx tests are being done at the moment only API tests. Run them using the following commands
 ```
-make run.tests
+ninja run.tests
 ```
 
 **Running Benchmarks**
 The engine has some benchmakrs such as uuid_t generation stats and hash_map for testing performance related stats. Run them using the following commands
 ```
-make run.benchmarks
+ninja run.benchmarks
 ```
