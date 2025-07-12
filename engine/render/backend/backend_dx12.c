@@ -198,9 +198,10 @@ const rhi_jumptable dx12_jumptable = {
 
 typedef struct D3D12FeatureCache
 {
-    D3D12_FEATURE_DATA_D3D12_OPTIONS  options;
-    D3D12_FEATURE_DATA_D3D12_OPTIONS1 options1;
-    D3D12_FEATURE_DATA_D3D12_OPTIONS5 options5;
+    D3D12_FEATURE_DATA_D3D12_OPTIONS   options;
+    D3D12_FEATURE_DATA_D3D12_OPTIONS1  options1;
+    D3D12_FEATURE_DATA_D3D12_OPTIONS5  options5;
+    D3D12_FEATURE_DATA_D3D12_OPTIONS10 options10;
 
     D3D12_FEATURE_DATA_ARCHITECTURE1  architecture;
     D3D12_FEATURE_DATA_SHADER_MODEL   shaderModel;
@@ -224,7 +225,7 @@ typedef struct context_backend
     GLFWwindow*         glfwWindow;
     IDXGIFactory7*      factory;
     IDXGIAdapter4*      gpu;
-    ID3D12Device*       device;    // Win 11 latest, other latest version needs Agility SDK
+    ID3D12Device10*     device;    // Win 11 latest, other latest version needs Agility SDK
     HWND                hwnd;
     D3D_FEATURE_LEVEL   feat_level;
     D3D12FeatureCache   features;
@@ -629,12 +630,13 @@ static IDXGIAdapter4* dx12_internal_select_best_adapter(IDXGIFactory7* factory, 
 
 static void dx12_internal_cache_features(context_backend* backend)
 {
-    ID3D12Device*      device = backend->device;
+    ID3D12Device10*    device = backend->device;
     D3D12FeatureCache* f      = &backend->features;
 
     ID3D12Device10_CheckFeatureSupport(device, D3D12_FEATURE_D3D12_OPTIONS, &f->options, sizeof(f->options));
     ID3D12Device10_CheckFeatureSupport(device, D3D12_FEATURE_D3D12_OPTIONS1, &f->options1, sizeof(f->options1));
     ID3D12Device10_CheckFeatureSupport(device, D3D12_FEATURE_D3D12_OPTIONS5, &f->options5, sizeof(f->options5));
+    ID3D12Device10_CheckFeatureSupport(device, D3D12_FEATURE_D3D12_OPTIONS10, &f->options10, sizeof(f->options10));
 
     f->architecture.NodeIndex = 0;
     ID3D12Device10_CheckFeatureSupport(device, D3D12_FEATURE_ARCHITECTURE1, &f->architecture, sizeof(f->architecture));
@@ -833,7 +835,7 @@ gfx_context dx12_ctx_init(GLFWwindow* window)
     #endif
 
     LOG_INFO("Creating D3D12 Device...");
-    hr = D3D12CreateDevice((IUnknown*) backend->gpu, backend->feat_level, &IID_ID3D12Device, &backend->device);
+    hr = D3D12CreateDevice((IUnknown*) backend->gpu, backend->feat_level, &IID_ID3D12Device10, &backend->device);
     if (FAILED(hr)) {
         LOG_ERROR("[D3D12] Failed to create D3D12 Device (HRESULT = 0x%08X)", (unsigned int) hr);
         IDXGIAdapter4_Release(backend->gpu);
@@ -1757,14 +1759,14 @@ gfx_resource dx12_create_texture_resource(gfx_texture_create_info desc)
         res_desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
 
     // Crated resource with memory backing
-    D3D12_HEAP_PROPERTIES heapProps    = {0};
-    heapProps.Type                     = D3D12_HEAP_TYPE_DEFAULT;
-    heapProps.CPUPageProperty          = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-    heapProps.MemoryPoolPreference     = D3D12_MEMORY_POOL_UNKNOWN;
-    D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON;
+    D3D12_HEAP_PROPERTIES heapProps = {0};
+    heapProps.Type                  = D3D12_HEAP_TYPE_DEFAULT;
+    heapProps.CPUPageProperty       = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+    heapProps.MemoryPoolPreference  = D3D12_MEMORY_POOL_UNKNOWN;
 
-    ID3D12Resource* d3dresource = NULL;
-    HRESULT         hr          = ID3D12Device10_CreateCommittedResource(DXDevice, &heapProps, D3D12_HEAP_FLAG_NONE, &res_desc, initialState, NULL, &IID_ID3D12Resource, &d3dresource);
+    D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_GENERIC_READ;
+    ID3D12Resource*       d3dresource  = NULL;
+    HRESULT               hr           = ID3D12Device10_CreateCommittedResource(DXDevice, &heapProps, D3D12_HEAP_FLAG_NONE, &res_desc, initialState, NULL, &IID_ID3D12Resource, &d3dresource);
     if (FAILED(hr)) {
         if (resource.texture)
             uuid_destroy(&resource.texture->uuid);
