@@ -97,9 +97,9 @@ static LPCWSTR string_to_lpcwstr(const char* input)
 // - [x] Restore SDF renderer
 //   - [x] Bindings stuff etc. and whatever needs to be done to not crash it
 //   - [x] Clear Image (using compute shader)
-// - [ ] Single time command buffer
-// - [ ] Swapchain read back
-// - [ ] Restore tests!
+// - [x] Single time command buffer
+// - [x] Swapchain read back
+// - [x] Restore tests!
 
 //--------------------------------------------------------
 const rhi_jumptable dx12_jumptable = {
@@ -141,7 +141,7 @@ const rhi_jumptable dx12_jumptable = {
     dx12_destroy_uniform_buffer_resource_view,
     dx12_create_single_time_command_buffer,
     dx12_destroy_single_time_command_buffer,
-    NULL,    // read back swapchain
+    dx12_readback_swapchain,
     dx12_frame_begin,
     dx12_frame_end,
     dx12_wait_on_previous_cmds,
@@ -294,6 +294,12 @@ typedef struct descriptor_table_backend
     D3D12_GPU_DESCRIPTOR_HANDLE gpu_base;
     uint32_t                    root_index;
 } descriptor_table_backend;
+
+typedef struct single_time_cmd_buf_backend
+{
+    ID3D12CommandAllocator*    allocator;
+    ID3D12GraphicsCommandList* cmd_list;
+} single_time_cmd_buf_backend;
 
 //--------------------------------------------------------
 
@@ -2048,12 +2054,6 @@ gfx_cmd_buf dx12_create_single_time_command_buffer(void)
     gfx_cmd_buf cmd_buf = {0};
     uuid_generate(&cmd_buf.uuid);
 
-    typedef struct
-    {
-        ID3D12CommandAllocator*    allocator;
-        ID3D12GraphicsCommandList* cmd_list;
-    } single_time_cmd_buf_backend;
-
     single_time_cmd_buf_backend* backend = malloc(sizeof(single_time_cmd_buf_backend));
 
     // Create command allocator
@@ -2081,15 +2081,9 @@ gfx_cmd_buf dx12_create_single_time_command_buffer(void)
 
 void dx12_destroy_single_time_command_buffer(gfx_cmd_buf* cmd_buf)
 {
-    typedef struct
-    {
-        ID3D12GraphicsCommandList2* cmd_list;
-        ID3D12CommandAllocator*     allocator;
-    } dx12_cmd_buf_backend;
+    single_time_cmd_buf_backend* backend = (single_time_cmd_buf_backend*) cmd_buf->backend;
 
-    dx12_cmd_buf_backend* backend = (dx12_cmd_buf_backend*) cmd_buf->backend;
-
-    HRESULT hr = ID3D12GraphicsCommandList2_Close(backend->cmd_list);
+    HRESULT hr = ID3D12GraphicsCommandList_Close(backend->cmd_list);
     DX_CHECK_HR(hr);
 
     ID3D12CommandList* ppCommandLists[] = {
@@ -2125,7 +2119,7 @@ void dx12_destroy_single_time_command_buffer(gfx_cmd_buf* cmd_buf)
     }
 
     ID3D12Fence_Release(fence);
-    ID3D12GraphicsCommandList2_Release(backend->cmd_list);
+    ID3D12GraphicsCommandList_Release(backend->cmd_list);
     ID3D12CommandAllocator_Release(backend->allocator);
 
     uuid_destroy(&cmd_buf->uuid);
@@ -2135,7 +2129,111 @@ void dx12_destroy_single_time_command_buffer(gfx_cmd_buf* cmd_buf)
 gfx_texture_readback dx12_readback_swapchain(const gfx_swapchain* swapchain)
 {
     gfx_texture_readback readback = {0};
-    UNUSED(swapchain);
+
+    uint32_t width  = swapchain->width;
+    uint32_t height = swapchain->height;
+    uint32_t size   = width * height * 4;    // Assuming 4 bytes per pixel (RGBA8)
+
+    ID3D12Resource*     backbuffer      = ((swapchain_backend*) swapchain->backend)->backbuffers[swapchain->current_backbuffer_idx];
+    D3D12_RESOURCE_DESC backbuffer_desc = {0};
+    ID3D12Resource_GetDesc(backbuffer, &backbuffer_desc);
+
+    D3D12_PLACED_SUBRESOURCE_FOOTPRINT layout     = {0};
+    UINT64                             total_size = 0;
+    UINT64                             row_pitch  = 0;
+    UINT                               num_rows   = 0;
+
+    D3D12_RESOURCE_DESC texture_desc = backbuffer_desc;
+    ID3D12Device_GetCopyableFootprints(
+        DXDevice, &texture_desc, 0, 1, 0, &layout, &num_rows, &row_pitch, &total_size);
+
+    ID3D12Resource* readback_buffer = NULL;
+
+    D3D12_HEAP_PROPERTIES heap_props = {
+        .Type                 = D3D12_HEAP_TYPE_READBACK,
+        .CPUPageProperty      = D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
+        .MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN};
+
+    D3D12_RESOURCE_DESC buffer_desc = {
+        .Dimension        = D3D12_RESOURCE_DIMENSION_BUFFER,
+        .Alignment        = 0,
+        .Width            = total_size,
+        .Height           = 1,
+        .DepthOrArraySize = 1,
+        .MipLevels        = 1,
+        .Format           = DXGI_FORMAT_UNKNOWN,
+        .SampleDesc       = {1, 0},
+        .Layout           = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+        .Flags            = D3D12_RESOURCE_FLAG_NONE};
+
+    HRESULT hr = ID3D12Device_CreateCommittedResource(
+        DXDevice,
+        &heap_props,
+        D3D12_HEAP_FLAG_NONE,
+        &buffer_desc,
+        D3D12_RESOURCE_STATE_COPY_DEST,
+        NULL,
+        &IID_ID3D12Resource,
+        (void**) &readback_buffer);
+    DX_CHECK_HR(hr);
+
+    gfx_cmd_buf                cmd_buf  = dx12_create_single_time_command_buffer();
+    ID3D12GraphicsCommandList* cmd_list = ((single_time_cmd_buf_backend*) cmd_buf.backend)->cmd_list;
+
+    D3D12_RESOURCE_BARRIER barrier = {
+        .Type       = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+        .Flags      = D3D12_RESOURCE_BARRIER_FLAG_NONE,
+        .Transition = {
+            .pResource   = backbuffer,
+            .Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
+            .StateBefore = D3D12_RESOURCE_STATE_PRESENT,
+            .StateAfter  = D3D12_RESOURCE_STATE_COPY_SOURCE}};
+    ID3D12GraphicsCommandList_ResourceBarrier(cmd_list, 1, &barrier);
+
+    D3D12_TEXTURE_COPY_LOCATION src = {
+        .pResource        = backbuffer,
+        .Type             = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
+        .SubresourceIndex = 0};
+
+    D3D12_TEXTURE_COPY_LOCATION dst = {
+        .pResource       = readback_buffer,
+        .Type            = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
+        .PlacedFootprint = layout};
+
+    ID3D12GraphicsCommandList_CopyTextureRegion(cmd_list, &dst, 0, 0, 0, &src, NULL);
+
+    D3D12_RESOURCE_BARRIER restore_barrier = {
+        .Type       = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+        .Flags      = D3D12_RESOURCE_BARRIER_FLAG_NONE,
+        .Transition = {
+            .pResource   = backbuffer,
+            .Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
+            .StateBefore = D3D12_RESOURCE_STATE_COPY_SOURCE,
+            .StateAfter  = D3D12_RESOURCE_STATE_PRESENT}};
+    ID3D12GraphicsCommandList_ResourceBarrier(cmd_list, 1, &restore_barrier);
+
+    dx12_destroy_single_time_command_buffer(&cmd_buf);
+
+    void*       mapped_data = NULL;
+    D3D12_RANGE read_range  = {0, total_size};
+    DX_CHECK_HR(ID3D12Resource_Map(readback_buffer, 0, &read_range, &mapped_data));
+
+    readback.width          = width;
+    readback.height         = height;
+    readback.bits_per_pixel = 32;
+    readback.pixels         = malloc(size);
+
+    if (readback.pixels) {
+        for (UINT y = 0; y < height; ++y) {
+            uint8_t* row_src = (uint8_t*) mapped_data + layout.Footprint.RowPitch * y;
+            uint8_t* row_dst = (uint8_t*) readback.pixels + width * 4 * y;
+            memcpy(row_dst, row_src, width * 4);
+        }
+    }
+
+    D3D12_RANGE write_range = {0, 0};
+    ID3D12Resource_Unmap(readback_buffer, 0, &write_range);
+    ID3D12Resource_Release(readback_buffer);
 
     return readback;
 }
