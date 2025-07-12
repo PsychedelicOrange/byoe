@@ -28,5 +28,8 @@ jobs:
         run: |
           mkdir build
           cd build
-          cmake .. -DCI=ON
-          make
+          cmake .. -DCI=ON -G "Ninja"
+          ninja -j4
+
+      - name: Test
+        run: ninja run.tests
