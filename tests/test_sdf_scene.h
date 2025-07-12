@@ -275,14 +275,16 @@ bool read_ppm(const char* filename, int* width, int* height, uint8_t** pixels)
     while ((ch = fgetc(file)) == '\n' || ch == ' ')
         ;
 
-    *pixels = (uint8_t*) malloc(*width * *height * 3);
+    size_t file_size = (*width) * (*height) * 3;
+    *pixels          = (uint8_t*) malloc(file_size);
     if (!*pixels) {
         LOG_ERROR("Failed to allocate memory for pixel data\n");
         fclose(file);
         return false;
     }
 
-    fread(*pixels, 1, *width * *height * 3, file);
+    size_t read_count = fread(*pixels, 1, file_size, file);
+    UNUSED(read_count);
 
     fclose(file);
     return true;

@@ -1,17 +1,22 @@
 #include "engine.h"
 
 #include <GLFW/glfw3.h>
+#include <inttypes.h>
 
 #include "../render/frontend/gfx_frontend.h"
 
 static float       deltaTime;
 static float       lastFrame       = 0.0f;
 static float       elapsedTime     = 0;
-static int         FPS             = 0;
+static uint64_t    FPS             = 0;
+static uint64_t    AvgFPS          = 0;
+static uint64_t    FPSSamples      = 0;
 static GLFWwindow* g_GameWindowRef = NULL;
 
 static engine_version s_EngineVersion = {0, 1, 0, ""};
 static char           s_VersionString[64];
+
+static rhi_api api = 0;
 
 void engine_init(struct GLFWwindow** gameWindow, uint32_t width, uint32_t height)
 {
@@ -25,7 +30,13 @@ void engine_init(struct GLFWwindow** gameWindow, uint32_t width, uint32_t height
     render_utils_init_glfw();
     *gameWindow = render_utils_create_glfw_window("BYOE Game: Spooky Asteroids!", width, height);
 
-    if (gfx_init(Vulkan) != Success) {
+#if defined __APPLE__ || defined __linux__
+    api = Vulkan;
+#elif defined _WIN32
+    api = D3D12;    // TODO: can use vulkan too, maybe check with command line options?
+#endif
+
+    if (gfx_init(api) != Success) {
         LOG_ERROR("Error initializing gfx");
         gfx_destroy();
         exit(-1);
@@ -84,8 +95,16 @@ void engine_run(void)
 
         elapsedTime += deltaTime;
         if (elapsedTime > 1.0f) {
+            FPSSamples++;
+            AvgFPS += FPS;
             char windowTitle[250];
-            sprintf(windowTitle, "BYOE Game: spooky asteroids! | FPS: %d | render dt: %2.2fms", FPS, deltaTime * 1000.0f);
+            sprintf(
+                windowTitle,
+                "BYOE Game: spooky asteroids! | FPS: %" PRIu64 " | Avg. FPS: %" PRIu64 " | render dt: %2.2fms | RHI: %s",
+                FPS,
+                engine_get_avg_fps(),
+                deltaTime * 1000.0f,
+                api == Vulkan ? "Vulkan" : "D3D12");
             glfwSetWindowTitle(g_GameWindowRef, windowTitle);
             elapsedTime = 0.0f;
         }
@@ -117,9 +136,14 @@ float engine_get_elapsed_time(void)
     return elapsedTime;
 }
 
-int engine_get_fps(void)
+uint64_t engine_get_fps(void)
 {
     return FPS;
+}
+
+uint64_t engine_get_avg_fps(void)
+{
+    return (AvgFPS / FPSSamples);
 }
 
 engine_version engine_get_version(void)

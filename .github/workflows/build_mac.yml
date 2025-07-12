@@ -26,6 +26,8 @@ jobs:
         run: |
           mkdir build
           cd build
-          cmake .. -DCI=ON
-          make
+          cmake .. -DCI=ON -G "Ninja" -DCMAKE_BUILD_TYPE=Release
+          ninja -j4
+            
+          
 

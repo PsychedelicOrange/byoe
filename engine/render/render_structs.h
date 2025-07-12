@@ -282,8 +282,8 @@ typedef struct SDF_Node
 // Graphics API
 //------------------------
 
-#define MAX_BACKBUFFERS         4
-#define MAX_FRAMES_INFLIGHT     2
+#define MAX_BACKBUFFERS         3
+#define MAX_FRAMES_INFLIGHT     3    // same as no. of Swapchain images
 #define MAX_CMD_BUFFS_PER_QUEUE 16
 #define MAX_RT                  8
 
@@ -403,15 +403,71 @@ typedef enum gfx_compare_op
 
 typedef enum gfx_resource_type
 {
-    GFX_RESOURCE_TYPE_SAMPLER,
-    GFX_RESOURCE_TYPE_SAMPLED_IMAGE,
-    GFX_RESOURCE_TYPE_STORAGE_IMAGE,
-    GFX_RESOURCE_TYPE_UNIFORM_BUFFER,
-    GFX_RESOURCE_TYPE_STORAGE_BUFFER,
-    GFX_RESOURCE_TYPE_UNIFORM_TEXEL_BUFFER,
-    GFX_RESOURCE_TYPE_STORAGE_TEXEL_BUFFER,
-    GFX_RESOURCE_TYPE_INPUT_ATTACHMENT
+    GFX_RESOURCE_TYPE_SAMPLER,                     // Sampler
+    GFX_RESOURCE_TYPE_SAMPLED_IMAGE,               // SRV
+    GFX_RESOURCE_TYPE_UNIFORM_TEXEL_BUFFER,        // SRV
+    GFX_RESOURCE_TYPE_STORAGE_IMAGE,               // UAV
+    GFX_RESOURCE_TYPE_STORAGE_BUFFER,              // UAV
+    GFX_RESOURCE_TYPE_STORAGE_TEXEL_BUFFER,        // UAV
+    GFX_RESOURCE_TYPE_UNIFORM_BUFFER,              // CBV
+    GFX_RESOURCE_TYPE_COLOR_ATTACHMENT,            // RTV
+    GFX_RESOURCE_TYPE_DEPTH_STENCIL_ATTACHMENT,    // DSV
 } gfx_resource_type;
+
+typedef enum gfx_heap_type
+{
+    GFX_HEAP_TYPE_SAMPLER,
+    GFX_HEAP_TYPE_SRV_UAV_CBV,
+    GFX_HEAP_TYPE_RTV,
+    GFX_HEAP_TYPE_DSV,
+} gfx_heap_type;
+
+//--------------------------------------------
+// TODO: Future use
+typedef enum gfx_resource_usage
+{
+    // -------------------
+    // COMMON (buffers/textures)
+    // -------------------
+    GFX_RESOURCE_USAGE_NONE            = 0x00000000,    // Invalid/default
+    GFX_RESOURCE_USAGE_SHADER_READ     = 0x00000001,    // Sampled in shader (SRV)
+    GFX_RESOURCE_USAGE_SHADER_WRITE    = 0x00000002,    // Written via UAV
+    GFX_RESOURCE_USAGE_CONSTANT_BUFFER = 0x00000004,    // CBV
+    GFX_RESOURCE_USAGE_TRANSFER_SRC    = 0x00000008,    // Can be copied from
+    GFX_RESOURCE_USAGE_TRANSFER_DST    = 0x00000010,    // Can be copied into
+    GFX_RESOURCE_USAGE_INDIRECT_BUFFER = 0x00000020,    // Used for indirect dispatch/draw
+
+    // -------------------
+    // TEXTURE-SPECIFIC
+    // -------------------
+    GFX_RESOURCE_USAGE_COLOR_ATTACHMENT         = 0x00000100,    // Render target (RTV)
+    GFX_RESOURCE_USAGE_DEPTH_STENCIL_ATTACHMENT = 0x00000200,    // DSV
+    GFX_RESOURCE_USAGE_INPUT_ATTACHMENT         = 0x00000400,    // Vulkan input attachment
+    GFX_RESOURCE_USAGE_MIP_GEN                  = 0x00000800,    // Used in mip generation
+
+    // -------------------
+    // BUFFER-SPECIFIC
+    // -------------------
+    GFX_RESOURCE_USAGE_VERTEX_BUFFER        = 0x00001000,
+    GFX_RESOURCE_USAGE_INDEX_BUFFER         = 0x00002000,
+    GFX_RESOURCE_USAGE_UNIFORM_TEXEL_BUFFER = 0x00004000,
+    GFX_RESOURCE_USAGE_STORAGE_TEXEL_BUFFER = 0x00008000,
+
+    // -------------------
+    // RAYTRACING
+    // -------------------
+    GFX_RESOURCE_USAGE_ACCELERATION_STRUCTURE_BUILD   = 0x00010000,
+    GFX_RESOURCE_USAGE_ACCELERATION_STRUCTURE_STORAGE = 0x00020000,
+
+    // -------------------
+    // FLAGS
+    // -------------------
+    GFX_RESOURCE_USAGE_ALLOW_ALIASING   = 0x01000000,    // For memory aliasing (Vulkan + D3D12)
+    GFX_RESOURCE_USAGE_ALLOW_DISPLAY    = 0x02000000,    // Used for presentation/display surface
+    GFX_RESOURCE_USAGE_ALLOW_CPU_ACCESS = 0x04000000,    // CPU visible (upload/readback)
+
+} gfx_resource_usage;
+//--------------------------------------------
 
 typedef enum gfx_texture_type
 {
@@ -470,9 +526,8 @@ typedef struct gfx_syncobj
 {
     random_uuid_t    uuid;
     void*            backend;
-    uint64_t         wait_value;
     gfx_syncobj_type type;
-    uint32_t         _pad0[3];
+    uint32_t         _pad0[1];
 } gfx_syncobj;
 
 typedef uint64_t gfx_sync_point;
@@ -588,11 +643,10 @@ typedef struct gfx_binding_location
 
 typedef struct gfx_resource_view
 {
-    random_uuid_t        uuid;
-    void*                backend;
-    gfx_resource_type    type;
-    gfx_binding_location location;
-    uint32_t             _pad0[3];
+    random_uuid_t     uuid;
+    void*             backend;
+    gfx_resource_type type;
+    uint32_t          _pad0;
 } gfx_resource_view;
 
 typedef struct gfx_cmd_pool
@@ -620,11 +674,14 @@ typedef struct gfx_cmd_buf
 
 typedef struct gfx_cmd_queue
 {
-    gfx_cmd_buf* cmds[MAX_CMD_BUFFS_PER_QUEUE];
-    uint32_t     cmds_count;
-    uint32_t     _pad0[3];
+    void*    cmds[MAX_CMD_BUFFS_PER_QUEUE];
+    uint32_t cmds_count;
+    uint32_t _pad0[3];
 } gfx_cmd_queue;
 
+// Since each stages is a pointer to backend
+// We store the gfx_shader_type along with
+// it's corresponding backend stage
 typedef struct gfx_shader
 {
     random_uuid_t uuid;
@@ -647,27 +704,26 @@ typedef struct gfx_descriptor_binding
     gfx_shader_stage     stage_flags;
 } gfx_descriptor_binding;
 
-typedef struct gfx_descriptor_set_layout
+typedef struct gfx_descriptor_table_layout
 {
     gfx_descriptor_binding* bindings;
     uint32_t                binding_count;
-} gfx_descriptor_set_layout;
+} gfx_descriptor_table_layout;
 
-typedef struct gfx_push_constant
+// These 2 structs are used to define root constants in the root signature and bind during runtime
+typedef struct gfx_root_constant_range
 {
     uint32_t         size;
     uint32_t         offset;
     gfx_shader_stage stage;
-    uint32_t         _pad0;
-    void*            data;
-} gfx_push_constant;
+    uint32_t         location;    // Relevant in DX12
+} gfx_root_constant_range;
 
-typedef struct gfx_push_constant_range
+typedef struct gfx_root_constant
 {
-    uint32_t         size;
-    uint32_t         offset;
-    gfx_shader_stage stage;
-} gfx_push_constant_range;
+    gfx_root_constant_range range;
+    void*                   data;
+} gfx_root_constant;
 
 typedef struct gfx_descriptor_table
 {
@@ -684,14 +740,21 @@ typedef struct gfx_descriptor_table_entry
     gfx_binding_location     location;
 } gfx_descriptor_table_entry;
 
+typedef struct gfx_descriptor_heap
+{
+    random_uuid_t uuid;
+    void*         backend;
+    gfx_heap_type heap_type;    // The kind of resources that this heap allocates
+} gfx_descriptor_heap;
+
 typedef struct gfx_root_signature
 {
-    random_uuid_t                    uuid;
-    const gfx_descriptor_set_layout* descriptor_set_layouts;
-    const gfx_push_constant_range*   push_constants;
-    uint32_t                         descriptor_layout_count;
-    uint32_t                         push_constant_count;
-    void*                            backend;
+    random_uuid_t                uuid;
+    gfx_descriptor_table_layout* descriptor_set_layouts;    // each table corresponds to a register space
+    gfx_root_constant_range*     push_constants;
+    uint32_t                     descriptor_layout_count;
+    uint32_t                     push_constant_count;
+    void*                        backend;
 } gfx_root_signature;
 
 typedef struct gfx_pipeline_create_info
@@ -747,20 +810,22 @@ typedef struct gfx_scissor
 //-----------------------------------
 // High-level structs
 //-----------------------------------
-
+// TODO: get rid of this! or make it vulkan internal
 typedef struct gfx_submit_syncobj
 {
     const gfx_syncobj* wait_synobjs;
     const gfx_syncobj* signal_synobjs;
     uint32_t           wait_syncobjs_count;
     uint32_t           signal_syncobjs_count;
-    // CPU sync primitve to wait on: Fence or Timeline Semaphore
+    // CPU sync primitive to wait on: Fence or Timeline Semaphore
     gfx_syncobj* inflight_syncobj;
-    // Global timeline synnc point that will be signalled when the submit operation is completed
-    // Workloads can wait on this or intermediate points,
-    // this is sued to increment Values to singnal queue submits
-    // this is tracked per-inflight farme, gfx_context owns This
-    uint64_t* timeline_syncpoint;
+    // this is tracked per-in flight frame sync point to wait on CPU
+    gfx_sync_point* inflight_syncpoint;
+    // Global timeline sync point that will be signaled when the submit operation is completed
+    // Workloads can wait on these intermediate points,
+    // This is used to increment Values to signal queue submits
+    // gfx_context owns This
+    gfx_sync_point* global_syncpoint;
 } gfx_submit_syncobj;
 
 typedef struct gfx_context
@@ -770,16 +835,32 @@ typedef struct gfx_context
     uint32_t      current_syncobj_idx;
     uint32_t      inflight_frame_idx;
     gfx_swapchain swapchain;
-    gfx_syncobj   inflight_syncobj[MAX_FRAMES_INFLIGHT];
-    gfx_syncobj   image_ready[MAX_BACKBUFFERS];
-    gfx_syncobj   rendering_done[MAX_BACKBUFFERS];
+    struct
+    {
+        gfx_syncobj image_ready[MAX_BACKBUFFERS];
+        gfx_syncobj rendering_done[MAX_BACKBUFFERS];
+
+    } present_sync;    // won't be needing this in DX12
+    union
+    {
+        gfx_syncobj inflight_syncobj[MAX_FRAMES_INFLIGHT];
+        struct
+        {
+            gfx_syncobj    timeline_syncobj;
+            gfx_sync_point frame_syncpoint[MAX_FRAMES_INFLIGHT];    // last timeline value signaled for the given frame
+            gfx_sync_point global_syncpoint;
+            uint32_t       _pad[8];
+        };
+    } frame_sync;
     // NOTE: Add all the command buffers you want here...Draw, Async etc.
     // 1 per thread, only single threaded for now
-    gfx_cmd_pool draw_cmds_pool;
+    // In DX12 we need one per frame to reset memory when we are done with a command buffer recording and need to reset
+    // If we use a single pool, DX12 would never be able to re-use memory that was used by the command buffer even if
+    // we reset it, so vulkan should also suffer this wrath of multiple pools per frame in flight
+    gfx_cmd_pool draw_cmds_pool[MAX_FRAMES_INFLIGHT];
     // FIXME: Do we really need 2 of these draw_cmds and queue? can't we collapse and use 1?
     gfx_cmd_buf   draw_cmds[MAX_FRAMES_INFLIGHT];
     gfx_cmd_queue cmd_queue;
-    uint64_t      timeline_syncpoint[MAX_FRAMES_INFLIGHT];    // last timeline value signaled
 } gfx_context;
 
 typedef struct gfx_attachment

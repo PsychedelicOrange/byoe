@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.15)
 # PROJECT NAME
-project(byoe_ghost_asteroids C)
+project(byoe_ghost_asteroids)
 ####################################################################
 ## OPTIONS
 # Option to build the engine as DLL or static library
@@ -18,7 +18,7 @@ set(CMAKE_C_EXTENSIONS OFF)         # Disable compiler-specific extensions
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 ####################################################################
 # GLOBAL PER PLATFORM SETTINGS
-
+set(FETCHCONTENT_QUIET OFF)
 ##### ANDROID #####
 
 ##### WINDOWS #####
@@ -72,4 +72,14 @@ FetchContent_Declare(
     GIT_TAG vulkan-sdk-1.3.275.0
 )
 FetchContent_MakeAvailable(volk)
+##############################
+# Tracy Profiler
+if(WIN32)
+FetchContent_Declare(
+    tracy
+    GIT_REPOSITORY https://github.com/wolfpld/tracy.git
+    GIT_TAG v0.11.1
+)
+FetchContent_MakeAvailable(tracy)
+endif()
 ####################################################################

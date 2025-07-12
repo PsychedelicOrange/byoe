@@ -30,21 +30,24 @@ const rhi_jumptable vulkan_jumptable = {
     vulkan_flush_gpu_work,
     vulkan_device_create_swapchain,
     vulkan_device_destroy_swapchain,
+    vulkan_device_create_syncobj,
+    vulkan_device_destroy_syncobj,
     vulkan_device_create_gfx_cmd_pool,
     vulkan_device_destroy_gfx_cmd_pool,
     vulkan_device_create_gfx_cmd_buf,
+    vulkan_device_free_gfx_cmd_buf,
     vulkan_device_create_compute_shader,
     vulkan_device_destroy_compute_shader,
     vulkan_device_create_vs_ps_shader,
     vulkan_device_destroy_vs_ps_shader,
-    vulkan_device_create_pipeline,
-    vulkan_device_destroy_pipeline,
     vulkan_device_create_root_signature,
     vulkan_device_destroy_root_signature,
+    vulkan_device_create_pipeline,
+    vulkan_device_destroy_pipeline,
 
-    vulkan_device_create_descriptor_table,
-    vulkan_device_destroy_descriptor_table,
-    vulkan_device_update_descriptor_table,
+    vulkan_device_create_descriptor_heap,
+    vulkan_device_destroy_descriptor_heap,
+    vulkan_device_build_descriptor_table,
 
     vulkan_device_create_texture_resource,
     vulkan_device_destroy_texture_resource,
@@ -67,9 +70,6 @@ const rhi_jumptable vulkan_jumptable = {
 
     vulkan_device_create_single_time_command_buffer,
     vulkan_device_destroy_single_time_command_buffer,
-
-    vulkan_device_create_syncobj,
-    vulkan_device_destroy_syncobj,
 
     vulkan_device_readback_swapchain,
 
@@ -97,13 +97,15 @@ const rhi_jumptable vulkan_jumptable = {
     vulkan_bind_gfx_pipeline,
     vulkan_bind_compute_pipeline,
     vulkan_device_bind_root_signature,
-    vulkan_device_bind_descriptor_table,
+    vulkan_device_bind_descriptor_heaps,
+    vulkan_device_bind_descriptor_tables,
     vulkan_device_bind_push_constant,
 
     vulkan_draw,
     vulkan_dispatch,
 
     vulkan_transition_image_layout,
+    vulkan_transition_swapchain_layout,
 
     vulkan_clear_image};
 
@@ -132,6 +134,8 @@ DEFINE_CLAMP(int)
     if (x->backend)          \
         free(x->backend);    \
     x->backend = NULL
+
+#define SHADER_BINARY_EXT "spv"
 
 //--------------------------------------------------------
 // Internal Types
@@ -167,7 +171,7 @@ DEFINE_CLAMP(int)
 // - [x] Investigate CS perf issues - dispatching at low res than 32x3 such as 8x8 works fine for this shader, also the shader has high register pressure!!!
 // - [x] IMPORTANT!!! Texture read back for tests
 // ----------------------> renderer_backend Draft-1
-// - [ ] Improve frame sync use seemaphores per swapchain image for mobile GPUs
+// - [x] Improve frame sync use seemaphores per swapchain image for mobile GPUs
 // Draft-2 Goals: resource memory pool RAAI kinda simulation + backend* design consistency using macros + MSAA
 
 typedef struct swapchain_backend
@@ -186,7 +190,6 @@ typedef struct cmd_pool_backend
     VkCommandPool pool;
 } cmd_pool_backend;
 
-//---------------------------------
 typedef struct tex_resource_view_backend
 {
     VkImageView view;
@@ -214,17 +217,16 @@ typedef struct shader_backend
     } modules;
 } shader_backend;
 
-typedef struct pipeline_backend
+typedef struct descriptor_heap_backend
 {
-    VkPipeline pipeline;
-} pipeline_backend;
+    VkDescriptorPool pool;
+} descriptor_heap_backend;
 
 typedef struct descriptor_table_backend
 {
-    VkPipelineLayout pipeline_layout_ref_handle;
-    VkDescriptorPool pool;
-    VkDescriptorSet* sets;
-    uint32_t         num_sets;
+    VkDescriptorSet  set;
+    VkPipelineLayout pipeline_layout_ref;
+    uint32_t         set_idx;
 } descriptor_table_backend;
 
 typedef struct texture_backend
@@ -251,7 +253,7 @@ typedef struct sampler_backend
 } sampler_backend;
 
 //-------------------------
-// TODO: Combing these 2 structs
+// TODO: Combine these 2 structs
 typedef struct queue_indices
 {
     uint32_t gfx;
@@ -279,10 +281,9 @@ typedef struct device_create_info_ex
     TypedGrowableArray queue_cis;
 } device_create_info_ex;
 
-//---------------------------------
 typedef struct context_backend
 {
-    GLFWwindow*                      window;
+    GLFWwindow*                      hwnd;
     VkInstance                       instance;
     VkDebugUtilsMessengerEXT         debug_messenger;
     VkSurfaceKHR                     surface;
@@ -421,7 +422,9 @@ static VkDescriptorType vulkan_util_descriptor_type_translate(gfx_resource_type 
         case GFX_RESOURCE_TYPE_STORAGE_BUFFER: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         case GFX_RESOURCE_TYPE_UNIFORM_TEXEL_BUFFER: return VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
         case GFX_RESOURCE_TYPE_STORAGE_TEXEL_BUFFER: return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
-        case GFX_RESOURCE_TYPE_INPUT_ATTACHMENT: return VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+        case GFX_RESOURCE_TYPE_COLOR_ATTACHMENT:
+        case GFX_RESOURCE_TYPE_DEPTH_STENCIL_ATTACHMENT:
+            return VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
         default: return VK_DESCRIPTOR_TYPE_MAX_ENUM;    // Use the maximum value to indicate an invalid type
     }
 }
@@ -995,7 +998,7 @@ static TypedGrowableArray vulkan_internal_create_queue_family_infos(queue_indice
     static float queuePriority = 1.0f;
 
     VkDeviceQueueCreateInfo* gfxQueueInfo = malloc(sizeof(VkDeviceQueueCreateInfo));
-    *gfxQueueInfo                         = (VkDeviceQueueCreateInfo) {
+    *gfxQueueInfo                         = (VkDeviceQueueCreateInfo){
                                 .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
                                 .queueFamilyIndex = indices.gfx,
                                 .queueCount       = 1,
@@ -1004,7 +1007,7 @@ static TypedGrowableArray vulkan_internal_create_queue_family_infos(queue_indice
 
     if (indices.gfx != indices.present) {
         VkDeviceQueueCreateInfo* presentQueueInfo = malloc(sizeof(VkDeviceQueueCreateInfo));
-        *presentQueueInfo                         = (VkDeviceQueueCreateInfo) {
+        *presentQueueInfo                         = (VkDeviceQueueCreateInfo){
                                     .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
                                     .queueFamilyIndex = indices.present,
                                     .queueCount       = 1,
@@ -1014,7 +1017,7 @@ static TypedGrowableArray vulkan_internal_create_queue_family_infos(queue_indice
 
     if (indices.async_compute != indices.gfx) {
         VkDeviceQueueCreateInfo* computeQueueInfo = malloc(sizeof(VkDeviceQueueCreateInfo));
-        *computeQueueInfo                         = (VkDeviceQueueCreateInfo) {
+        *computeQueueInfo                         = (VkDeviceQueueCreateInfo){
                                     .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
                                     .queueFamilyIndex = indices.async_compute,
                                     .queueCount       = 1,
@@ -1102,15 +1105,14 @@ static queue_backend vulkan_internal_create_queues(queue_indices indices)
 
 //--------------------------------------------------------
 
-gfx_context vulkan_ctx_init(GLFWwindow* window, uint32_t width, uint32_t height)
+gfx_context vulkan_ctx_init(GLFWwindow* window)
 {
-    (void) width;
-    (void) height;
-
     gfx_context ctx = {0};
+    uuid_generate(&ctx.uuid);
 
     memset(&s_VkCtx, 0, sizeof(context_backend));
-    s_VkCtx.window = window;
+    ctx.backend  = &s_VkCtx;
+    s_VkCtx.hwnd = window;
 
     if (volkInitialize() != VK_SUCCESS) {
         LOG_ERROR("Failed to initialize Volk");
@@ -1148,34 +1150,31 @@ gfx_context vulkan_ctx_init(GLFWwindow* window, uint32_t width, uint32_t height)
 
     s_VkCtx.queues = vulkan_internal_create_queues(s_VkCtx.queue_idxs);
 
+    // Create in-flight sync primitives (Fence or TimelimeSemaphores per in-flight frame)
+    if (!g_gfxConfig.use_timeline_semaphores) {
+        for (int i = 0; i < MAX_FRAMES_INFLIGHT; i++) {
+            ctx.frame_sync.inflight_syncobj[i] = vulkan_device_create_syncobj(GFX_SYNCOBJ_TYPE_CPU);
+            VK_TAG_OBJECT("INFLIGHT_FENCE", VK_OBJECT_TYPE_FENCE, *((VkFence*) (ctx.frame_sync.inflight_syncobj[i].backend)));
+        }
+    } else {
+        ctx.frame_sync.timeline_syncobj = vulkan_device_create_syncobj(GFX_SYNCOBJ_TYPE_TIMELINE);
+        VK_TAG_OBJECT("INFLIGHT_TIMELINE_SEMA", VK_OBJECT_TYPE_SEMAPHORE, *((VkFence*) (ctx.frame_sync.timeline_syncobj.backend)));
+    }
+
+    // Create frame sync primitives per swapchain image
+    for (int i = 0; i < MAX_BACKBUFFERS; i++) {
+        ctx.present_sync.rendering_done[i] = vulkan_device_create_syncobj(GFX_SYNCOBJ_TYPE_GPU);
+        ctx.present_sync.image_ready[i]    = vulkan_device_create_syncobj(GFX_SYNCOBJ_TYPE_GPU);
+
+        VK_TAG_OBJECT("IMAGE_READY_SEMAPHORE", VK_OBJECT_TYPE_SEMAPHORE, *(VkSemaphore*) (ctx.present_sync.image_ready[i].backend));
+        VK_TAG_OBJECT("RENDERING_DONE_SEMAPHORE", VK_OBJECT_TYPE_SEMAPHORE, *(VkSemaphore*) (ctx.present_sync.rendering_done[i].backend));
+    }
+
     VkCommandPoolCreateInfo cmdPoolCI = {0};
     cmdPoolCI.sType                   = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     cmdPoolCI.queueFamilyIndex        = s_VkCtx.queue_idxs.gfx;    // same as present
     cmdPoolCI.flags                   = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
     VK_CHECK_RESULT(vkCreateCommandPool(VKDEVICE, &cmdPoolCI, NULL, &s_VkCtx.single_time_cmd_pool.pool), "Cannot create single time gfx command pool");
-
-    uuid_generate(&ctx.uuid);
-    ctx.backend = &s_VkCtx;
-
-    // Create in-flight sync primitives (Fence or TimelimeSemaphores per in-flight frame)
-    for (int i = 0; i < MAX_FRAMES_INFLIGHT; i++) {
-        if (!g_gfxConfig.use_timeline_semaphores) {
-            ctx.inflight_syncobj[i] = vulkan_device_create_syncobj(GFX_SYNCOBJ_TYPE_CPU);
-            VK_TAG_OBJECT("INFLIGHT_FENCE", VK_OBJECT_TYPE_FENCE, *((VkFence*) (ctx.inflight_syncobj[i].backend)));
-        } else {
-            ctx.inflight_syncobj[i] = vulkan_device_create_syncobj(GFX_SYNCOBJ_TYPE_TIMELINE);
-            VK_TAG_OBJECT("INFLIGHT_SEMA", VK_OBJECT_TYPE_SEMAPHORE, *((VkFence*) (ctx.inflight_syncobj[i].backend)));
-        }
-    }
-
-    // Create frame sync primitives per swapchain image
-    for (int i = 0; i < MAX_BACKBUFFERS; i++) {
-        ctx.rendering_done[i] = vulkan_device_create_syncobj(GFX_SYNCOBJ_TYPE_GPU);
-        ctx.image_ready[i]    = vulkan_device_create_syncobj(GFX_SYNCOBJ_TYPE_GPU);
-
-        VK_TAG_OBJECT("IMAGE_READY_SEMAPHORE", VK_OBJECT_TYPE_SEMAPHORE, *(VkSemaphore*) (ctx.image_ready[i].backend));
-        VK_TAG_OBJECT("RENDERING_DONE_SEMAPHORE", VK_OBJECT_TYPE_SEMAPHORE, *(VkSemaphore*) (ctx.rendering_done[i].backend));
-    }
 
     return ctx;
 }
@@ -1187,13 +1186,17 @@ void vulkan_ctx_destroy(gfx_context* ctx)
 
     free(s_VkCtx.supported_extensions);
 
-    for (int i = 0; i < MAX_FRAMES_INFLIGHT; i++) {
-        vulkan_device_destroy_syncobj(&ctx->inflight_syncobj[i]);
+    if (g_gfxConfig.use_timeline_semaphores)
+        vulkan_device_destroy_syncobj(&ctx->frame_sync.timeline_syncobj);
+    else {
+        for (int i = 0; i < MAX_FRAMES_INFLIGHT; i++) {
+            vulkan_device_destroy_syncobj(&ctx->frame_sync.inflight_syncobj[i]);
+        }
     }
 
     for (uint32_t i = 0; i < MAX_BACKBUFFERS; i++) {
-        vulkan_device_destroy_syncobj(&ctx->rendering_done[i]);
-        vulkan_device_destroy_syncobj(&ctx->image_ready[i]);
+        vulkan_device_destroy_syncobj(&ctx->present_sync.rendering_done[i]);
+        vulkan_device_destroy_syncobj(&ctx->present_sync.image_ready[i]);
     }
 
     vkDestroyCommandPool(VKDEVICE, s_VkCtx.single_time_cmd_pool.pool, NULL);
@@ -1203,8 +1206,9 @@ void vulkan_ctx_destroy(gfx_context* ctx)
     vkDestroyInstance(VKINSTANCE, NULL);
 }
 
-void vulkan_flush_gpu_work(void)
+void vulkan_flush_gpu_work(gfx_context* context)
 {
+    UNUSED(context);
     vkDeviceWaitIdle(VKDEVICE);
 }
 
@@ -1256,7 +1260,7 @@ static VkExtent2D vulkan_internal_choose_extents(void)
         return caps.currentExtent;
     else {
         int width, height;
-        glfwGetFramebufferSize((GLFWwindow*) s_VkCtx.window, &width, &height);
+        glfwGetFramebufferSize((GLFWwindow*) s_VkCtx.hwnd, &width, &height);
 
         VkExtent2D actualExtent = {
             (uint32_t) (width),
@@ -1387,6 +1391,92 @@ void vulkan_device_destroy_swapchain(gfx_swapchain* sc)
     }
 }
 
+static void vulkan_internal_create_sema(void* backend)
+{
+    VkSemaphoreCreateInfo semaphoreInfo = {
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+        .pNext = NULL,
+        .flags = VK_SEMAPHORE_TYPE_BINARY};
+
+    VK_CHECK_RESULT(vkCreateSemaphore(VKDEVICE, &semaphoreInfo, NULL, backend), "[Vulkan] cannot create semaphore");
+}
+
+static void vulkan_internal_destroy_sema(VkSemaphore sema)
+{
+    vkDestroySemaphore(VKDEVICE, sema, NULL);
+}
+
+static void vulkan_internal_create_fence(void* backend)
+{
+    VkFenceCreateInfo fenceCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+        .flags = VK_FENCE_CREATE_SIGNALED_BIT};
+    VK_CHECK_RESULT(vkCreateFence(VKDEVICE, &fenceCreateInfo, NULL, backend), "[Vulkan] cannot create fence");
+}
+
+static void vulkan_internal_destroy_fence(VkFence fence)
+{
+    vkDestroyFence(VKDEVICE, fence, NULL);
+}
+
+static void vulkan_internal_create_timeline_semaphore(void* backend)
+{
+    VkSemaphoreTypeCreateInfo timelineCreateInfo = {
+        .sType         = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
+        .pNext         = NULL,
+        .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
+        .initialValue  = 0,
+    };
+
+    VkSemaphoreCreateInfo semaphoreCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+        .pNext = &timelineCreateInfo,
+        .flags = 0,
+    };
+
+    VK_CHECK_RESULT(vkCreateSemaphore(VKDEVICE, &semaphoreCreateInfo, NULL, backend), "Failed to create timeline semaphore");
+}
+
+static void vulkan_internal_destroy_timeline_semaphore(VkSemaphore semaphore)
+{
+    if (semaphore != VK_NULL_HANDLE) {
+        vkDestroySemaphore(VKDEVICE, semaphore, NULL);
+    }
+}
+
+gfx_syncobj vulkan_device_create_syncobj(gfx_syncobj_type type)
+{
+    gfx_syncobj syncobj = {0};
+    uuid_generate(&syncobj.uuid);
+
+    syncobj.type = type;
+
+    if (type == GFX_SYNCOBJ_TYPE_CPU) {
+        syncobj.backend = malloc(sizeof(VkFence));
+        vulkan_internal_create_fence(syncobj.backend);
+    } else if (type == GFX_SYNCOBJ_TYPE_GPU) {
+        syncobj.backend = malloc(sizeof(VkSemaphore));
+        vulkan_internal_create_sema(syncobj.backend);
+    } else {
+        syncobj.backend = malloc(sizeof(VkSemaphore));
+        vulkan_internal_create_timeline_semaphore(syncobj.backend);
+    }
+    return syncobj;
+}
+
+void vulkan_device_destroy_syncobj(gfx_syncobj* syncobj)
+{
+    if (syncobj->type == GFX_SYNCOBJ_TYPE_CPU) {
+        vulkan_internal_destroy_fence(*(VkFence*) syncobj->backend);
+    } else if (syncobj->type == GFX_SYNCOBJ_TYPE_GPU) {
+        vulkan_internal_destroy_sema(*(VkSemaphore*) syncobj->backend);
+    } else {
+        vulkan_internal_destroy_timeline_semaphore(*(VkSemaphore*) (syncobj->backend));
+    }
+
+    BACKEND_SAFE_FREE(syncobj);
+}
+
 gfx_cmd_pool vulkan_device_create_gfx_cmd_pool(void)
 {
     gfx_cmd_pool pool = {0};
@@ -1436,57 +1526,10 @@ gfx_cmd_buf vulkan_device_create_gfx_cmd_buf(gfx_cmd_pool* pool)
     return cmd_buf;
 }
 
-static void vulkan_internal_create_sema(void* backend)
+void vulkan_device_free_gfx_cmd_buf(gfx_cmd_buf* cmd_buf)
 {
-    VkSemaphoreCreateInfo semaphoreInfo = {
-        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-        .pNext = NULL,
-        .flags = VK_SEMAPHORE_TYPE_BINARY};
-
-    VK_CHECK_RESULT(vkCreateSemaphore(VKDEVICE, &semaphoreInfo, NULL, backend), "[Vulkan] cannot create semaphore");
-}
-
-static void vulkan_internal_destroy_sema(VkSemaphore sema)
-{
-    vkDestroySemaphore(VKDEVICE, sema, NULL);
-}
-
-static void vulkan_internal_create_fence(void* backend)
-{
-    VkFenceCreateInfo fenceCreateInfo = {
-        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-        .flags = VK_FENCE_CREATE_SIGNALED_BIT};
-    VK_CHECK_RESULT(vkCreateFence(VKDEVICE, &fenceCreateInfo, NULL, backend), "[Vulkan] cannot create fence");
-}
-
-static void vulkan_internal_destroy_fence(VkFence fence)
-{
-    vkDestroyFence(VKDEVICE, fence, NULL);
-}
-
-void vulkan_internal_create_timeline_semaphore(void* backend)
-{
-    VkSemaphoreTypeCreateInfo timelineCreateInfo = {
-        .sType         = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
-        .pNext         = NULL,
-        .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
-        .initialValue  = 0,
-    };
-
-    VkSemaphoreCreateInfo semaphoreCreateInfo = {
-        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-        .pNext = &timelineCreateInfo,
-        .flags = 0,
-    };
-
-    VK_CHECK_RESULT(vkCreateSemaphore(VKDEVICE, &semaphoreCreateInfo, NULL, backend), "Failed to create timeline semaphore");
-}
-
-void vulkan_internal_destroy_timeline_semaphore(VkSemaphore semaphore)
-{
-    if (semaphore != VK_NULL_HANDLE) {
-        vkDestroySemaphore(VKDEVICE, semaphore, NULL);
-    }
+    // Since freeing pool will take care of this we ignore it
+    UNUSED(cmd_buf);
 }
 
 static VkShaderModule vulkan_internal_create_shader_handle(const char* spv_file_path)
@@ -1511,19 +1554,23 @@ gfx_shader vulkan_device_create_compute_shader(const char* spv_file_path)
     gfx_shader shader = {0};
     uuid_generate(&shader.uuid);
 
+    char* full_path = appendFileExt(spv_file_path, SHADER_BINARY_EXT);
+
     shader_backend* backend = malloc(sizeof(shader_backend));
     if (backend) {
         shader.stages.CS = backend;
         backend->stage   = GFX_SHADER_STAGE_CS;
 
-        backend->modules.CS = vulkan_internal_create_shader_handle(spv_file_path);
+        backend->modules.CS = vulkan_internal_create_shader_handle(full_path);
 
-        backend->stage_ci = (VkPipelineShaderStageCreateInfo) {
+        backend->stage_ci = (VkPipelineShaderStageCreateInfo){
             .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage  = VK_SHADER_STAGE_COMPUTE_BIT,
             .pName  = "main",
             .module = backend->modules.CS};
     }
+
+    free(full_path);
     return shader;
 }
 
@@ -1542,15 +1589,17 @@ gfx_shader vulkan_device_create_vs_ps_shader(const char* spv_file_path_vs, const
 {
     gfx_shader shader = {0};
     uuid_generate(&shader.uuid);
-    (void) spv_file_path_vs;
+
     shader_backend* backend_vs = malloc(sizeof(shader_backend));
     if (backend_vs) {
         shader.stages.VS  = backend_vs;
         backend_vs->stage = GFX_SHADER_STAGE_VS;
 
-        backend_vs->modules.VS = vulkan_internal_create_shader_handle(spv_file_path_vs);
+        char* full_path        = appendFileExt(spv_file_path_vs, SHADER_BINARY_EXT);
+        backend_vs->modules.VS = vulkan_internal_create_shader_handle(full_path);
+        free(full_path);
 
-        backend_vs->stage_ci = (VkPipelineShaderStageCreateInfo) {
+        backend_vs->stage_ci = (VkPipelineShaderStageCreateInfo){
             .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage  = VK_SHADER_STAGE_VERTEX_BIT,
             .pName  = "main",
@@ -1562,9 +1611,11 @@ gfx_shader vulkan_device_create_vs_ps_shader(const char* spv_file_path_vs, const
         shader.stages.PS  = backend_ps;
         backend_ps->stage = GFX_SHADER_STAGE_PS;
 
-        backend_ps->modules.PS = vulkan_internal_create_shader_handle(spv_file_path_ps);
+        char* full_path        = appendFileExt(spv_file_path_ps, SHADER_BINARY_EXT);
+        backend_ps->modules.PS = vulkan_internal_create_shader_handle(full_path);
+        free(full_path);
 
-        backend_ps->stage_ci = (VkPipelineShaderStageCreateInfo) {
+        backend_ps->stage_ci = (VkPipelineShaderStageCreateInfo){
             .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage  = VK_SHADER_STAGE_FRAGMENT_BIT,
             .pName  = "main",
@@ -1588,13 +1639,128 @@ void vulkan_device_destroy_vs_ps_shader(gfx_shader* shader)
     free(backend_ps);
 }
 
+gfx_root_signature vulkan_device_create_root_signature(const gfx_descriptor_table_layout* set_layouts, uint32_t set_layout_count, const gfx_root_constant_range* push_constants, uint32_t push_constant_count)
+{
+    gfx_root_signature root_sig = {0};
+    uuid_generate(&root_sig.uuid);
+    root_signature_backend* backend = malloc(sizeof(root_signature_backend));
+    root_sig.backend                = backend;
+
+    if (set_layout_count > 0) {
+        root_sig.descriptor_layout_count = set_layout_count;
+        root_sig.descriptor_set_layouts  = malloc(sizeof(gfx_descriptor_table_layout) * set_layout_count);
+
+        for (uint32_t i = 0; i < set_layout_count; ++i) {
+            const gfx_descriptor_table_layout* src_layout = &set_layouts[i];
+            gfx_descriptor_table_layout*       dst_layout = &root_sig.descriptor_set_layouts[i];
+
+            dst_layout->binding_count = src_layout->binding_count;
+
+            if (src_layout->binding_count > 0) {
+                dst_layout->bindings = malloc(sizeof(gfx_descriptor_binding) * src_layout->binding_count);
+                memcpy(dst_layout->bindings, src_layout->bindings, sizeof(gfx_descriptor_binding) * src_layout->binding_count);
+            } else {
+                dst_layout->bindings = NULL;
+            }
+        }
+    }
+
+    root_sig.push_constants      = malloc(sizeof(gfx_root_constant_range) * push_constant_count);
+    root_sig.push_constant_count = push_constant_count;
+    memcpy(root_sig.push_constants, set_layouts, sizeof(gfx_root_constant_range) * push_constant_count);
+
+    backend->vk_descriptor_set_layouts = malloc(sizeof(VkDescriptorSetLayout) * set_layout_count);
+    for (uint32_t i = 0; i < set_layout_count; ++i) {
+        const gfx_descriptor_table_layout* set_layout = &set_layouts[i];
+
+        VkDescriptorSetLayoutBinding* vk_bindings = malloc(sizeof(VkDescriptorSetLayoutBinding) * set_layout->binding_count);
+
+        for (uint32_t j = 0; j < set_layout->binding_count; ++j) {
+            const gfx_descriptor_binding binding = set_layout->bindings[j];
+            vk_bindings[j]                       = (VkDescriptorSetLayoutBinding){
+                                      .binding            = binding.location.binding,
+                                      .descriptorType     = vulkan_util_descriptor_type_translate(binding.type),
+                                      .descriptorCount    = binding.count,
+                                      .stageFlags         = vulkan_util_shader_stage_bits(binding.stage_flags),
+                                      .pImmutableSamplers = NULL,
+            };
+        }
+
+        VkDescriptorSetLayoutCreateInfo set_layout_ci = {
+            .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+            .pNext        = NULL,
+            .flags        = 0,
+            .bindingCount = set_layout->binding_count,
+            .pBindings    = vk_bindings,
+        };
+
+        VK_CHECK_RESULT(vkCreateDescriptorSetLayout(VKDEVICE, &set_layout_ci, NULL, &backend->vk_descriptor_set_layouts[i]), "[Vulkan] cannot create descriptor set layout");
+        free(vk_bindings);
+    }
+
+    VkPushConstantRange* vk_push_constants = NULL;
+    if (push_constant_count > 0) {
+        vk_push_constants = malloc(sizeof(VkPushConstantRange) * push_constant_count);
+
+        for (uint32_t i = 0; i < push_constant_count; ++i) {
+            const gfx_root_constant_range push_constant = push_constants[i];
+            vk_push_constants[i]                        = (VkPushConstantRange){
+                                       .offset     = push_constant.offset,
+                                       .size       = push_constant.size,
+                                       .stageFlags = vulkan_util_shader_stage_bits(push_constant.stage),
+            };
+        }
+    }
+
+    VkPipelineLayoutCreateInfo pipeline_layout_ci = {
+        .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .pNext                  = NULL,
+        .flags                  = 0,
+        .setLayoutCount         = set_layout_count,
+        .pSetLayouts            = backend->vk_descriptor_set_layouts,
+        .pushConstantRangeCount = push_constant_count,
+        .pPushConstantRanges    = vk_push_constants,
+    };
+
+    VK_CHECK_RESULT(vkCreatePipelineLayout(VKDEVICE, &pipeline_layout_ci, NULL, &((root_signature_backend*) root_sig.backend)->pipeline_layout), "[Vulkan] cannot create pipeline layout");
+    free(vk_push_constants);
+
+    return root_sig;
+}
+
+void vulkan_device_destroy_root_signature(gfx_root_signature* root_sig)
+{
+    uuid_destroy(&root_sig->uuid);
+
+    if (root_sig->descriptor_set_layouts) {
+        for (uint32_t i = 0; i < root_sig->descriptor_layout_count; ++i) {
+            if (root_sig->descriptor_set_layouts[i].bindings)
+                free(root_sig->descriptor_set_layouts[i].bindings);
+        }
+        free(root_sig->descriptor_set_layouts);
+    }
+
+    if (root_sig->push_constant_count > 0) {
+        free(root_sig->push_constants);
+        root_sig->push_constants = NULL;
+    }
+
+    for (uint32_t i = 0; i < root_sig->descriptor_layout_count; i++) {
+        vkDestroyDescriptorSetLayout(VKDEVICE, ((root_signature_backend*) (root_sig->backend))->vk_descriptor_set_layouts[i], NULL);
+    }
+
+    vkDestroyPipelineLayout(VKDEVICE, ((root_signature_backend*) (root_sig->backend))->pipeline_layout, NULL);
+    VkDescriptorSetLayout* layouts = ((root_signature_backend*) (root_sig->backend))->vk_descriptor_set_layouts;
+    if (layouts)
+        free(layouts);
+    free(root_sig->backend);
+    root_sig->backend = NULL;
+}
+
 static gfx_pipeline vulkan_internal_create_compute_pipeline(gfx_pipeline_create_info info)
 {
     gfx_pipeline pipeline = {0};
     uuid_generate(&pipeline.uuid);
-
-    pipeline_backend* backend = malloc(sizeof(pipeline_backend));
-    memset(backend, 0, sizeof(pipeline_backend));
 
     shader_backend* cs_backend = (shader_backend*) info.shader.stages.CS;
 
@@ -1605,9 +1771,9 @@ static gfx_pipeline vulkan_internal_create_compute_pipeline(gfx_pipeline_create_
         .stage  = cs_backend->stage_ci,
     };
 
-    VK_CHECK_RESULT(vkCreateComputePipelines(VKDEVICE, VK_NULL_HANDLE, 1, &computePipelineCI, NULL, &backend->pipeline), "[Vulkan] Cannot create compute graphics pipeline");
+    pipeline.backend = malloc(sizeof(VkPipeline));
+    VK_CHECK_RESULT(vkCreateComputePipelines(VKDEVICE, VK_NULL_HANDLE, 1, &computePipelineCI, NULL, pipeline.backend), "[Vulkan] Cannot create compute graphics pipeline");
 
-    pipeline.backend = backend;
     return pipeline;
 }
 
@@ -1617,9 +1783,6 @@ static gfx_pipeline vulkan_internal_create_gfx_pipeline(gfx_pipeline_create_info
 {
     gfx_pipeline pipeline = {0};
     uuid_generate(&pipeline.uuid);
-
-    pipeline_backend* backend = malloc(sizeof(pipeline_backend));
-    memset(backend, 0, sizeof(pipeline_backend));
 
     //----------------------------
     // Vertex Input Layout Stage
@@ -1726,12 +1889,19 @@ static gfx_pipeline vulkan_internal_create_gfx_pipeline(gfx_pipeline_create_info
         .back.writeMask        = 0,
         .minDepthBounds        = 0,
         .maxDepthBounds        = 0,
-        .front.failOp          = VK_STENCIL_OP_KEEP,
-        .front.passOp          = VK_STENCIL_OP_KEEP,
-        .front.compareOp       = VK_COMPARE_OP_ALWAYS,
-        .front.compareMask     = 0,
-        .front.reference       = 0,
-        .front.depthFailOp     = VK_STENCIL_OP_KEEP};
+    };
+
+    depthStencilSCI.front = (VkStencilOpState){
+        .failOp      = VK_STENCIL_OP_KEEP,
+        .passOp      = VK_STENCIL_OP_KEEP,
+        .depthFailOp = VK_STENCIL_OP_KEEP,
+        .compareOp   = VK_COMPARE_OP_ALWAYS,
+        .compareMask = 0,
+        .writeMask   = 0,
+        .reference   = 0,
+    };
+
+    depthStencilSCI.back = depthStencilSCI.front;
 
     //----------------------------
     // Multi sample State (MSAA)
@@ -1800,18 +1970,18 @@ static gfx_pipeline vulkan_internal_create_gfx_pipeline(gfx_pipeline_create_info
         .stageCount          = stage_count,
         .renderPass          = VK_NULL_HANDLE};    // renderPass is NULL since we are using VK_KHR_dynamic_rendering extension
 
-    VK_CHECK_RESULT(vkCreateGraphicsPipelines(VKDEVICE, VK_NULL_HANDLE, 1, &graphics_pipeline_ci, NULL, &backend->pipeline), "[Vulkan] could not create graphics pipeline");
+    pipeline.backend = malloc(sizeof(VkPipeline));
+    VK_CHECK_RESULT(vkCreateGraphicsPipelines(VKDEVICE, VK_NULL_HANDLE, 1, &graphics_pipeline_ci, NULL, pipeline.backend), "[Vulkan] could not create graphics pipeline");
 
     free(stages);
-
-    pipeline.backend = backend;
 
     return pipeline;
 }
 
 gfx_pipeline vulkan_device_create_pipeline(gfx_pipeline_create_info info)
 {
-    if (info.type == GFX_PIPELINE_TYPE_GRAPHICS) return vulkan_internal_create_gfx_pipeline(info);
+    if (info.type == GFX_PIPELINE_TYPE_GRAPHICS)
+        return vulkan_internal_create_gfx_pipeline(info);
     else
         return vulkan_internal_create_compute_pipeline(info);
 }
@@ -1819,210 +1989,142 @@ gfx_pipeline vulkan_device_create_pipeline(gfx_pipeline_create_info info)
 void vulkan_device_destroy_pipeline(gfx_pipeline* pipeline)
 {
     uuid_destroy(&pipeline->uuid);
-    vkDestroyPipeline(VKDEVICE, ((pipeline_backend*) (pipeline->backend))->pipeline, NULL);
+    vkDestroyPipeline(VKDEVICE, *(VkPipeline*) (pipeline->backend), NULL);
     free(pipeline->backend);
     pipeline->backend = NULL;
 }
 
-gfx_root_signature vulkan_device_create_root_signature(const gfx_descriptor_set_layout* set_layouts, uint32_t set_layout_count, const gfx_push_constant_range* push_constants, uint32_t push_constant_count)
+gfx_descriptor_heap vulkan_device_create_descriptor_heap(gfx_heap_type heap_type, uint32_t num_descriptors)
 {
-    gfx_root_signature root_sig = {0};
-    uuid_generate(&root_sig.uuid);
-    root_signature_backend* backend = malloc(sizeof(root_signature_backend));
-    root_sig.backend                = backend;
+    gfx_descriptor_heap heap = {0};
+    uuid_generate(&heap.uuid);
 
-    backend->vk_descriptor_set_layouts = malloc(sizeof(VkDescriptorSetLayout) * set_layout_count);
-    for (uint32_t i = 0; i < set_layout_count; ++i) {
-        const gfx_descriptor_set_layout* set_layout = &set_layouts[i];
+    descriptor_heap_backend* backend = malloc(sizeof(descriptor_heap_backend));
 
-        VkDescriptorSetLayoutBinding* vk_bindings = malloc(sizeof(VkDescriptorSetLayoutBinding) * set_layout->binding_count);
-
-        for (uint32_t j = 0; j < set_layout->binding_count; ++j) {
-            const gfx_descriptor_binding binding = set_layout->bindings[j];
-            vk_bindings[j]                       = (VkDescriptorSetLayoutBinding) {
-                                      .binding            = binding.location.binding,
-                                      .descriptorType     = vulkan_util_descriptor_type_translate(binding.type),
-                                      .descriptorCount    = binding.count,
-                                      .stageFlags         = vulkan_util_shader_stage_bits(binding.stage_flags),
-                                      .pImmutableSamplers = NULL,
-            };
-        }
-
-        VkDescriptorSetLayoutCreateInfo set_layout_ci = {
-            .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-            .pNext        = NULL,
-            .flags        = 0,
-            .bindingCount = set_layout->binding_count,
-            .pBindings    = vk_bindings,
-        };
-
-        VK_CHECK_RESULT(vkCreateDescriptorSetLayout(VKDEVICE, &set_layout_ci, NULL, &backend->vk_descriptor_set_layouts[i]), "[Vulkan] cannot create descriptor set layout");
-        free(vk_bindings);
-    }
-
-    VkPushConstantRange* vk_push_constants = NULL;
-    if (push_constant_count > 0) {
-        vk_push_constants = malloc(sizeof(VkPushConstantRange) * push_constant_count);
-
-        for (uint32_t i = 0; i < push_constant_count; ++i) {
-            const gfx_push_constant_range push_constant = push_constants[i];
-            vk_push_constants[i]                        = (VkPushConstantRange) {
-                                       .offset     = push_constant.offset,
-                                       .size       = push_constant.size,
-                                       .stageFlags = vulkan_util_shader_stage_bits(push_constant.stage),
-            };
-        }
-    }
-
-    VkPipelineLayoutCreateInfo pipeline_layout_ci = {
-        .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-        .pNext                  = NULL,
-        .flags                  = 0,
-        .setLayoutCount         = set_layout_count,
-        .pSetLayouts            = backend->vk_descriptor_set_layouts,
-        .pushConstantRangeCount = push_constant_count,
-        .pPushConstantRanges    = vk_push_constants,
-    };
-
-    VK_CHECK_RESULT(vkCreatePipelineLayout(VKDEVICE, &pipeline_layout_ci, NULL, &((root_signature_backend*) root_sig.backend)->pipeline_layout), "[Vulkan] cannot create pipeline layout");
-    free(vk_push_constants);
-
-    root_sig.descriptor_set_layouts  = (gfx_descriptor_set_layout*) set_layouts;
-    root_sig.descriptor_layout_count = set_layout_count;
-    root_sig.push_constants          = (gfx_push_constant_range*) push_constants;
-    root_sig.push_constant_count     = push_constant_count;
-
-    return root_sig;
-}
-
-void vulkan_device_destroy_root_signature(gfx_root_signature* root_sig)
-{
-    uuid_destroy(&root_sig->uuid);
-    for (uint32_t i = 0; i < root_sig->descriptor_layout_count; i++) {
-        vkDestroyDescriptorSetLayout(VKDEVICE, ((root_signature_backend*) (root_sig->backend))->vk_descriptor_set_layouts[i], NULL);
-    }
-
-    vkDestroyPipelineLayout(VKDEVICE, ((root_signature_backend*) (root_sig->backend))->pipeline_layout, NULL);
-    VkDescriptorSetLayout* layouts = ((root_signature_backend*) (root_sig->backend))->vk_descriptor_set_layouts;
-    if (layouts)
-        free(layouts);
-    free(root_sig->backend);
-    root_sig->backend = NULL;
-}
-
-gfx_descriptor_table vulkan_device_create_descriptor_table(const gfx_root_signature* root_signature)
-{
-    gfx_descriptor_table descriptor_table = {0};
-    uuid_generate(&descriptor_table.uuid);
-
-    descriptor_table_backend* backend = malloc(sizeof(descriptor_table_backend));
-
-    root_signature_backend* root_sig_backend = ((root_signature_backend*) (root_signature->backend));
-
-    // cache pipeline layout from root_signature vulkan backend
-    backend->pipeline_layout_ref_handle = ((root_signature_backend*) (root_signature->backend))->pipeline_layout;
-    backend->num_sets                   = root_signature->descriptor_layout_count;
-
-    // TODO: either expose customization options or make it generic enough without affecting perf!
+    // TODO: Categorize based on heap type
+    UNUSED(heap_type);
     VkDescriptorPoolSize pool_sizes[] = {
-        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 128},
-        {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 128},
-        {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 32},
-        {VK_DESCRIPTOR_TYPE_SAMPLER, 32},
-        {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 32},
+        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, num_descriptors},
+        {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, num_descriptors},
+        {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, num_descriptors},
+        {VK_DESCRIPTOR_TYPE_SAMPLER, num_descriptors},
+        {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, num_descriptors},
     };
 
     VkDescriptorPoolCreateInfo pool_ci = {
         .sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
         .pNext         = NULL,
         .flags         = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
-        .maxSets       = root_signature->descriptor_layout_count,
+        .maxSets       = num_descriptors,
         .poolSizeCount = sizeof(pool_sizes) / sizeof(VkDescriptorPoolSize),
         .pPoolSizes    = pool_sizes,
     };
 
     VK_CHECK_RESULT(vkCreateDescriptorPool(VKDEVICE, &pool_ci, NULL, &backend->pool), "[Vulkan] Failed to allocate descriptor pool");
+    heap.backend = backend;
 
-    VkDescriptorSetAllocateInfo alloc_info = {
-        .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-        .pNext              = NULL,
-        .descriptorPool     = backend->pool,
-        .descriptorSetCount = root_signature->descriptor_layout_count,
-        .pSetLayouts        = (const VkDescriptorSetLayout*) root_sig_backend->vk_descriptor_set_layouts,
-    };
-
-    backend->sets = (VkDescriptorSet*) malloc(sizeof(VkDescriptorSet) * root_signature->descriptor_layout_count);
-    VK_CHECK_RESULT(vkAllocateDescriptorSets(VKDEVICE, &alloc_info, backend->sets), "[Vulkan] Failed to allocated descriptor sets");
-
-    descriptor_table.backend   = backend;
-    descriptor_table.set_count = root_signature->descriptor_layout_count;
-
-    return descriptor_table;
+    return heap;
 }
 
-void vulkan_device_destroy_descriptor_table(gfx_descriptor_table* descriptor_table)
+void vulkan_device_destroy_descriptor_heap(gfx_descriptor_heap* descriptor_table)
 {
-    (void) descriptor_table;
     uuid_destroy(&descriptor_table->uuid);
-    descriptor_table_backend* backend = ((descriptor_table_backend*) (descriptor_table->backend));
-    vkDestroyDescriptorPool(VKDEVICE, backend->pool, NULL);
-    free(backend->sets);
-    free(backend);
-    descriptor_table->backend = NULL;
+    if (descriptor_table->backend) {
+        descriptor_heap_backend* backend = ((descriptor_heap_backend*) (descriptor_table->backend));
+        vkDestroyDescriptorPool(VKDEVICE, ((descriptor_heap_backend*) (backend))->pool, NULL);
+        free(backend);
+        descriptor_table->backend = NULL;
+    }
 }
 
-void vulkan_device_update_descriptor_table(gfx_descriptor_table* descriptor_table, gfx_descriptor_table_entry* entries, uint32_t num_entries)
+gfx_descriptor_table vulkan_device_build_descriptor_table(const gfx_root_signature* root_sig, gfx_descriptor_heap* heap, gfx_descriptor_table_entry* entries, uint32_t num_entries)
 {
-    descriptor_table_backend* backend = (descriptor_table_backend*) (descriptor_table->backend);
-    VkDescriptorSet*          sets    = backend->sets;
+    gfx_descriptor_table table = {0};
+    uuid_generate(&table.uuid);
 
-    VkWriteDescriptorSet* writes = malloc(sizeof(VkWriteDescriptorSet) * num_entries);
+    // Assuming all the tables entries belong to the same set
+    uint32_t set_idx = entries[0].location.set;
+
+    descriptor_heap_backend*  heap_backend  = ((descriptor_heap_backend*) heap->backend);
+    descriptor_table_backend* table_backend = malloc(sizeof(descriptor_table_backend));
+    table.backend                           = table_backend;
+    table_backend->pipeline_layout_ref      = ((root_signature_backend*) (root_sig->backend))->pipeline_layout;
+    table_backend->set_idx                  = set_idx;
+
+    VkDescriptorSetAllocateInfo info = {0};
+    info.sType                       = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    info.pNext                       = NULL;
+    info.descriptorPool              = heap_backend->pool;
+    info.descriptorSetCount          = 1;
+    info.pSetLayouts                 = &((root_signature_backend*) (root_sig->backend))->vk_descriptor_set_layouts[set_idx];
+
+    VK_CHECK_RESULT(vkAllocateDescriptorSets(VKDEVICE, &info, &table_backend->set), "[Vulkan] Failed to allocate descriptor set");
+
+    VkWriteDescriptorSet*   writes       = malloc(sizeof(VkWriteDescriptorSet) * num_entries);
+    VkDescriptorBufferInfo* buffer_infos = malloc(sizeof(VkDescriptorBufferInfo) * num_entries);
+    VkDescriptorImageInfo*  image_infos  = malloc(sizeof(VkDescriptorImageInfo) * num_entries);
+
+    memset(writes, 0, sizeof(VkWriteDescriptorSet) * num_entries);
 
     for (uint32_t i = 0; i < num_entries; i++) {
         const gfx_resource*      res      = entries[i].resource;
         const gfx_resource_view* res_view = entries[i].resource_view;
 
-        writes[i] = (VkWriteDescriptorSet) {
+        if (entries[i].location.set != set_idx)
+            LOG_ERROR("[Vulkan] set index mismatch for the entry:%d @ registerspace: %d", i, set_idx);
+
+        writes[i] = (VkWriteDescriptorSet){
             .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet          = sets[entries[i].location.set],
+            .dstSet          = table_backend->set,
             .dstBinding      = entries[i].location.binding,
             .dstArrayElement = 0,
             .descriptorType  = (VkDescriptorType) vulkan_util_descriptor_type_translate(res_view->type),
-            .descriptorCount = 1};
+            .descriptorCount = 1,
+        };
 
         switch (res_view->type) {
             case GFX_RESOURCE_TYPE_UNIFORM_BUFFER:
             case GFX_RESOURCE_TYPE_STORAGE_BUFFER: {
-                VkDescriptorBufferInfo buffer_info = {
+                buffer_infos[i] = (VkDescriptorBufferInfo){
                     .buffer = (VkBuffer) ((buffer_backend*) (res->ubo->backend))->buffer,
                     .offset = ((buffer_view_backend*) (res_view->backend))->offset,
-                    .range  = ((buffer_view_backend*) (res_view->backend))->range};
-                writes[i].pBufferInfo = &buffer_info;
+                    .range  = ((buffer_view_backend*) (res_view->backend))->range,
+                };
+                writes[i].pBufferInfo = &buffer_infos[i];
             } break;
             case GFX_RESOURCE_TYPE_SAMPLER: {
-                VkDescriptorImageInfo sampler_info = {
-                    .sampler = (VkSampler) ((sampler_backend*) (res->sampler->backend))->sampler};
-                writes[i].pImageInfo = &sampler_info;
+                image_infos[i] = (VkDescriptorImageInfo){
+                    .sampler = (VkSampler) ((sampler_backend*) (res->sampler->backend))->sampler,
+                };
+                writes[i].pImageInfo = &image_infos[i];
             } break;
             case GFX_RESOURCE_TYPE_STORAGE_IMAGE: {
-                VkDescriptorImageInfo storage_image_info = {
+                image_infos[i] = (VkDescriptorImageInfo){
                     .imageView   = (VkImageView) ((tex_resource_view_backend*) (res_view->backend))->view,
-                    .imageLayout = VK_IMAGE_LAYOUT_GENERAL};
-                writes[i].pImageInfo = &storage_image_info;
+                    .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+                };
+                writes[i].pImageInfo = &image_infos[i];
             } break;
             case GFX_RESOURCE_TYPE_SAMPLED_IMAGE: {
-                VkDescriptorImageInfo image_info = {
+                image_infos[i] = (VkDescriptorImageInfo){
                     .imageView   = (VkImageView) ((tex_resource_view_backend*) (res_view->backend))->view,
-                    .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
-                writes[i].pImageInfo = &image_info;
+                    .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                };
+                writes[i].pImageInfo = &image_infos[i];
             } break;
             default:
-                LOG_ERROR("[Vulkan] unknow resource type!");
+                LOG_ERROR("[Vulkan] Unknown resource type!");
                 break;
         }
     }
+
     vkUpdateDescriptorSets(VKDEVICE, num_entries, writes, 0, NULL);
+
     free(writes);
+    free(buffer_infos);
+    free(image_infos);
+
+    return table;
 }
 
 static uint32_t vulkan_internal_find_memory_type(VkPhysicalDevice physical_device, uint32_t type_filter, VkMemoryPropertyFlags properties)
@@ -2128,7 +2230,7 @@ gfx_resource_view vulkan_device_create_texture_resource_view(const gfx_resource_
         .image            = tex_backend->image,
         .format           = vulkan_util_format_translate(desc.texture.format),
         .viewType         = vulkan_util_texture_view_type_translate(desc.texture.texture_type),
-        .components       = (VkComponentMapping) {VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A},
+        .components       = (VkComponentMapping){VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A},
         .subresourceRange = {
             .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,    // FIXME: hard coded shit since depth texture should have VK_IMAGE_ASPECT_DEPTH_BIT aspect mask
             .baseArrayLayer = desc.texture.base_layer,
@@ -2350,41 +2452,6 @@ void vulkan_device_destroy_single_time_command_buffer(gfx_cmd_buf* cmd_buf)
     free(cmd_buf->backend);
 }
 
-gfx_syncobj vulkan_device_create_syncobj(gfx_syncobj_type type)
-{
-    gfx_syncobj syncobj = {0};
-    uuid_generate(&syncobj.uuid);
-
-    syncobj.type       = type;
-    syncobj.wait_value = 0;
-
-    if (type == GFX_SYNCOBJ_TYPE_CPU) {
-        syncobj.backend = malloc(sizeof(VkFence));
-        vulkan_internal_create_fence(syncobj.backend);
-    } else if (type == GFX_SYNCOBJ_TYPE_GPU) {
-        syncobj.backend = malloc(sizeof(VkSemaphore));
-        vulkan_internal_create_sema(syncobj.backend);
-    } else {
-        syncobj.backend = malloc(sizeof(VkSemaphore));
-        vulkan_internal_create_timeline_semaphore(syncobj.backend);
-    }
-    return syncobj;
-}
-
-void vulkan_device_destroy_syncobj(gfx_syncobj* syncobj)
-{
-    if (syncobj->type == GFX_SYNCOBJ_TYPE_CPU) {
-        vulkan_internal_destroy_fence(*(VkFence*) syncobj->backend);
-    } else if (syncobj->type == GFX_SYNCOBJ_TYPE_GPU) {
-        vulkan_internal_destroy_sema(*(VkSemaphore*) syncobj->backend);
-    } else {
-        vulkan_internal_destroy_timeline_semaphore(*(VkSemaphore*) (syncobj->backend));
-    }
-    // TODO: Handle timeline semaphores
-
-    BACKEND_SAFE_FREE(syncobj);
-}
-
 gfx_texture_readback vulkan_device_readback_swapchain(const gfx_swapchain* swapchain)
 {
     gfx_texture_readback readback = {0};
@@ -2446,14 +2513,29 @@ gfx_texture_readback vulkan_device_readback_swapchain(const gfx_swapchain* swapc
 // RHI
 //--------------------------------------------------------
 
-rhi_error_codes vulkan_frame_begin(gfx_context* context)
+rhi_error_codes vulkan_frame_begin(gfx_context* ctx)
 {
-    gfx_syncobj in_flight_sync = context->inflight_syncobj[context->inflight_frame_idx];
-    vulkan_wait_on_previous_cmds(&in_flight_sync);
-    vulkan_acquire_image(context);
+#if ENABLE_SYNC_LOGGING
+    LOG_ERROR("*************************FRAME BEGIN*************************/");
+#endif
 
-    memset(context->cmd_queue.cmds, 0, context->cmd_queue.cmds_count * sizeof(gfx_cmd_buf*));
-    context->cmd_queue.cmds_count = 0;
+    gfx_syncobj* in_flight_sync = NULL;
+    uint32_t     inflight_idx   = ctx->inflight_frame_idx;
+#if ENABLE_SYNC_LOGGING
+    LOG_WARN("[FRAME BEGIN] inflight_idx: %d", inflight_idx);
+#endif
+    if (g_gfxConfig.use_timeline_semaphores) {
+        in_flight_sync = &ctx->frame_sync.timeline_syncobj;
+    } else {
+        in_flight_sync = &ctx->frame_sync.inflight_syncobj[inflight_idx];
+    }
+    vulkan_wait_on_previous_cmds(in_flight_sync, ctx->frame_sync.frame_syncpoint[inflight_idx]);
+    vulkan_acquire_image(ctx);
+
+    ctx->cmd_queue.cmds_count = 0;
+
+    gfx_cmd_pool* pool = &ctx->draw_cmds_pool[inflight_idx];
+    VK_CHECK_RESULT(vkResetCommandPool(VKDEVICE, *((VkCommandPool*) (pool->backend)), 0), "[Vulkan] Failed to reset command pool for this frame!");
 
     return Success;
 }
@@ -2465,13 +2547,17 @@ rhi_error_codes vulkan_frame_end(gfx_context* context)
     context->inflight_frame_idx  = (context->inflight_frame_idx + 1) % MAX_FRAMES_INFLIGHT;
     context->current_syncobj_idx = (context->current_syncobj_idx + 1) % (context->swapchain.image_count);
 
+#if ENABLE_SYNC_LOGGING
+    LOG_ERROR("//-----------------------FRAME END-------------------------//");
+#endif
+
     return Success;
 }
 
 //--------------------------------------------------------
 // Synchronization
 
-rhi_error_codes vulkan_wait_on_previous_cmds(const gfx_syncobj* in_flight_sync)
+rhi_error_codes vulkan_wait_on_previous_cmds(const gfx_syncobj* in_flight_sync, gfx_sync_point sync_point)
 {
     if (in_flight_sync->type == GFX_SYNCOBJ_TYPE_CPU) {
         VK_CHECK_RESULT(vkWaitForFences(VKDEVICE, 1, (VkFence*) (in_flight_sync->backend), true, UINT32_MAX), "cannot wait on in-flight fence");
@@ -2484,8 +2570,12 @@ rhi_error_codes vulkan_wait_on_previous_cmds(const gfx_syncobj* in_flight_sync)
              .flags          = 0,
              .semaphoreCount = 1,
              .pSemaphores    = &semaphore,
-             .pValues        = &in_flight_sync->wait_value,
+             .pValues        = &sync_point,
         };
+#if ENABLE_SYNC_LOGGING
+        LOG_WARN("[WAIT] wait_syncpoint: %llu", sync_point);
+#endif
+
         VK_CHECK_RESULT(vkWaitSemaphores(VKDEVICE, &waitInfo, UINT32_MAX), "cannot wait on in-flight timeline semaphore");
     }
 
@@ -2494,12 +2584,22 @@ rhi_error_codes vulkan_wait_on_previous_cmds(const gfx_syncobj* in_flight_sync)
 
 rhi_error_codes vulkan_acquire_image(gfx_context* ctx)
 {
-    gfx_syncobj image_ready = ctx->image_ready[ctx->current_syncobj_idx];
-    VkResult    result      = vkAcquireNextImageKHR(VKDEVICE, ((swapchain_backend*) (ctx->swapchain.backend))->swapchain, UINT32_MAX, *(VkSemaphore*) (image_ready.backend), NULL, &ctx->swapchain.current_backbuffer_idx);
+    /**
+    * We give a fresh semaphore each frame using a round-robin index (syncobj_idx).
+    * vkAcquireNextImageKHR returns imageIndex, the actual swapchain image to render.
+    * These indices do not have to match; Vulkan makes no such guarantee.
+    * We must track which semaphore was used for which imageIndex.
+    * Later submits and presents use this mapping for correct synchronization.
+    */
+    gfx_syncobj image_ready = ctx->present_sync.image_ready[ctx->current_syncobj_idx];
+#if ENABLE_SYNC_LOGGING
+    LOG_SUCCESS("[ACQUIRE] current_syncobj_idx: %d", ctx->current_syncobj_idx);
+#endif
+    VkResult result = vkAcquireNextImageKHR(VKDEVICE, ((swapchain_backend*) (ctx->swapchain.backend))->swapchain, UINT32_MAX, *(VkSemaphore*) (image_ready.backend), NULL, &ctx->swapchain.current_backbuffer_idx);
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
         LOG_ERROR("[Vulkan] Swapchain out of date or suboptimal...recreating...");
         vkDeviceWaitIdle(VKDEVICE);
-        vulkan_resize_swapchain(&ctx->swapchain, ctx->swapchain.width, ctx->swapchain.height);
+        vulkan_resize_swapchain(ctx, ctx->swapchain.width, ctx->swapchain.height);
     }
     if (result == VK_SUCCESS)
         return Success;
@@ -2509,7 +2609,7 @@ rhi_error_codes vulkan_acquire_image(gfx_context* ctx)
 
 rhi_error_codes vulkan_gfx_cmd_enque_submit(gfx_cmd_queue* cmd_queue, gfx_cmd_buf* cmd_buff)
 {
-    cmd_queue->cmds[cmd_queue->cmds_count] = cmd_buff;
+    cmd_queue->cmds[cmd_queue->cmds_count] = *(VkCommandBuffer*) (cmd_buff->backend);
     cmd_queue->cmds_count++;
 
     return Success;
@@ -2517,10 +2617,7 @@ rhi_error_codes vulkan_gfx_cmd_enque_submit(gfx_cmd_queue* cmd_queue, gfx_cmd_bu
 
 rhi_error_codes vulkan_gfx_cmd_submit_queue(const gfx_cmd_queue* cmd_queue, gfx_submit_syncobj submit_sync)
 {
-    VkCommandBuffer* vk_cmd_buffs = malloc(cmd_queue->cmds_count * sizeof(VkCommandBuffer));
-    for (uint32_t i = 0; i < cmd_queue->cmds_count; i++)
-        vk_cmd_buffs[i] = *((VkCommandBuffer*) (cmd_queue->cmds[i]->backend));
-
+    uint32_t signal_syncobjs_count = submit_sync.signal_syncobjs_count;
     if (g_gfxConfig.use_timeline_semaphores)
         submit_sync.signal_syncobjs_count++;
 
@@ -2530,7 +2627,7 @@ rhi_error_codes vulkan_gfx_cmd_submit_queue(const gfx_cmd_queue* cmd_queue, gfx_
     for (uint32_t i = 0; i < submit_sync.wait_syncobjs_count; ++i)
         wait_semaphores[i] = *((VkSemaphore*) (submit_sync.wait_synobjs[i].backend));
 
-    for (uint32_t i = 0; i < submit_sync.signal_syncobjs_count - 1; ++i)
+    for (uint32_t i = 0; i < signal_syncobjs_count; ++i)
         signal_semaphores[i] = *((VkSemaphore*) (submit_sync.signal_synobjs[i].backend));
 
     VkPipelineStageFlags waitStages[1] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
@@ -2550,7 +2647,12 @@ rhi_error_codes vulkan_gfx_cmd_submit_queue(const gfx_cmd_queue* cmd_queue, gfx_
     } else {
         VkSemaphore inflight = *((VkSemaphore*) (submit_sync.inflight_syncobj->backend));
         // Global tracker to tell where to signal to
-        uint64_t signal_value = ++(*submit_sync.timeline_syncpoint);
+        uint64_t signal_value = ++(*submit_sync.global_syncpoint);
+        // update per frame wait sync points
+        *submit_sync.inflight_syncpoint = *submit_sync.global_syncpoint;
+#if ENABLE_SYNC_LOGGING
+        LOG_SUCCESS("[SIGNAL] signal_value: %llu | global_sync_point: %llu ", signal_value, *submit_sync.global_syncpoint);
+#endif
 
         timelineInfo.waitSemaphoreValueCount   = submit_sync.wait_syncobjs_count;
         timelineInfo.signalSemaphoreValueCount = submit_sync.signal_syncobjs_count;
@@ -2563,9 +2665,6 @@ rhi_error_codes vulkan_gfx_cmd_submit_queue(const gfx_cmd_queue* cmd_queue, gfx_
         signal_semaphores[submit_sync.signal_syncobjs_count - 1] = inflight;
         signal_values[submit_sync.signal_syncobjs_count - 1]     = signal_value;    // Signal the new value
 
-        // Register syncobj to wait on this timepoint signal
-        submit_sync.inflight_syncobj->wait_value = signal_value;
-
         timelineInfo.pWaitSemaphoreValues   = wait_values;
         timelineInfo.pSignalSemaphoreValues = signal_values;
     }
@@ -2574,7 +2673,7 @@ rhi_error_codes vulkan_gfx_cmd_submit_queue(const gfx_cmd_queue* cmd_queue, gfx_
         .sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO,
         .pNext                = g_gfxConfig.use_timeline_semaphores ? &timelineInfo : NULL,
         .commandBufferCount   = cmd_queue->cmds_count,
-        .pCommandBuffers      = vk_cmd_buffs,
+        .pCommandBuffers      = (VkCommandBuffer*) cmd_queue->cmds,
         .waitSemaphoreCount   = submit_sync.wait_syncobjs_count,
         .pWaitSemaphores      = wait_semaphores,
         .pWaitDstStageMask    = waitStages,
@@ -2583,7 +2682,6 @@ rhi_error_codes vulkan_gfx_cmd_submit_queue(const gfx_cmd_queue* cmd_queue, gfx_
     };
     VK_CHECK_RESULT(vkQueueSubmit(s_VkCtx.queues.gfx, 1, &submitInfo, signal_fence), "Failed to submit command buffers");
 
-    free(vk_cmd_buffs);
     free(wait_semaphores);
     free(signal_semaphores);
 
@@ -2602,19 +2700,30 @@ rhi_error_codes vulkan_gfx_cmd_submit_for_rendering(gfx_context* ctx)
     uint32_t curr_syncobj_idx = ctx->current_syncobj_idx;
     uint32_t inflight_idx     = ctx->inflight_frame_idx;
 
-    submit_sync.wait_syncobjs_count   = 1;
-    submit_sync.wait_synobjs          = &(ctx->image_ready[curr_syncobj_idx]);
-    submit_sync.signal_syncobjs_count = 1;
-    submit_sync.signal_synobjs        = &(ctx->rendering_done[curr_syncobj_idx]);
-    submit_sync.inflight_syncobj      = &ctx->inflight_syncobj[inflight_idx];
-    submit_sync.timeline_syncpoint    = &ctx->timeline_syncpoint[inflight_idx];
+    gfx_syncobj* in_flight_sync = NULL;
+    if (g_gfxConfig.use_timeline_semaphores) {
+        in_flight_sync = &ctx->frame_sync.timeline_syncobj;
+    } else {
+        in_flight_sync = &ctx->frame_sync.inflight_syncobj[inflight_idx];
+    }
 
+    submit_sync.wait_syncobjs_count   = 1;
+    submit_sync.wait_synobjs          = &(ctx->present_sync.image_ready[curr_syncobj_idx]);
+    submit_sync.signal_syncobjs_count = 1;
+    submit_sync.signal_synobjs        = &(ctx->present_sync.rendering_done[curr_syncobj_idx]);
+    submit_sync.inflight_syncobj      = in_flight_sync;
+    submit_sync.inflight_syncpoint    = &ctx->frame_sync.frame_syncpoint[inflight_idx];
+    submit_sync.global_syncpoint      = &ctx->frame_sync.global_syncpoint;
+
+#if ENABLE_SYNC_LOGGING
+    LOG_SUCCESS("[PRE-SUBMIT] curr_syncobj_idx: %d | inflight_idx: %d | global_syncpoint: %llu", curr_syncobj_idx, inflight_idx, ctx->frame_sync.global_syncpoint);
+#endif
     return vulkan_gfx_cmd_submit_queue(&ctx->cmd_queue, submit_sync);
 }
 
 rhi_error_codes vulkan_present(const gfx_context* ctx)
 {
-    gfx_syncobj rendering_done = ctx->rendering_done[ctx->current_syncobj_idx];
+    gfx_syncobj rendering_done = ctx->present_sync.rendering_done[ctx->current_syncobj_idx];
 
     VkPresentInfoKHR presentInfo = {
         .sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
@@ -2639,10 +2748,11 @@ rhi_error_codes vulkan_present(const gfx_context* ctx)
     return Success;
 }
 
-rhi_error_codes vulkan_resize_swapchain(gfx_swapchain* swapchain, uint32_t width, uint32_t height)
+rhi_error_codes vulkan_resize_swapchain(gfx_context* context, uint32_t width, uint32_t height)
 {
-    swapchain_backend* backend = (swapchain_backend*) (swapchain->backend);
-    backend->old_swapchain     = backend->swapchain;
+    gfx_swapchain*     swapchain = &context->swapchain;
+    swapchain_backend* backend   = (swapchain_backend*) (swapchain->backend);
+    backend->old_swapchain       = backend->swapchain;
     vulkan_device_destroy_swapchain(swapchain);
 
     backend->swapchain = VK_NULL_HANDLE;    // THIS SHOULD CAUSE A CRASH, since backend is NULL
@@ -2654,14 +2764,15 @@ rhi_error_codes vulkan_resize_swapchain(gfx_swapchain* swapchain, uint32_t width
     return Success;
 }
 
-rhi_error_codes vulkan_begin_gfx_cmd_recording(const gfx_cmd_buf* cmd_buf)
+rhi_error_codes vulkan_begin_gfx_cmd_recording(const gfx_cmd_pool* allocator, const gfx_cmd_buf* cmd_buf)
 {
+    UNUSED(allocator);    //  UNUSED
+
     VkCommandBufferBeginInfo begin = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
         .pNext = NULL,
         .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT};
 
-    vkResetCommandBuffer(*(VkCommandBuffer*) cmd_buf->backend, /*VkCommandBufferResetFlagBits*/ 0);
     VK_CHECK_RESULT(vkBeginCommandBuffer(*(VkCommandBuffer*) cmd_buf->backend, &begin), "[Vulkan] Failed to start recoding command buffer");
     return Success;
 }
@@ -2676,54 +2787,54 @@ rhi_error_codes vulkan_end_gfx_cmd_recording(const gfx_cmd_buf* cmd_buf)
 
 rhi_error_codes vulkan_begin_render_pass(const gfx_cmd_buf* cmd_buf, gfx_render_pass render_pass, uint32_t backbuffer_index)
 {
-    if (render_pass.is_compute_pass) return Success;
+    if (!render_pass.is_compute_pass) {
+        VkRenderingAttachmentInfo color_attachments[MAX_RT] = {0};
 
-    VkRenderingAttachmentInfo color_attachments[MAX_RT] = {0};
+        if (render_pass.is_swap_pass) render_pass.color_attachments_count = 1;
 
-    if (render_pass.is_swap_pass) render_pass.color_attachments_count = 1;
+        for (uint32_t i = 0; i < render_pass.color_attachments_count; i++) {
+            gfx_attachment            col_attach  = render_pass.color_attachments[i];
+            VkRenderingAttachmentInfo attach_info = {
+                .sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+                .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+            memcpy(attach_info.clearValue.color.float32, col_attach.clear_color.raw, sizeof(vec4s));
+            if (col_attach.clear) {
+                attach_info.loadOp  = VK_ATTACHMENT_LOAD_OP_CLEAR;
+                attach_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+            } else {
+                attach_info.loadOp  = VK_ATTACHMENT_LOAD_OP_LOAD;
+                attach_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+            }
+            if (render_pass.is_swap_pass) {
+                if (!render_pass.swapchain)
+                    LOG_ERROR("[Vulkan] pass is marked as swap pass but swapchain is empty");
+                attach_info.imageView = ((swapchain_backend*) (render_pass.swapchain->backend))->backbuffer_views[backbuffer_index];
+            } else {
+                LOG_ERROR("// TODO: use gfx_texture->backend as imageview");
+            }
 
-    for (uint32_t i = 0; i < render_pass.color_attachments_count; i++) {
-        gfx_attachment            col_attach  = render_pass.color_attachments[i];
-        VkRenderingAttachmentInfo attach_info = {
-            .sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-            .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
-        memcpy(attach_info.clearValue.color.float32, col_attach.clear_color.raw, sizeof(vec4s));
-        if (col_attach.clear) {
-            attach_info.loadOp  = VK_ATTACHMENT_LOAD_OP_CLEAR;
-            attach_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        } else {
-            attach_info.loadOp  = VK_ATTACHMENT_LOAD_OP_LOAD;
-            attach_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+            color_attachments[i] = attach_info;
         }
+
+        VkRenderingInfo info = {
+            .sType      = VK_STRUCTURE_TYPE_RENDERING_INFO,
+            .pNext      = NULL,
+            .layerCount = 1,
+            .renderArea = {
+                .offset = {0, 0},
+                .extent = {(uint32_t) render_pass.extents.x, (uint32_t) render_pass.extents.y}},
+            .colorAttachmentCount = render_pass.color_attachments_count,
+            .pColorAttachments    = color_attachments,
+            // TODO: Depth Attachments
+        };
+
         if (render_pass.is_swap_pass) {
-            if (!render_pass.swapchain)
-                LOG_ERROR("[Vulkan] pass is marked as swap pass but swapchain is empty");
-            attach_info.imageView = ((swapchain_backend*) (render_pass.swapchain->backend))->backbuffer_views[backbuffer_index];
-        } else {
-            LOG_ERROR("// TODO: use gfx_texture->backend as imageview");
+            info.colorAttachmentCount = 1;
+            info.pColorAttachments    = color_attachments;
         }
 
-        color_attachments[i] = attach_info;
+        vulkan_internal_cmd_begin_rendering(*(VkCommandBuffer*) cmd_buf->backend, &info);
     }
-
-    VkRenderingInfo info = {
-        .sType      = VK_STRUCTURE_TYPE_RENDERING_INFO,
-        .pNext      = NULL,
-        .layerCount = 1,
-        .renderArea = {
-            .offset = {0, 0},
-            .extent = {(uint32_t) render_pass.extents.x, (uint32_t) render_pass.extents.y}},
-        .colorAttachmentCount = render_pass.color_attachments_count,
-        .pColorAttachments    = color_attachments,
-        // TODO: Depth Attachments
-    };
-
-    if (render_pass.is_swap_pass) {
-        info.colorAttachmentCount = 1;
-        info.pColorAttachments    = color_attachments;
-    }
-
-    vulkan_internal_cmd_begin_rendering(*(VkCommandBuffer*) cmd_buf->backend, &info);
 
     return Success;
 }
@@ -2763,38 +2874,49 @@ rhi_error_codes vulkan_set_scissor(const gfx_cmd_buf* cmd_buf, gfx_scissor sciss
     return Success;
 }
 
-rhi_error_codes vulkan_bind_gfx_pipeline(const gfx_cmd_buf* cmd_buf, gfx_pipeline pipeline)
+rhi_error_codes vulkan_bind_gfx_pipeline(const gfx_cmd_buf* cmd_buf, const gfx_pipeline* pipeline)
 {
-    vkCmdBindPipeline(*(VkCommandBuffer*) cmd_buf->backend, VK_PIPELINE_BIND_POINT_GRAPHICS, ((pipeline_backend*) (pipeline.backend))->pipeline);
+    vkCmdBindPipeline(*(VkCommandBuffer*) cmd_buf->backend, VK_PIPELINE_BIND_POINT_GRAPHICS, *(VkPipeline*) (pipeline->backend));
     return Success;
 }
 
-rhi_error_codes vulkan_bind_compute_pipeline(const gfx_cmd_buf* cmd_buf, gfx_pipeline pipeline)
+rhi_error_codes vulkan_bind_compute_pipeline(const gfx_cmd_buf* cmd_buf, const gfx_pipeline* pipeline)
 {
-    vkCmdBindPipeline(*(VkCommandBuffer*) cmd_buf->backend, VK_PIPELINE_BIND_POINT_COMPUTE, ((pipeline_backend*) (pipeline.backend))->pipeline);
+    vkCmdBindPipeline(*(VkCommandBuffer*) cmd_buf->backend, VK_PIPELINE_BIND_POINT_COMPUTE, *(VkPipeline*) (pipeline->backend));
     return Success;
 }
 
-rhi_error_codes vulkan_device_bind_root_signature(const gfx_cmd_buf* cmd_buf, const gfx_root_signature* root_signature)
+rhi_error_codes vulkan_device_bind_root_signature(const gfx_cmd_buf* cmd_buf, const gfx_root_signature* root_signature, gfx_pipeline_type pipeline_type)
 {
-    (void) cmd_buf;
-    (void) root_signature;
+    UNUSED(cmd_buf);
+    UNUSED(root_signature);
+    UNUSED(pipeline_type);
     return Success;
 }
 
-rhi_error_codes vulkan_device_bind_descriptor_table(const gfx_cmd_buf* cmd_buf, const gfx_descriptor_table* descriptor_table, gfx_pipeline_type pipeline_type)
+rhi_error_codes vulkan_device_bind_descriptor_heaps(const gfx_cmd_buf* cmd_buf, const gfx_descriptor_heap* heaps, uint32_t num_heaps)
 {
-    VkCommandBuffer           commandBuffer = *(VkCommandBuffer*) cmd_buf->backend;
-    descriptor_table_backend* backend       = descriptor_table->backend;
-    vkCmdBindDescriptorSets(commandBuffer, vulkan_util_pipeline_type_bindpoint_translate(pipeline_type), backend->pipeline_layout_ref_handle, 0, backend->num_sets, backend->sets, 0, NULL);
+    UNUSED(cmd_buf);
+    UNUSED(heaps);
+    UNUSED(num_heaps);
     return Success;
 }
 
-rhi_error_codes vulkan_device_bind_push_constant(const gfx_cmd_buf* cmd_buf, gfx_root_signature* root_sig, gfx_push_constant push_constant)
+rhi_error_codes vulkan_device_bind_descriptor_tables(const gfx_cmd_buf* cmd_buf, const gfx_descriptor_table* tables, uint32_t num_tables, gfx_pipeline_type pipeline_type)
+{
+    VkCommandBuffer commandBuffer = *(VkCommandBuffer*) cmd_buf->backend;
+    for (uint32_t i = 0; i < num_tables; i++) {
+        descriptor_table_backend* backend = (descriptor_table_backend*) tables[i].backend;
+        vkCmdBindDescriptorSets(commandBuffer, vulkan_util_pipeline_type_bindpoint_translate(pipeline_type), backend->pipeline_layout_ref, backend->set_idx, 1, &backend->set, 0, NULL);
+    }
+    return Success;
+}
+
+rhi_error_codes vulkan_device_bind_push_constant(const gfx_cmd_buf* cmd_buf, gfx_root_signature* root_sig, gfx_root_constant push_constant)
 {
     VkCommandBuffer         commandBuffer     = *(VkCommandBuffer*) cmd_buf->backend;
     root_signature_backend* rootS_sig_backend = root_sig->backend;
-    vkCmdPushConstants(commandBuffer, rootS_sig_backend->pipeline_layout, vulkan_util_shader_stage_bits(push_constant.stage), push_constant.offset, push_constant.size, push_constant.data);
+    vkCmdPushConstants(commandBuffer, rootS_sig_backend->pipeline_layout, vulkan_util_shader_stage_bits(push_constant.range.stage), push_constant.range.offset, push_constant.range.size, push_constant.data);
     return Success;
 }
 
@@ -2816,6 +2938,16 @@ rhi_error_codes vulkan_transition_image_layout(const gfx_cmd_buf* cmd_buffer, co
     texture_backend* backend     = image->texture->backend;
 
     vulkan_internal_insert_image_memory_barrier(vkCmdBuffer, backend->image, vulkan_util_translate_image_layout(old_layout), vulkan_util_translate_image_layout(new_layout));
+
+    return Success;
+}
+
+rhi_error_codes vulkan_transition_swapchain_layout(const gfx_cmd_buf* cmd_buffer, const gfx_swapchain* sc, gfx_image_layout old_layout, gfx_image_layout new_layout)
+{
+    VkCommandBuffer    vkCmdBuffer = *(VkCommandBuffer*) cmd_buffer->backend;
+    swapchain_backend* backend     = (swapchain_backend*) sc->backend;
+
+    vulkan_internal_insert_image_memory_barrier(vkCmdBuffer, backend->backbuffers[sc->current_backbuffer_idx], vulkan_util_translate_image_layout(old_layout), vulkan_util_translate_image_layout(new_layout));
 
     return Success;
 }
