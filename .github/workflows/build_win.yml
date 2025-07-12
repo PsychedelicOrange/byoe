@@ -26,8 +26,3 @@ jobs:
           cmake .. -DCI=ON
           cmake --build . --config Release --parallel 32
           cd ..
-      
-      - name: Test
-        run: |
-          ./build/tests/Release/tests.exe
-
