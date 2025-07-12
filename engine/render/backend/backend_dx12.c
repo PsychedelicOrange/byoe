@@ -225,7 +225,7 @@ typedef struct context_backend
     GLFWwindow*         glfwWindow;
     IDXGIFactory7*      factory;
     IDXGIAdapter4*      gpu;
-    ID3D12Device10*     device;    // Win 11 latest, other latest version needs Agility SDK
+    ID3D12Device9*     device;    // Win 11 latest, other latest version needs Agility SDK
     HWND                hwnd;
     D3D_FEATURE_LEVEL   feat_level;
     D3D12FeatureCache   features;
@@ -630,32 +630,32 @@ static IDXGIAdapter4* dx12_internal_select_best_adapter(IDXGIFactory7* factory, 
 
 static void dx12_internal_cache_features(context_backend* backend)
 {
-    ID3D12Device10*    device = backend->device;
+    ID3D12Device9*    device = backend->device;
     D3D12FeatureCache* f      = &backend->features;
 
-    ID3D12Device10_CheckFeatureSupport(device, D3D12_FEATURE_D3D12_OPTIONS, &f->options, sizeof(f->options));
-    ID3D12Device10_CheckFeatureSupport(device, D3D12_FEATURE_D3D12_OPTIONS1, &f->options1, sizeof(f->options1));
-    ID3D12Device10_CheckFeatureSupport(device, D3D12_FEATURE_D3D12_OPTIONS5, &f->options5, sizeof(f->options5));
-    ID3D12Device10_CheckFeatureSupport(device, D3D12_FEATURE_D3D12_OPTIONS10, &f->options10, sizeof(f->options10));
+    ID3D12Device9_CheckFeatureSupport(device, D3D12_FEATURE_D3D12_OPTIONS, &f->options, sizeof(f->options));
+    ID3D12Device9_CheckFeatureSupport(device, D3D12_FEATURE_D3D12_OPTIONS1, &f->options1, sizeof(f->options1));
+    ID3D12Device9_CheckFeatureSupport(device, D3D12_FEATURE_D3D12_OPTIONS5, &f->options5, sizeof(f->options5));
+    ID3D12Device9_CheckFeatureSupport(device, D3D12_FEATURE_D3D12_OPTIONS10, &f->options10, sizeof(f->options10));
 
     f->architecture.NodeIndex = 0;
-    ID3D12Device10_CheckFeatureSupport(device, D3D12_FEATURE_ARCHITECTURE1, &f->architecture, sizeof(f->architecture));
+    ID3D12Device9_CheckFeatureSupport(device, D3D12_FEATURE_ARCHITECTURE1, &f->architecture, sizeof(f->architecture));
     f->isUMA              = f->architecture.UMA;
     f->isCacheCoherentUMA = f->architecture.CacheCoherentUMA;
 
     f->shaderModel.HighestShaderModel = D3D_SHADER_MODEL_6_7;
-    if (FAILED(ID3D12Device10_CheckFeatureSupport(device, D3D12_FEATURE_SHADER_MODEL, &f->shaderModel, sizeof(f->shaderModel)))) {
+    if (FAILED(ID3D12Device9_CheckFeatureSupport(device, D3D12_FEATURE_SHADER_MODEL, &f->shaderModel, sizeof(f->shaderModel)))) {
         f->shaderModel.HighestShaderModel = D3D_SHADER_MODEL_6_0;
     }
 
     f->rootSig.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_1;
-    if (FAILED(ID3D12Device10_CheckFeatureSupport(device, D3D12_FEATURE_ROOT_SIGNATURE, &f->rootSig, sizeof(f->rootSig)))) {
+    if (FAILED(ID3D12Device9_CheckFeatureSupport(device, D3D12_FEATURE_ROOT_SIGNATURE, &f->rootSig, sizeof(f->rootSig)))) {
         f->rootSig.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
     }
 
-    ID3D12Device10_CheckFeatureSupport(device, D3D12_FEATURE_GPU_VIRTUAL_ADDRESS_SUPPORT, &f->vaSupport, sizeof(f->vaSupport));
+    ID3D12Device9_CheckFeatureSupport(device, D3D12_FEATURE_GPU_VIRTUAL_ADDRESS_SUPPORT, &f->vaSupport, sizeof(f->vaSupport));
 
-    f->nodeCount = ID3D12Device10_GetNodeCount(device);
+    f->nodeCount = ID3D12Device9_GetNodeCount(device);
 }
 
 static void dx12_internal_print_features(const D3D12FeatureCache* f)
@@ -835,7 +835,7 @@ gfx_context dx12_ctx_init(GLFWwindow* window)
     #endif
 
     LOG_INFO("Creating D3D12 Device...");
-    hr = D3D12CreateDevice((IUnknown*) backend->gpu, backend->feat_level, &IID_ID3D12Device10, &backend->device);
+    hr = D3D12CreateDevice((IUnknown*) backend->gpu, backend->feat_level, &IID_ID3D12Device9, &backend->device);
     if (FAILED(hr)) {
         LOG_ERROR("[D3D12] Failed to create D3D12 Device (HRESULT = 0x%08X)", (unsigned int) hr);
         IDXGIAdapter4_Release(backend->gpu);
@@ -859,7 +859,7 @@ gfx_context dx12_ctx_init(GLFWwindow* window)
     desc.Priority                 = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
     desc.Flags                    = D3D12_COMMAND_QUEUE_FLAG_NONE;
     desc.NodeMask                 = 0;
-    ID3D12Device10_CreateCommandQueue(DXDevice, &desc, &IID_ID3D12CommandQueue, &backend->direct_queue);
+    ID3D12Device9_CreateCommandQueue(DXDevice, &desc, &IID_ID3D12CommandQueue, &backend->direct_queue);
     if (!backend->direct_queue) {
         LOG_ERROR("[D3D12] Failed to create D3D12 Direct Command Queue");
         dx12_ctx_destroy(&ctx);
@@ -891,7 +891,7 @@ void dx12_ctx_destroy(gfx_context* ctx)
     }
 
     if (backend->device) {
-        ID3D12Device10_Release(backend->device);
+        ID3D12Device9_Release(backend->device);
         backend->device = NULL;
     }
 
@@ -960,8 +960,8 @@ static void dx12_internal_update_swapchain_rtv(gfx_swapchain* sc)
 
         // Create RTV for the back buffer
         D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = backend->rtv_handle_start;
-        rtvHandle.ptr += i * ID3D12Device10_GetDescriptorHandleIncrementSize(DXDevice, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-        ID3D12Device10_CreateRenderTargetView(DXDevice, backend->backbuffers[i], NULL, rtvHandle);
+        rtvHandle.ptr += i * ID3D12Device9_GetDescriptorHandleIncrementSize(DXDevice, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+        ID3D12Device9_CreateRenderTargetView(DXDevice, backend->backbuffers[i], NULL, rtvHandle);
         ID3D12Resource_SetName(backend->backbuffers[i], string_to_lpcwstr("Swapchain Image"));
     }
 }
@@ -976,7 +976,7 @@ static void dx12_internal_create_backbuffers(gfx_swapchain* sc)
     rtvHeapDesc.NumDescriptors             = MAX_DX_SWAPCHAIN_BUFFERS;
     rtvHeapDesc.Flags                      = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
     rtvHeapDesc.NodeMask                   = 0;
-    HRESULT hr                             = ID3D12Device10_CreateDescriptorHeap(DXDevice, &rtvHeapDesc, &IID_ID3D12DescriptorHeap, &backend->rtv_heap);
+    HRESULT hr                             = ID3D12Device9_CreateDescriptorHeap(DXDevice, &rtvHeapDesc, &IID_ID3D12DescriptorHeap, &backend->rtv_heap);
     if (FAILED(hr)) {
         LOG_ERROR("[D3D12] Failed to create RTV Descriptor Heap (HRESULT = 0x%08X)", (unsigned int) hr);
         IDXGISwapChain4_Release(backend->swapchain);
@@ -1087,7 +1087,7 @@ gfx_syncobj dx12_create_syncobj(gfx_syncobj_type type)
     syncobj.type             = type;
     syncobj.backend          = backend;
 
-    HRESULT hr = ID3D12Device10_CreateFence(DXDevice, 0, D3D12_FENCE_FLAG_NONE, &IID_ID3D12Fence, &backend->fence);
+    HRESULT hr = ID3D12Device9_CreateFence(DXDevice, 0, D3D12_FENCE_FLAG_NONE, &IID_ID3D12Fence, &backend->fence);
     if (FAILED(hr)) {
         LOG_ERROR("[D3D12] Failed to create ID3D12Fence (HRESULT = 0x%08X)", (unsigned int) hr);
         uuid_destroy(&syncobj.uuid);
@@ -1133,7 +1133,7 @@ gfx_cmd_pool dx12_create_gfx_cmd_allocator(void)
 
     pool.backend = malloc(sizeof(ID3D12CommandAllocator));
 
-    HRESULT hr = ID3D12Device10_CreateCommandAllocator(DXDevice, D3D12_COMMAND_LIST_TYPE_DIRECT, &IID_ID3D12CommandAllocator, &pool.backend);
+    HRESULT hr = ID3D12Device9_CreateCommandAllocator(DXDevice, D3D12_COMMAND_LIST_TYPE_DIRECT, &IID_ID3D12CommandAllocator, &pool.backend);
     if (FAILED(hr)) {
         LOG_ERROR("[D3D12] Failed to allocate command allocator (HRESULT = 0x%08X)", (unsigned int) hr);
         uuid_destroy(&pool.uuid);
@@ -1161,7 +1161,7 @@ gfx_cmd_buf dx12_create_gfx_cmd_buf(gfx_cmd_pool* pool)
     uuid_generate(&cmd_buf.uuid);
     cmd_buf.backend = malloc(sizeof(ID3D12GraphicsCommandList));
 
-    HRESULT hr = ID3D12Device10_CreateCommandList(DXDevice, 0, D3D12_COMMAND_LIST_TYPE_DIRECT, ((ID3D12CommandAllocator*) (pool->backend)), NULL, &IID_ID3D12GraphicsCommandList, &cmd_buf.backend);
+    HRESULT hr = ID3D12Device9_CreateCommandList(DXDevice, 0, D3D12_COMMAND_LIST_TYPE_DIRECT, ((ID3D12CommandAllocator*) (pool->backend)), NULL, &IID_ID3D12GraphicsCommandList, &cmd_buf.backend);
     hr         = ID3D12GraphicsCommandList_Close((ID3D12GraphicsCommandList*) (cmd_buf.backend));
     if (FAILED(hr)) {
         LOG_ERROR("[D3D12] Failed to allocate command lists (HRESULT = 0x%08X)", (unsigned int) hr);
@@ -1382,7 +1382,7 @@ gfx_root_signature dx12_create_root_signature(const gfx_descriptor_table_layout*
     }
 
     ID3D12RootSignature* d3d_root_sig = NULL;
-    hr                                = ID3D12Device10_CreateRootSignature(DXDevice, 0, ID3D10Blob_GetBufferPointer(signature_blob), ID3D10Blob_GetBufferSize(signature_blob), &IID_ID3D12RootSignature, &d3d_root_sig);
+    hr                                = ID3D12Device9_CreateRootSignature(DXDevice, 0, ID3D10Blob_GetBufferPointer(signature_blob), ID3D10Blob_GetBufferSize(signature_blob), &IID_ID3D12RootSignature, &d3d_root_sig);
     if (FAILED(hr)) {
         LOG_ERROR("Failed to serializwe root signature (HRESULT = 0x%08X)", hr);
         uuid_destroy(&root_sig.uuid);
@@ -1535,7 +1535,7 @@ static gfx_pipeline dx12_internal_create_gfx_pipeline(gfx_pipeline_create_info i
     // Gfx Pipeline
     //----------------------------
 
-    HRESULT hr = ID3D12Device10_CreateGraphicsPipelineState(DXDevice, &desc, &IID_ID3D12PipelineState, &backend->pso);
+    HRESULT hr = ID3D12Device9_CreateGraphicsPipelineState(DXDevice, &desc, &IID_ID3D12PipelineState, &backend->pso);
     if (FAILED(hr)) {
         LOG_ERROR("[D3D12] Failed to create gfx PSO (HRESULT=0x%08X)", hr);
         uuid_destroy(&pipeline.uuid);
@@ -1570,7 +1570,7 @@ static gfx_pipeline dx12_internal_create_compute_pipeline(gfx_pipeline_create_in
     desc.CS                          = CSByteCode;
 
     ID3D12PipelineState* pso = NULL;
-    HRESULT              hr  = ID3D12Device10_CreateComputePipelineState(DXDevice, &desc, &IID_ID3D12PipelineState, &pso);
+    HRESULT              hr  = ID3D12Device9_CreateComputePipelineState(DXDevice, &desc, &IID_ID3D12PipelineState, &pso);
     if (FAILED(hr)) {
         LOG_ERROR("[D3D12] Failed to create compute PSO (HRESULT=0x%08X)", hr);
         uuid_destroy(&pipeline.uuid);
@@ -1613,7 +1613,7 @@ gfx_descriptor_heap dx12_create_descriptor_heap(gfx_heap_type heap_type, uint32_
     descriptor_heap_backend* backend = malloc(sizeof(descriptor_heap_backend));
     heap.backend                     = backend;
 
-    HRESULT hr = ID3D12Device10_CreateDescriptorHeap(DXDevice, &desc, &IID_ID3D12DescriptorHeap, &backend->heap);
+    HRESULT hr = ID3D12Device9_CreateDescriptorHeap(DXDevice, &desc, &IID_ID3D12DescriptorHeap, &backend->heap);
     if (FAILED(hr)) {
         uuid_destroy(&heap.uuid);
         free(heap.backend);
@@ -1625,7 +1625,7 @@ gfx_descriptor_heap dx12_create_descriptor_heap(gfx_heap_type heap_type, uint32_
     ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(backend->heap, &backend->cpu_curr_offset);
     ID3D12DescriptorHeap_GetGPUDescriptorHandleForHeapStart(backend->heap, &backend->gpu_curr_offset);
 
-    backend->descriptor_size = ID3D12Device10_GetDescriptorHandleIncrementSize(DXDevice, desc.Type);
+    backend->descriptor_size = ID3D12Device9_GetDescriptorHandleIncrementSize(DXDevice, desc.Type);
 
     return heap;
 }
@@ -1766,7 +1766,7 @@ gfx_resource dx12_create_texture_resource(gfx_texture_create_info desc)
 
     D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_GENERIC_READ;
     ID3D12Resource*       d3dresource  = NULL;
-    HRESULT               hr           = ID3D12Device10_CreateCommittedResource(DXDevice, &heapProps, D3D12_HEAP_FLAG_NONE, &res_desc, initialState, NULL, &IID_ID3D12Resource, &d3dresource);
+    HRESULT               hr           = ID3D12Device9_CreateCommittedResource(DXDevice, &heapProps, D3D12_HEAP_FLAG_NONE, &res_desc, initialState, NULL, &IID_ID3D12Resource, &d3dresource);
     if (FAILED(hr)) {
         if (resource.texture)
             uuid_destroy(&resource.texture->uuid);
@@ -1858,7 +1858,7 @@ gfx_resource dx12_create_uniform_buffer_resource(uint32_t size)
     buffer_desc.Layout              = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
     ID3D12Resource* d3dresource = NULL;
-    HRESULT         hr          = ID3D12Device10_CreateCommittedResource(DXDevice, &heapProps, D3D12_HEAP_FLAG_NONE, &buffer_desc, D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource, &d3dresource);
+    HRESULT         hr          = ID3D12Device9_CreateCommittedResource(DXDevice, &heapProps, D3D12_HEAP_FLAG_NONE, &buffer_desc, D3D12_RESOURCE_STATE_GENERIC_READ, NULL, &IID_ID3D12Resource, &d3dresource);
     if (FAILED(hr)) {
         if (resource.ubo)
             uuid_destroy(&resource.ubo->uuid);
@@ -2301,7 +2301,7 @@ rhi_error_codes dx12_begin_render_pass(const gfx_cmd_buf* cmd_buf, gfx_render_pa
                     LOG_ERROR("[Vulkan] pass is marked as swap pass but swapchain is empty");
                 swapchain_backend*          sc_backend = (swapchain_backend*) render_pass.swapchain->backend;
                 D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle  = sc_backend->rtv_handle_start;
-                rtvHandle.ptr += backbuffer_index * ID3D12Device10_GetDescriptorHandleIncrementSize(DXDevice, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+                rtvHandle.ptr += backbuffer_index * ID3D12Device9_GetDescriptorHandleIncrementSize(DXDevice, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
                 // store the correct back buffer offset RTV handle
                 rtvs[i] = rtvHandle;
                 // clear it
