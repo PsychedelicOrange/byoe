@@ -201,7 +201,6 @@ typedef struct D3D12FeatureCache
     D3D12_FEATURE_DATA_D3D12_OPTIONS   options;
     D3D12_FEATURE_DATA_D3D12_OPTIONS1  options1;
     D3D12_FEATURE_DATA_D3D12_OPTIONS5  options5;
-    D3D12_FEATURE_DATA_D3D12_OPTIONS10 options10;
 
     D3D12_FEATURE_DATA_ARCHITECTURE1  architecture;
     D3D12_FEATURE_DATA_SHADER_MODEL   shaderModel;
@@ -636,7 +635,6 @@ static void dx12_internal_cache_features(context_backend* backend)
     ID3D12Device9_CheckFeatureSupport(device, D3D12_FEATURE_D3D12_OPTIONS, &f->options, sizeof(f->options));
     ID3D12Device9_CheckFeatureSupport(device, D3D12_FEATURE_D3D12_OPTIONS1, &f->options1, sizeof(f->options1));
     ID3D12Device9_CheckFeatureSupport(device, D3D12_FEATURE_D3D12_OPTIONS5, &f->options5, sizeof(f->options5));
-    ID3D12Device9_CheckFeatureSupport(device, D3D12_FEATURE_D3D12_OPTIONS10, &f->options10, sizeof(f->options10));
 
     f->architecture.NodeIndex = 0;
     ID3D12Device9_CheckFeatureSupport(device, D3D12_FEATURE_ARCHITECTURE1, &f->architecture, sizeof(f->architecture));
