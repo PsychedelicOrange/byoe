@@ -198,9 +198,9 @@ const rhi_jumptable dx12_jumptable = {
 
 typedef struct D3D12FeatureCache
 {
-    D3D12_FEATURE_DATA_D3D12_OPTIONS   options;
-    D3D12_FEATURE_DATA_D3D12_OPTIONS1  options1;
-    D3D12_FEATURE_DATA_D3D12_OPTIONS5  options5;
+    D3D12_FEATURE_DATA_D3D12_OPTIONS  options;
+    D3D12_FEATURE_DATA_D3D12_OPTIONS1 options1;
+    D3D12_FEATURE_DATA_D3D12_OPTIONS5 options5;
 
     D3D12_FEATURE_DATA_ARCHITECTURE1  architecture;
     D3D12_FEATURE_DATA_SHADER_MODEL   shaderModel;
@@ -224,7 +224,7 @@ typedef struct context_backend
     GLFWwindow*         glfwWindow;
     IDXGIFactory7*      factory;
     IDXGIAdapter4*      gpu;
-    ID3D12Device9*     device;    // Win 11 latest, other latest version needs Agility SDK
+    ID3D12Device9*      device;    // Win 11 latest, other latest version needs Agility SDK
     HWND                hwnd;
     D3D_FEATURE_LEVEL   feat_level;
     D3D12FeatureCache   features;
@@ -629,7 +629,7 @@ static IDXGIAdapter4* dx12_internal_select_best_adapter(IDXGIFactory7* factory, 
 
 static void dx12_internal_cache_features(context_backend* backend)
 {
-    ID3D12Device9*    device = backend->device;
+    ID3D12Device9*     device = backend->device;
     D3D12FeatureCache* f      = &backend->features;
 
     ID3D12Device9_CheckFeatureSupport(device, D3D12_FEATURE_D3D12_OPTIONS, &f->options, sizeof(f->options));
@@ -2457,7 +2457,7 @@ rhi_error_codes dx12_bind_root_constant(const gfx_cmd_buf* cmd_buf, const gfx_ro
 
     uint32_t num_values = push_constant.range.size / sizeof(uint32_t);
 
-    if (push_constant.range.stage == GFX_PIPELINE_TYPE_GRAPHICS) {
+    if (push_constant.range.stage != GFX_SHADER_STAGE_CS) {
         ID3D12GraphicsCommandList_SetGraphicsRoot32BitConstants(cmd_list, root_param_index, num_values, push_constant.data, push_constant.range.offset);
     } else {
         ID3D12GraphicsCommandList_SetComputeRoot32BitConstants(cmd_list, root_param_index, num_values, push_constant.data, push_constant.range.offset);
