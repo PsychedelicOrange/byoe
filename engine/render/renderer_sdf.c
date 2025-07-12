@@ -518,21 +518,18 @@ static void renderer_internal_scene_clear_pass(gfx_cmd_buf* cmd_buff)
     if (!scene)
         return;
 
-    UNUSED(cmd_buff);
+    gfx_render_pass scene_clear_pass = {.is_compute_pass = true};
+    g_rhi.begin_render_pass(cmd_buff, scene_clear_pass, s_RendererSDFInternalState.gfxcontext.swapchain.current_backbuffer_idx);
+    {
+        g_rhi.bind_root_signature(cmd_buff, &s_RendererSDFInternalState.clear_tex_resources.root_sig, GFX_PIPELINE_TYPE_COMPUTE);
+        g_rhi.bind_compute_pipeline(cmd_buff, &s_RendererSDFInternalState.clear_tex_resources.pipeline);
 
-    //g_rhi.clear_image(cmd_buff, &s_RendererSDFInternalState.sdfscene_resources.scene_texture);
+        g_rhi.bind_descriptor_heaps(cmd_buff, &s_RendererSDFInternalState.generic_heap, 1);
+        g_rhi.bind_descriptor_tables(cmd_buff, s_RendererSDFInternalState.clear_tex_resources.tables, 1, GFX_PIPELINE_TYPE_COMPUTE);
 
-    // gfx_render_pass scene_clear_pass = {.is_compute_pass = true};
-    // g_rhi.begin_render_pass(cmd_buff, scene_clear_pass, s_RendererSDFInternalState.gfxcontext.swapchain.current_backbuffer_idx);
-    // {
-    //     g_rhi.bind_root_signature(cmd_buff, &s_RendererSDFInternalState.clear_tex_resources.root_sig);
-    //     g_rhi.bind_compute_pipeline(cmd_buff, s_RendererSDFInternalState.clear_tex_resources.pipeline);
-
-    //     g_rhi.bind_descriptor_table(cmd_buff, &s_RendererSDFInternalState.clear_tex_resources.table, GFX_PIPELINE_TYPE_COMPUTE);
-
-    //     g_rhi.dispatch(cmd_buff, (s_RendererSDFInternalState.width + DISPATCH_LOCAL_DIM) / DISPATCH_LOCAL_DIM, (s_RendererSDFInternalState.height + DISPATCH_LOCAL_DIM) / DISPATCH_LOCAL_DIM, 1);
-    // }
-    // g_rhi.end_render_pass(cmd_buff, scene_clear_pass);
+        g_rhi.dispatch(cmd_buff, (s_RendererSDFInternalState.width + DISPATCH_LOCAL_DIM) / DISPATCH_LOCAL_DIM, (s_RendererSDFInternalState.height + DISPATCH_LOCAL_DIM) / DISPATCH_LOCAL_DIM, 1);
+    }
+    g_rhi.end_render_pass(cmd_buff, scene_clear_pass);
 }
 
 static void renderer_internal_scene_draw_pass(gfx_cmd_buf* cmd_buff)
@@ -541,8 +538,6 @@ static void renderer_internal_scene_draw_pass(gfx_cmd_buf* cmd_buff)
 
     if (!scene)
         return;
-
-    //g_rhi.insert_image_layout_barrier(cmd_buff, &s_RendererSDFInternalState.sdfscene_resources.scene_texture, GFX_IMAGE_LAYOUT_GENERAL, GFX_IMAGE_LAYOUT_GENERAL);
 
     gfx_render_pass scene_draw_pass = {.is_compute_pass = true};
     g_rhi.begin_render_pass(cmd_buff, scene_draw_pass, s_RendererSDFInternalState.gfxcontext.swapchain.current_backbuffer_idx);

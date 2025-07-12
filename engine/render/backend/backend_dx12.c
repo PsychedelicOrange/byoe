@@ -94,9 +94,9 @@ static LPCWSTR string_to_lpcwstr(const char* input)
 // - [x] Descriptor Heaps/tables API + root signature hookup
 // - [x] Barriers API
 // - [x] Root Constants API
-// - [ ] Restore SDF renderer
-//   - [ ] Bindings stuff etc. and whatever needs to be done to not crash it
-//   - [ ] Clear Image
+// - [x] Restore SDF renderer
+//   - [x] Bindings stuff etc. and whatever needs to be done to not crash it
+//   - [x] Clear Image (using compute shader)
 // - [ ] Single time command buffer
 // - [ ] Swapchain read back
 // - [ ] Restore tests!
@@ -167,7 +167,7 @@ const rhi_jumptable dx12_jumptable = {
     dx12_dispatch,
     dx12_transition_image_layout,
     dx12_transition_swapchain_layout,
-    NULL,    // clear image
+    dx12_clear_image,
 };
 //--------------------------------------------------------
 
@@ -2530,4 +2530,26 @@ rhi_error_codes dx12_transition_swapchain_layout(const gfx_cmd_buf* cmd_buf, con
     TracyCZoneEnd(ctx);
     return Success;
 }
+
+rhi_error_codes dx12_clear_image(const gfx_cmd_buf* cmd_buf, const gfx_resource* image)
+{
+    UNUSED(cmd_buf);
+    UNUSED(image);
+    //ID3D12GraphicsCommandList* cmd_list    = (ID3D12GraphicsCommandList*) (cmd_buf->backend);
+    //ID3D12Resource*            d3dresource = (ID3D12Resource*) (image->texture->backend);
+
+    //const float clearColor[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+
+    //ID3D12GraphicsCommandList_ClearUnorderedAccessViewFloat(
+    //    cmd_list,
+    //    (D3D12_GPU_DESCRIPTOR_HANDLE) 0 /*gpu_handle*/,
+    //    (D3D12_CPU_DESCRIPTOR_HANDLE) 0 /*cpu_handle*/,
+    //    d3dresource,
+    //    clearColor,
+    //    0,
+    //    NULL);
+
+    return Success;
+}
+
 #endif    // _WIN32

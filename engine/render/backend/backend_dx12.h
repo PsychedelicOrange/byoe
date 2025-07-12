@@ -111,7 +111,7 @@ rhi_error_codes dx12_dispatch(const gfx_cmd_buf* cmd_buf, uint32_t dimX, uint32_
 rhi_error_codes dx12_transition_image_layout(const gfx_cmd_buf* cmd_buffer, const gfx_resource* image, gfx_image_layout old_layout, gfx_image_layout new_layout);
 rhi_error_codes dx12_transition_swapchain_layout(const gfx_cmd_buf* cmd_buffer, const gfx_swapchain* swapchain, gfx_image_layout old_layout, gfx_image_layout new_layout);
 
-    // ...
+rhi_error_codes dx12_clear_image(const gfx_cmd_buf* cmd_buf, const gfx_resource* image);
 
 #endif    // _WIN32
 #endif    // BACKEND_DX12_H
