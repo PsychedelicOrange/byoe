@@ -283,7 +283,7 @@ typedef struct SDF_Node
 //------------------------
 
 #define MAX_BACKBUFFERS         3
-#define MAX_FRAMES_INFLIGHT     3    // same as no. of Swapchain images
+#define MAX_FRAMES_INFLIGHT     2
 #define MAX_CMD_BUFFS_PER_QUEUE 16
 #define MAX_RT                  8
 
@@ -832,12 +832,11 @@ typedef struct gfx_context
 {
     random_uuid_t uuid;
     void*         backend;
-    uint32_t      current_syncobj_idx;
     uint32_t      inflight_frame_idx;
     gfx_swapchain swapchain;
     struct
     {
-        gfx_syncobj image_ready[MAX_BACKBUFFERS];
+        gfx_syncobj image_ready[MAX_FRAMES_INFLIGHT];
         gfx_syncobj rendering_done[MAX_BACKBUFFERS];
 
     } present_sync;    // won't be needing this in DX12
@@ -847,9 +846,9 @@ typedef struct gfx_context
         struct
         {
             gfx_syncobj    timeline_syncobj;
-            gfx_sync_point frame_syncpoint[MAX_FRAMES_INFLIGHT];    // last timeline value signaled for the given frame
+            gfx_sync_point frame_syncpoint[MAX_BACKBUFFERS];    // last timeline value signaled for the given frame
             gfx_sync_point global_syncpoint;
-            uint32_t       _pad[8];
+            uint32_t       _pad[4];
         };
     } frame_sync;
     // NOTE: Add all the command buffers you want here...Draw, Async etc.

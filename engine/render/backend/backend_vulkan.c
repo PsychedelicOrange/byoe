@@ -1164,10 +1164,13 @@ gfx_context vulkan_ctx_init(GLFWwindow* window)
     // Create frame sync primitives per swapchain image
     for (int i = 0; i < MAX_BACKBUFFERS; i++) {
         ctx.present_sync.rendering_done[i] = vulkan_device_create_syncobj(GFX_SYNCOBJ_TYPE_GPU);
-        ctx.present_sync.image_ready[i]    = vulkan_device_create_syncobj(GFX_SYNCOBJ_TYPE_GPU);
-
-        VK_TAG_OBJECT("IMAGE_READY_SEMAPHORE", VK_OBJECT_TYPE_SEMAPHORE, *(VkSemaphore*) (ctx.present_sync.image_ready[i].backend));
         VK_TAG_OBJECT("RENDERING_DONE_SEMAPHORE", VK_OBJECT_TYPE_SEMAPHORE, *(VkSemaphore*) (ctx.present_sync.rendering_done[i].backend));
+    }
+
+    for (int i = 0; i < MAX_FRAMES_INFLIGHT; i++)
+    {
+        ctx.present_sync.image_ready[i]    = vulkan_device_create_syncobj(GFX_SYNCOBJ_TYPE_GPU);
+        VK_TAG_OBJECT("IMAGE_READY_SEMAPHORE", VK_OBJECT_TYPE_SEMAPHORE, *(VkSemaphore*) (ctx.present_sync.image_ready[i].backend));
     }
 
     VkCommandPoolCreateInfo cmdPoolCI = {0};
@@ -1196,9 +1199,12 @@ void vulkan_ctx_destroy(gfx_context* ctx)
 
     for (uint32_t i = 0; i < MAX_BACKBUFFERS; i++) {
         vulkan_device_destroy_syncobj(&ctx->present_sync.rendering_done[i]);
-        vulkan_device_destroy_syncobj(&ctx->present_sync.image_ready[i]);
     }
 
+    for (int i = 0; i < MAX_FRAMES_INFLIGHT; i++) {
+        vulkan_device_destroy_syncobj(&ctx->present_sync.image_ready[i]);
+
+    }
     vkDestroyCommandPool(VKDEVICE, s_VkCtx.single_time_cmd_pool.pool, NULL);
     vkDestroySurfaceKHR(VKINSTANCE, s_VkCtx.surface, NULL);
     vkDestroyDevice(s_VkCtx.logical_device, NULL);
@@ -2545,7 +2551,6 @@ rhi_error_codes vulkan_frame_end(gfx_context* context)
     vulkan_present(context);
 
     context->inflight_frame_idx  = (context->inflight_frame_idx + 1) % MAX_FRAMES_INFLIGHT;
-    context->current_syncobj_idx = (context->current_syncobj_idx + 1) % (context->swapchain.image_count);
 
 #if ENABLE_SYNC_LOGGING
     LOG_ERROR("//-----------------------FRAME END-------------------------//");
@@ -2591,7 +2596,7 @@ rhi_error_codes vulkan_acquire_image(gfx_context* ctx)
     * We must track which semaphore was used for which imageIndex.
     * Later submits and presents use this mapping for correct synchronization.
     */
-    gfx_syncobj image_ready = ctx->present_sync.image_ready[ctx->current_syncobj_idx];
+    gfx_syncobj image_ready = ctx->present_sync.image_ready[ctx->inflight_frame_idx];
 #if ENABLE_SYNC_LOGGING
     LOG_SUCCESS("[ACQUIRE] current_syncobj_idx: %d", ctx->current_syncobj_idx);
 #endif
@@ -2697,7 +2702,6 @@ rhi_error_codes vulkan_gfx_cmd_submit_for_rendering(gfx_context* ctx)
 {
     gfx_submit_syncobj submit_sync = {0};
 
-    uint32_t curr_syncobj_idx = ctx->current_syncobj_idx;
     uint32_t inflight_idx     = ctx->inflight_frame_idx;
 
     gfx_syncobj* in_flight_sync = NULL;
@@ -2708,9 +2712,9 @@ rhi_error_codes vulkan_gfx_cmd_submit_for_rendering(gfx_context* ctx)
     }
 
     submit_sync.wait_syncobjs_count   = 1;
-    submit_sync.wait_synobjs          = &(ctx->present_sync.image_ready[curr_syncobj_idx]);
+    submit_sync.wait_synobjs          = &(ctx->present_sync.image_ready[inflight_idx]);
     submit_sync.signal_syncobjs_count = 1;
-    submit_sync.signal_synobjs        = &(ctx->present_sync.rendering_done[curr_syncobj_idx]);
+    submit_sync.signal_synobjs        = &(ctx->present_sync.rendering_done[ctx->swapchain.current_backbuffer_idx]);
     submit_sync.inflight_syncobj      = in_flight_sync;
     submit_sync.inflight_syncpoint    = &ctx->frame_sync.frame_syncpoint[inflight_idx];
     submit_sync.global_syncpoint      = &ctx->frame_sync.global_syncpoint;
@@ -2723,7 +2727,7 @@ rhi_error_codes vulkan_gfx_cmd_submit_for_rendering(gfx_context* ctx)
 
 rhi_error_codes vulkan_present(const gfx_context* ctx)
 {
-    gfx_syncobj rendering_done = ctx->present_sync.rendering_done[ctx->current_syncobj_idx];
+    gfx_syncobj rendering_done = ctx->present_sync.rendering_done[ctx->swapchain.current_backbuffer_idx];
 
     VkPresentInfoKHR presentInfo = {
         .sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
